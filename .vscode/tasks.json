@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "make env",
+      "type": "shell",
+      "command": "make env",
+      "args": [],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "echo": false, // ← Don't show command
+        "reveal": "never", // ← Don't open terminal
+        "focus": false, // ← Don't focus terminal
+        "panel": "shared", // ← Use shared terminal
+        "showReuseMessage": false, // ← Don't show reuse message
+        "clear": false // ← Don't clear terminal
+      }
+    },
+    {
+      "label": "init-debugging",
+      "type": "shell",
+      "command": "make init-debugging",
+      "args": [],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": {
+        "echo": false, // ← Don't show command
+        "reveal": "never", // ← Don't open terminal
+        "focus": false, // ← Don't focus terminal
+        "panel": "shared", // ← Use shared terminal
+        "showReuseMessage": false, // ← Don't show reuse message
+        "clear": false // ← Don't clear terminal
+      }
+    }
+  ]
+}

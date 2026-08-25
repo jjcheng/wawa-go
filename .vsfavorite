@@ -1,0 +1,56 @@
+{
+  "refreshTime": "24/01/2026, 15:34:40 466",
+  "resources": [
+    {
+      "filePath": "internal/feature/pn/work.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/ai/task/start.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/pn/search/search-units.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/pn/search/search-stats.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/pn/search/search-projects.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/search-base.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/ai/task/work.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/ai/infer/generate-bridge.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/ai/infer/generate-hook.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/task/start.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/task/work.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/wa/embedded-signup.go",
+      "group": "Default"
+    }
+  ],
+  "groups": [
+    "Default"
+  ]
+}

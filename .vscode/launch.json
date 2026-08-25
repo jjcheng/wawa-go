@@ -1,0 +1,80 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "api",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug", // or "debug", "exec", "test", "auto"
+      "program": "${workspaceFolder}/cmd/api",
+      "env": {},
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "init-debugging",
+      "args": [],
+      "showLog": false
+    },
+    {
+      "name": "test api",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceFolder}/internal/controller/test",
+      "env": {},
+      //"cwd": "${workspaceFolder}", //should not specify this since make test will ignore this
+      "preLaunchTask": "make env",
+      "args": ["-test.v"]
+    },
+    {
+      "name": "cli",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug", // or "debug", "exec", "test", "auto"
+      "program": "${workspaceFolder}/cmd/cli",
+      "env": {},
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "make env",
+      "args": [],
+      "showLog": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "make migrate files",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/cli",
+      "env": {},
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "make env",
+      "args": ["migrate"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "make migrate staging files",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/cli",
+      "env": {},
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "make env",
+      "args": ["migrate-staging"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "restore db from migration",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/cli",
+      "env": {},
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "make env",
+      "args": ["restore-db"],
+      "console": "integratedTerminal"
+    }
+  ]
+}

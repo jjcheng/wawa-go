@@ -1,0 +1,69 @@
+package feature_wa_user_phone_number
+
+import (
+	"context"
+	"net/http"
+
+	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
+	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	"github.com/jjcheng/wawa-go/internal/exception"
+	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
+)
+
+type Create struct {
+	UserId        int32 `json:"user_id" val:"required" description:"if of the user who will manage this phone number"`
+	PhoneNumberId int32 `json:"phone_number_id" val:"required" description:"phone number if this user will manage"`
+}
+
+func (create *Create) Validate() []exception.InputException {
+	var errors []exception.InputException
+	if create.UserId <= 0 {
+		errors = append(errors, exception.NewInputException("user_id", "missing user id"))
+	}
+	if create.PhoneNumberId <= 0 {
+		errors = append(errors, exception.NewInputException("phone_number_id", "missing phone number id"))
+	}
+	return errors
+}
+
+func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.UserPhoneNumber] {
+	if errors := create.Validate(); len(errors) > 0 {
+		return dto.NewInvalidInputResponse[*dto_wa.UserPhoneNumber](errors)
+	}
+	if _, ex := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, create.UserId); ex != nil {
+		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](ex.StatusCode, ex.Message)
+	}
+	if _, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, create.PhoneNumberId); ex != nil {
+		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](ex.StatusCode, ex.Message)
+	}
+	userPhoneNumber := dao_wa.UserPhoneNumber{
+		UserId:        create.UserId,
+		PhoneNumberId: create.PhoneNumberId,
+	}
+	if err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().Insert(ctx, &userPhoneNumber); err != nil {
+		dependencies.Logger.ErrorFunction(err, create)
+		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusInternalServerError, "error creating user phone number")
+	}
+	d := dto_wa.NewUserPhoneNumber(userPhoneNumber)
+	return dto.NewSuccessResponse(&d)
+}
+
+func (Create) APISettings() feature.APISettings {
+	return feature.NewAPISettings(
+		"Create user phone number assignment",
+		"Assigns a WhatsApp phone number to a user.",
+		types.HttpRequestTypeJSON,
+		http.MethodPost,
+		"/wa/v1/user-phone-numbers",
+		true,
+		false,
+		types.APITagAccount,
+		[]feature.APIError{
+			feature.NewAPIError(*exception.NewCustomException("error creating user phone number", http.StatusInternalServerError)),
+		},
+	)
+}

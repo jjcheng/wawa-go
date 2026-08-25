@@ -1,0 +1,75 @@
+target ?= local
+ENV_SOURCE := .env.$(target)
+
+env:
+	@set -a; source $(ENV_SOURCE); set +a; \
+	cp .env.template .env; \
+	sed -i '' "s|\$${GIN_MODE}|$${GIN_MODE//&/\\&}|g" .env; \
+	sed -i '' "s|\$${DB_USER}|$${DB_USER//&/\\&}|g" .env; \
+	sed -i '' "s|\$${DB_PASSWORD}|$${DB_PASSWORD//&/\\&}|g" .env; \
+	sed -i '' "s|\$${DB_HOST}|$${DB_HOST//&/\\&}|g" .env; \
+	sed -i '' "s|\$${DB_PORT}|$${DB_PORT//&/\\&}|g" .env; \
+	sed -i '' "s|\$${DB_NAME}|$${DB_NAME//&/\\&}|g" .env; \
+	sed -i '' "s|\$${DB_SSLMODE}|$${DB_SSLMODE//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ENVIRONMENT}|$${ENVIRONMENT//&/\\&}|g" .env; \
+	sed -i '' "s|\$${BASE_URL}|$${BASE_URL//&/\\&}|g" .env; \
+	sed -i '' "s|\$${AZURE_SEARCH_APIKEY}|$${AZURE_SEARCH_APIKEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${AZURE_SEARCH_BASEURL}|$${AZURE_SEARCH_BASEURL//&/\\&}|g" .env; \
+	sed -i '' "s|\$${SERVER_KEY}|$${SERVER_KEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${SERVER_SALT}|$${SERVER_SALT//&/\\&}|g" .env; \
+	sed -i '' "s|\$${GOOGLE_MAP_APIKEY}|$${GOOGLE_MAP_APIKEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${QWEN_BASEURL}|$${QWEN_BASEURL//&/\\&}|g" .env; \
+	sed -i '' "s|\$${QWEN_APIKEY}|$${QWEN_APIKEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${DEEPSEEK_APIKEY}|$${DEEPSEEK_APIKEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_ID}|$${ALIYUN_OSS_ACCESS_KEY_ID//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_SECRET}|$${ALIYUN_OSS_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
+	sed -i '' "s|\$${FIRECRAWL_API_KEY}|$${FIRECRAWL_API_KEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_SMQ_ENDPOINT}|$${ALIYUN_SMQ_ENDPOINT//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_SMQ_ACCESS_KEY_ID}|$${ALIYUN_SMQ_ACCESS_KEY_ID//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_SMQ_ACCESS_KEY_SECRET}|$${ALIYUN_SMQ_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_SMQ_QUEUE_NAME}|$${ALIYUN_SMQ_QUEUE_NAME//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_SMQ_LISTENING}|$${ALIYUN_SMQ_LISTENING//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_FC_ACCESS_KEY_ID}|$${ALIYUN_FC_ACCESS_KEY_ID//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_FC_ACCESS_KEY_SECRET}|$${ALIYUN_FC_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
+	sed -i '' "s|\$${WHATSAPP_WEBHOOK_VERIFY_TOKEN}|$${WHATSAPP_WEBHOOK_VERIFY_TOKEN//&/\\&}|g" .env; \
+	sed -i '' "s|\$${WHATSAPP_ACCESS_TOKEN}|$${WHATSAPP_ACCESS_TOKEN//&/\\&}|g" .env;
+	@echo ".env generated from $(ENV_SOURCE)"
+run-api:
+	@make env
+	go run cmd/api/main.go
+run-cli:
+	@make env
+	go run cmd/cli/main.go
+migration-files:
+	@make env
+	go run cmd/cli/main.go migration-files
+build-api:
+	rm -f main
+	GOOS=linux GOARCH=amd64 go build cmd/api/main.go
+	zip dist/main.zip main
+	rm -f main
+build-cli:
+	rm -f main
+	GOOS=linux GOARCH=amd64 go build cmd/cli/main.go
+	zip dist/main.zip main 
+	rm -f main
+test:
+	@make env
+	@echo "Running vet..."
+	@go vet ./...
+	@echo "Running tests..."
+	go test ./internal/controller/...
+restore-db:
+	@make env
+	go run cmd/cli/main.go restore-db
+deploy-staging-fc:
+	@make env target=staging
+	@echo "Running staging deployment to Aliyun FC..."
+	@chmod +x deploy-staging-fc.sh
+	@./deploy-staging-fc.sh
+deploy-staging-db:
+	@echo "Running staging database migration..."
+	@chmod +x deploy-staging-db.sh
+	@./deploy-staging-db.sh
+init-debugging:
+	@make env

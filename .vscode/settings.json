@@ -1,0 +1,69 @@
+{
+  "go.delveConfig": {
+    "debugAdapter": "dlv-dap",
+    "stopOnPanic": true
+  },
+  "favorites.resources": [
+    {
+      "filePath": "internal/feature/task/work.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/task/start.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "setup/service.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/cfg/config.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/mobi/receive.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/mobi/send-template.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/mobi/send.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/ai/task/start.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/pn/new-launch/search-units.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/pn/new-launch/store.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/pn/work.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "setup/queue.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/ai/task/orchestrate.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/dto/mobi/template.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/pn/new-launch/search-projects.go",
+      "group": "Default"
+    }
+  ],
+  "search.useGlobalIgnoreFiles": true
+}

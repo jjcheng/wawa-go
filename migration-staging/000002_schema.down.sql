@@ -1,0 +1,17 @@
+BEGIN;
+DROP SCHEMA "account" CASCADE;
+DROP SCHEMA "wa" CASCADE;
+DROP TABLE "account"."users";
+DROP TABLE "wa"."business_accounts";
+DROP TABLE "wa"."business_portfolios";
+DROP TABLE "account"."settings";
+DROP TABLE "wa"."phone_numbers";
+DROP INDEX "wa"."meta_business_portfolio_id_1787634107399_index";
+DROP TABLE "wa"."user_phone_numbers";
+DROP TRIGGER settings_set_last_update ON account.settings;
+DROP TRIGGER users_set_last_update ON account.users;
+DROP TRIGGER business_accounts_set_last_update ON wa.business_accounts;
+DROP TRIGGER business_portfolios_set_last_update ON wa.business_portfolios;
+DROP TRIGGER phone_numbers_set_last_update ON wa.phone_numbers;
+DROP TRIGGER user_phone_numbers_set_last_update ON wa.user_phone_numbers;
+COMMIT;

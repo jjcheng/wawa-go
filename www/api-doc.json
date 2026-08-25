@@ -1,0 +1,25 @@
+{
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "description": "API Key authentication",
+        "in": "header",
+        "name": "x-api-key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "API documentation for PAIX",
+    "title": "PAIX",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {},
+  "servers": [
+    {
+      "description": "PRODUCTION",
+      "url": "https://api.paix.dev"
+    }
+  ]
+}
