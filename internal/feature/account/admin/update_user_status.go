@@ -1,4 +1,4 @@
-package feature_account_user
+package feature_account_admin
 
 import (
 	"context"
@@ -42,7 +42,7 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 		return dto.NewInvalidInputResponse[any](errors)
 	}
 	if user.Id == int32(updateStatus.UserId) {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot change status of yourself")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot update status of yourself")
 	}
 	existingUser, ex := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, int32(updateStatus.UserId))
 	if ex != nil {
@@ -72,9 +72,9 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 }
 
 func (UpdateStatus) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Update user status", "Enable or disable a user. Only admin can update user status.", types.HttpRequestTypeJSON, "PATCH", "/user/v1/status", true, false, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Admin update user status", "Enable or disable a user. Only admin can update user status.", types.HttpRequestTypeJSON, "PATCH", "/account/admin/v1/user-status", true, false, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not admin", http.StatusUnauthorized)),
-		feature.NewAPIError(*exception.NewCustomException("you cannot change status of yourself", http.StatusBadRequest)),
+		feature.NewAPIError(*exception.NewCustomException("you cannot update status of yourself", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException("you are not authorized to update this user", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("error updating user status", http.StatusInternalServerError)),

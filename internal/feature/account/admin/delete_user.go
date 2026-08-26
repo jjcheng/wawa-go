@@ -1,4 +1,4 @@
-package feature_account_user
+package feature_account_admin
 
 // type Delete struct {
 // 	Identifier string `uri:"identifier" val:"required" description:"identifier of the user to delete" example:"bf4a7bf2-5433-4401-afb6-300e10e8f27e"`

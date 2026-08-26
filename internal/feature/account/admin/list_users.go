@@ -1,4 +1,4 @@
-package feature_account_user
+package feature_account_admin
 
 // type List struct {
 // }
