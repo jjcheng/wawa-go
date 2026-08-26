@@ -21,6 +21,8 @@ type IncomingValue struct {
 	Contacts         []IncomingContact `json:"contacts,omitempty"`
 	Messages         []IncomingMessage `json:"messages,omitempty"`
 	Statuses         []Status          `json:"statuses,omitempty"`
+	SyncStatus       string            `json:"sync_status,omitempty"`
+	ChunkNumber      int               `json:"chunk_number,omitempty"`
 }
 
 type IncomingMetadata struct {

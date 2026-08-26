@@ -3,6 +3,7 @@ package types
 type HttpRequestType string
 
 const (
+	HttpRequestTypeNone     HttpRequestType = "NONE"
 	HttpRequestTypeUri      HttpRequestType = "URI"
 	HttpRequestTypeQuery    HttpRequestType = "QUERY"
 	HttpRequestTypeUriQuery HttpRequestType = "URI_QUERY"

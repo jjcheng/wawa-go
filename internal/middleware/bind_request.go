@@ -13,7 +13,9 @@ import (
 
 func BindRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
 	var requestObject T
-	if requestObject.APISettings().Type == types.HttpRequestTypeUri {
+	if requestObject.APISettings().Type == types.HttpRequestTypeNone {
+		return bindNoneRequest[R, T]()
+	} else if requestObject.APISettings().Type == types.HttpRequestTypeUri {
 		return bindURIRequest[R, T]()
 	} else if requestObject.APISettings().Type == types.HttpRequestTypeQuery {
 		return bindQueryRequest[R, T]()
@@ -23,6 +25,14 @@ func BindRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
 		return bindURIAndJSONRequest[R, T]()
 	} else {
 		return bindURIAndQueryRequest[R, T]()
+	}
+}
+
+func bindNoneRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+	return func(context *gin.Context) {
+		var requestObject T
+		context.Set(cfg.Default().Site.HTTPRequestItemKey, requestObject)
+		context.Next()
 	}
 }
 

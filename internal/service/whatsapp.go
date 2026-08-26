@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -310,10 +311,29 @@ func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID
 	return nil
 }
 
+func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID string) error {
+	phoneNumberID = strings.TrimSpace(phoneNumberID)
+	if phoneNumberID == "" {
+		return fmt.Errorf("phone number ID is required")
+	}
+	if _, err := strconv.ParseUint(phoneNumberID, 10, 64); err != nil {
+		return fmt.Errorf("invalid phone number ID: must be a numeric Meta ID")
+	}
+	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
+	if err := whatsapp.doJSONRequest(ctx, http.MethodDelete, endpoint, nil, nil); err != nil {
+		whatsapp.logger.ErrorFunction(err, phoneNumberID)
+		return err
+	}
+	return nil
+}
+
 func (whatsapp *Whatsapp) GetBusinessName(ctx context.Context, metaBusinessPortfolioId string) (string, error) {
 	metaBusinessPortfolioId = strings.TrimSpace(metaBusinessPortfolioId)
 	if metaBusinessPortfolioId == "" {
 		return "", fmt.Errorf("metaBusinessPortfolioId is required")
+	}
+	if _, err := strconv.ParseUint(metaBusinessPortfolioId, 10, 64); err != nil {
+		return "", fmt.Errorf("invalid metaBusinessPortfolioId: must be a numeric Meta ID")
 	}
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaBusinessPortfolioId))
 	query := url.Values{}
@@ -350,6 +370,50 @@ func (whatsapp *Whatsapp) GetWABAName(ctx context.Context, wabaId string) (strin
 	return response.Name, nil
 }
 
+func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string) ([]dto_wa.Template, error) {
+	endpoint := fmt.Sprintf("%s/%s/%s/message_templates", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
+	query := url.Values{}
+	query.Set("fields", "id,name,status,category,language,parameter_format,components,quality_score,rejected_reason,previous_category")
+	endpoint += "?" + query.Encode()
+	templates := []dto_wa.Template{}
+	for endpoint != "" {
+		var response dto_wa.TemplateListResponse
+		if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &response); err != nil {
+			whatsapp.logger.ErrorFunction(err, wabaId)
+			return nil, err
+		}
+		templates = append(templates, response.Data...)
+		if response.Paging == nil {
+			break
+		}
+		endpoint = strings.TrimSpace(response.Paging.Next)
+	}
+	return templates, nil
+}
+
+func (whatsapp *Whatsapp) CreateTemplate(ctx context.Context, wabaId string, payload map[string]any) (*dto_wa.Template, error) {
+	endpoint := fmt.Sprintf("%s/%s/%s/message_templates", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
+	var response dto_wa.Template
+	if err := whatsapp.doJSONRequest(ctx, http.MethodPost, endpoint, payload, &response); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId, payload)
+		return nil, err
+	}
+	response.MetaWABAId = wabaId
+	return &response, nil
+}
+
+func (whatsapp *Whatsapp) DeleteTemplate(ctx context.Context, wabaId string, name string, templateId string) error {
+	query := url.Values{}
+	query.Set("name", name)
+	query.Set("hsm_id", templateId)
+	endpoint := fmt.Sprintf("%s/%s/%s/message_templates?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	if err := whatsapp.doJSONRequest(ctx, http.MethodDelete, endpoint, nil, nil); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId, name, templateId)
+		return err
+	}
+	return nil
+}
+
 func (whatsapp *Whatsapp) GetDisplayPhoneNumberAndName(ctx context.Context, metaPhoneNumberId string) (string, string, error) {
 	metaPhoneNumberId = strings.TrimSpace(metaPhoneNumberId)
 	if metaPhoneNumberId == "" {
@@ -372,7 +436,7 @@ func (whatsapp *Whatsapp) GetDisplayPhoneNumberAndName(ctx context.Context, meta
 	return response.DisplayPhoneNumber, response.VerifiedName, nil
 }
 
-func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, message *MessageQueueMessage, handler func(incomingMessage dto_wa.IncomingMessage) error) {
+func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, message *MessageQueueMessage, handler func(incomingMessage dto_wa.IncomingMessage) error, historyHandler func(wabaID string, incomingMessage dto_wa.IncomingMessage) error) {
 	whatsapp.logger.Infof("SMQ listener received message: message_id=%s", message.MessageID)
 	body := []byte(strings.TrimSpace(message.Body))
 	if len(body) == 0 {
@@ -393,6 +457,15 @@ func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, mess
 	for _, entry := range incoming.Entry {
 		for _, change := range entry.Changes {
 			phoneNumberID := strings.TrimSpace(change.Value.Metadata.PhoneNumberID)
+			if change.Field == "history" {
+				for _, historyMessage := range change.Value.Messages {
+					historyMessage.PhoneNumberID = phoneNumberID
+					if err := historyHandler(entry.ID, historyMessage); err != nil {
+						whatsapp.logger.Warnf("failed to store WhatsApp history message: message_id=%s err=%v", message.MessageID, err)
+					}
+				}
+				continue
+			}
 			if len(change.Value.Messages) > 0 {
 				for _, incomingMessage := range change.Value.Messages {
 					incomingMessage.PhoneNumberID = phoneNumberID
@@ -521,44 +594,6 @@ func (whatsapp *Whatsapp) GetMessageHistory(ctx context.Context, query *WhatsApp
 		whatsapp.logger.ErrorFunction(err, query)
 		return nil, err
 	}
-	return &response, nil
-}
-
-func (whatsapp *Whatsapp) GetMessageHistoryEvents(ctx context.Context, messageHistoryID string, statusFilter string, fields string, limit int, after string, before string) (*WhatsAppMessageHistoryEventsResponse, error) {
-	messageHistoryID = strings.TrimSpace(messageHistoryID)
-	if messageHistoryID == "" {
-		return nil, fmt.Errorf("messageHistoryID is required")
-	}
-
-	params := url.Values{}
-	if strings.TrimSpace(statusFilter) != "" {
-		params.Set("status_filter", strings.TrimSpace(statusFilter))
-	}
-	if strings.TrimSpace(fields) != "" {
-		params.Set("fields", strings.TrimSpace(fields))
-	}
-	if limit > 0 {
-		params.Set("limit", fmt.Sprintf("%d", limit))
-	}
-	if strings.TrimSpace(after) != "" {
-		params.Set("after", strings.TrimSpace(after))
-	}
-	if strings.TrimSpace(before) != "" {
-		params.Set("before", strings.TrimSpace(before))
-	}
-
-	endpoint := fmt.Sprintf("%s/%s/%s/events", whatsapp.baseURL, whatsapp.apiVersion, messageHistoryID)
-	if encoded := params.Encode(); encoded != "" {
-		endpoint = endpoint + "?" + encoded
-	}
-
-	var response WhatsAppMessageHistoryEventsResponse
-	err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &response)
-	if err != nil {
-		whatsapp.logger.ErrorFunction(err, map[string]any{"messageHistoryID": messageHistoryID, "statusFilter": statusFilter})
-		return nil, err
-	}
-
 	return &response, nil
 }
 

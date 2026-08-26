@@ -2,11 +2,13 @@ package setup
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
+	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -47,12 +49,31 @@ func StartQueueListener(ctx context.Context, dependencies *service.Dependencies)
 		if message == nil {
 			continue
 		}
+		messageCtx, messageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		whatsappService.ReceiveMessage(messageQueueService, message, func(incomingMessage dto_wa.IncomingMessage) error {
-			messageCtx, messageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-			defer messageCancel()
 			return processIncomingWhatsAppMessage(messageCtx, dependencies, incomingMessage)
+		}, func(wabaID string, incomingMessage dto_wa.IncomingMessage) error {
+			return storeWhatsAppHistoryMessage(messageCtx, dependencies, wabaID, incomingMessage)
 		})
+		messageCancel()
 	}
+}
+
+func storeWhatsAppHistoryMessage(ctx context.Context, dependencies *service.Dependencies, wabaID string, incomingMessage dto_wa.IncomingMessage) error {
+	rawPayload, err := json.Marshal(incomingMessage)
+	if err != nil {
+		return err
+	}
+	return dependencies.UnitOfWork.WAHistoryMessageRepository().Insert(ctx, &dao_wa.HistoryMessage{
+		WABAId:           wabaID,
+		PhoneNumberId:    incomingMessage.PhoneNumberID,
+		From:             incomingMessage.From,
+		MessageId:        incomingMessage.ID,
+		MessageType:      incomingMessage.Type,
+		TextBody:         incomingMessage.Text.Body,
+		MessageTimestamp: incomingMessage.Timestamp,
+		RawPayload:       string(rawPayload),
+	})
 }
 
 func processIncomingWhatsAppMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage) error {

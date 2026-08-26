@@ -8,6 +8,8 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
+	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
+	feature_wa_template "github.com/jjcheng/wawa-go/internal/feature/wa/template"
 	feature_wa_user_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/user_phone_number"
 	feature_wa_webhook "github.com/jjcheng/wawa-go/internal/feature/wa/webhook"
 	"github.com/jjcheng/wawa-go/internal/middleware"
@@ -53,4 +55,9 @@ func registerWAController(authGroup, unauthGroup *gin.RouterGroup, dependencies 
 	// phone number
 	registerRoute[[]dto_wa.PhoneNumber, feature_wa_user_phone_number.List](authGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.UserPhoneNumber, feature_wa_user_phone_number.Create](authGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_phone_number.Delete](authGroup, dependencies, apiGenerator)
+	// template
+	registerRoute[[]dto_wa.Template, feature_wa_template.List](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.Template, feature_wa_template.Create](authGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_template.Delete](authGroup, dependencies, apiGenerator)
 }
