@@ -17,6 +17,18 @@
       "showLog": false
     },
     {
+      "name": "worker",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug", // or "debug", "exec", "test", "auto"
+      "program": "${workspaceFolder}/cmd/worker",
+      "env": {},
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "init-debugging",
+      "args": [],
+      "showLog": false
+    },
+    {
       "name": "test api",
       "type": "go",
       "request": "launch",

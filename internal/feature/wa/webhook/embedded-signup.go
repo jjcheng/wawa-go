@@ -1,4 +1,4 @@
-package feature_wa
+package feature_wa_webhook
 
 import (
 	"context"
@@ -33,11 +33,6 @@ type EmbeddedSignupData struct {
 	Code          string `json:"code" val:"required" description:"exchangeable token code"`
 }
 
-type EmbeddedSignupResponse struct {
-	PhoneNumber dto_wa.PhoneNumber `json:"phone_number"`
-	User        dto_account.User   `json:"user"`
-}
-
 func (embeddedSignup *EmbeddedSignup) Validate() []exception.InputException {
 	var errors []exception.InputException
 	embeddedSignup.Event = strings.TrimSpace(embeddedSignup.Event)
@@ -49,38 +44,38 @@ func (embeddedSignup *EmbeddedSignup) Validate() []exception.InputException {
 		errors = append(errors, exception.NewInputException("event", "invalid event"))
 	}
 	if embeddedSignup.Data.PhoneNumberId == "" {
-		errors = append(errors, exception.NewInputException("data.phone_number_id", "missing data.phone_number_id"))
+		errors = append(errors, exception.NewInputException("data.phone_number_id", "missing phone number id"))
 	}
 	if embeddedSignup.Data.WABAId == "" {
-		errors = append(errors, exception.NewInputException("data.waba_id", "missing data.waba_id"))
+		errors = append(errors, exception.NewInputException("data.waba_id", "missing WABA id"))
 	}
 	if embeddedSignup.Data.BusinessId == "" {
-		errors = append(errors, exception.NewInputException("data.business_id", "missing data.business_id"))
+		errors = append(errors, exception.NewInputException("data.business_id", "missing business id"))
 	}
 	if embeddedSignup.Data.Code == "" {
-		errors = append(errors, exception.NewInputException("data.code", "missing data.code"))
+		errors = append(errors, exception.NewInputException("data.code", "missing code"))
 	}
 	return errors
 }
 
-func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*EmbeddedSignupResponse] {
+func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.EmbeddedSignupResponse] {
 	if errors := embeddedSignup.Validate(); len(errors) > 0 {
-		return dto.NewInvalidInputResponse[*EmbeddedSignupResponse](errors)
+		return dto.NewInvalidInputResponse[*dto_wa.EmbeddedSignupResponse](errors)
 	}
 	// check phone number already exist
 	exist, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().CheckExists(ctx, embeddedSignup.Data.PhoneNumberId)
 	if ex != nil && ex.StatusCode != http.StatusNotFound {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](ex.StatusCode, ex.Message)
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](ex.StatusCode, ex.Message)
 	}
 	if exist {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](http.StatusBadRequest, "phone number already exists")
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusBadRequest, "phone number already exists")
 	}
 	// create business portfolio
 	createBusinessPortfolioResponse := (feature_wa_business_portfolio.Create{
 		MetaBusinessPortfolioId: embeddedSignup.Data.BusinessId,
 	}).Handle(ctx, nil, dependencies)
 	if !createBusinessPortfolioResponse.Success {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](createBusinessPortfolioResponse.StatusCode, createBusinessPortfolioResponse.Message)
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createBusinessPortfolioResponse.StatusCode, createBusinessPortfolioResponse.Message)
 	}
 	// create business account (WABA)
 	createBusinessAccountResponse := (feature_wa_business_account.Create{
@@ -88,7 +83,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		MetaWABAId:              embeddedSignup.Data.WABAId,
 	}).Handle(ctx, nil, dependencies)
 	if !createBusinessAccountResponse.Success {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](createBusinessAccountResponse.StatusCode, createBusinessAccountResponse.Message)
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createBusinessAccountResponse.StatusCode, createBusinessAccountResponse.Message)
 	}
 	// create phone number
 	createPhoneNumberResponse := (feature_wa_phone_number.Create{
@@ -97,7 +92,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		MetaPhoneNumberId:       embeddedSignup.Data.PhoneNumberId,
 	}).Handle(ctx, nil, dependencies)
 	if !createPhoneNumberResponse.Success {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](createPhoneNumberResponse.StatusCode, createPhoneNumberResponse.Message)
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createPhoneNumberResponse.StatusCode, createPhoneNumberResponse.Message)
 	}
 	// create user
 	tmpPassword := uuid.NewString()
@@ -115,7 +110,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	}
 	createUserResponse := createUser.Handle(ctx, nil, dependencies)
 	if !createUserResponse.Success {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](createUserResponse.StatusCode, createUserResponse.Message)
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createUserResponse.StatusCode, createUserResponse.Message)
 	}
 	// create user_phone_number so user can login using password
 	createUserPhoneNumberResponse := (feature_wa_user_phone_number.Create{
@@ -123,13 +118,13 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		PhoneNumberId: createPhoneNumberResponse.Data.Id,
 	}).Handle(ctx, nil, dependencies)
 	if !createUserPhoneNumberResponse.Success {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](createUserPhoneNumberResponse.StatusCode, createUserPhoneNumberResponse.Message)
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createUserPhoneNumberResponse.StatusCode, createUserPhoneNumberResponse.Message)
 	}
 	// finalize with meta
 	if err := dependencies.Whatsapp.RegisterPhoneNumber(ctx, embeddedSignup.Data.PhoneNumberId); err != nil {
-		return dto.NewFailedResponse[*EmbeddedSignupResponse](http.StatusBadGateway, fmt.Sprintf("error registering phone number: %v", err))
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusBadGateway, fmt.Sprintf("error registering phone number: %v", err))
 	}
-	return dto.NewSuccessResponse(&EmbeddedSignupResponse{
+	return dto.NewSuccessResponse(&dto_wa.EmbeddedSignupResponse{
 		PhoneNumber: *createPhoneNumberResponse.Data,
 		User:        *createUserResponse.Data,
 	})
@@ -137,5 +132,5 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 
 // api endpoint only for testing
 func (EmbeddedSignup) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Process WhatsApp embedded signup", "Create the organization, WhatsApp business account, phone number, and user from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/wa/v1/embedded-signup", false, false, types.APITagAccount, nil)
+	return feature.NewAPISettings("Process WhatsApp embedded signup", "Create the organization, WhatsApp business account, phone number, and user from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/wa/v1/embedded-signup", false, true, types.APITagWA, nil)
 }

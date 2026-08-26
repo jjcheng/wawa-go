@@ -25,13 +25,13 @@ func NewAPIGenerator() *APIGenerator {
 	spec := &openapi3.T{
 		OpenAPI: "3.0.3",
 		Info: &openapi3.Info{
-			Title:       "PAIX",
+			Title:       "WAWA",
 			Version:     "1.0.0",
-			Description: "API documentation for PAIX",
+			Description: "API documentation for WAWA",
 		},
 		Servers: []*openapi3.Server{
 			{
-				URL:         "https://api.paix.dev",
+				URL:         "https://api.coreconcept.tech",
 				Description: "PRODUCTION",
 			},
 		},

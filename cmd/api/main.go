@@ -20,7 +20,7 @@ func main() {
 	time.Local = time.UTC
 	// set log to stdout as error will be handled by loggerService
 	log.SetOutput(os.Stdout)
-	log.Printf("starting server\n")
+	log.Println("starting server")
 	log.Printf("environment: %s\n", cfg.Default().Site.Environment)
 	// setup database
 	loggerService := service.NewLogger()
@@ -30,12 +30,12 @@ func main() {
 		panic(err.Error())
 	}
 	// setup services
-	dependencies := setup.SetupServices(unitOfWork, loggerService, true)
+	dependencies := setup.SetupServices(unitOfWork, loggerService)
 	// setup router
 	router := setup.SetupRouter(dependencies.Logger)
-	// Register controllers
+	// setup controllers
 	controller.RegisterControllers(router, dependencies)
-	// Start server
+	// start server
 	server := &http.Server{
 		Addr:              ":" + cfg.Default().Site.Port,
 		Handler:           router,

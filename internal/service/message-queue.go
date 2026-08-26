@@ -37,10 +37,6 @@ func NewMessageQueue(logger *Logger) *MessageQueue {
 	if queueName == "" || endpoint == "" {
 		panic("missing queue name or endpoint in message queue .env")
 	}
-	// waitSeconds := config.PollingWaitSeconds
-	// if waitSeconds <= 0 {
-	// 	waitSeconds = 15
-	// }
 	client := ali_mns.NewAliMNSClientWithConfig(ali_mns.AliMNSClientConfig{
 		EndPoint:        cfg.Default().AliyunSMQ.Endpoint,
 		AccessKeyId:     cfg.Default().AliyunSMQ.AccessKeyID,

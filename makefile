@@ -13,17 +13,11 @@ env:
 	sed -i '' "s|\$${DB_SSLMODE}|$${DB_SSLMODE//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ENVIRONMENT}|$${ENVIRONMENT//&/\\&}|g" .env; \
 	sed -i '' "s|\$${BASE_URL}|$${BASE_URL//&/\\&}|g" .env; \
-	sed -i '' "s|\$${AZURE_SEARCH_APIKEY}|$${AZURE_SEARCH_APIKEY//&/\\&}|g" .env; \
-	sed -i '' "s|\$${AZURE_SEARCH_BASEURL}|$${AZURE_SEARCH_BASEURL//&/\\&}|g" .env; \
 	sed -i '' "s|\$${SERVER_KEY}|$${SERVER_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${SERVER_SALT}|$${SERVER_SALT//&/\\&}|g" .env; \
 	sed -i '' "s|\$${GOOGLE_MAP_APIKEY}|$${GOOGLE_MAP_APIKEY//&/\\&}|g" .env; \
-	sed -i '' "s|\$${QWEN_BASEURL}|$${QWEN_BASEURL//&/\\&}|g" .env; \
-	sed -i '' "s|\$${QWEN_APIKEY}|$${QWEN_APIKEY//&/\\&}|g" .env; \
-	sed -i '' "s|\$${DEEPSEEK_APIKEY}|$${DEEPSEEK_APIKEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_ID}|$${ALIYUN_OSS_ACCESS_KEY_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_SECRET}|$${ALIYUN_OSS_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
-	sed -i '' "s|\$${FIRECRAWL_API_KEY}|$${FIRECRAWL_API_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_SMQ_ENDPOINT}|$${ALIYUN_SMQ_ENDPOINT//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_SMQ_ACCESS_KEY_ID}|$${ALIYUN_SMQ_ACCESS_KEY_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_SMQ_ACCESS_KEY_SECRET}|$${ALIYUN_SMQ_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
@@ -37,6 +31,9 @@ env:
 run-api:
 	@make env
 	go run cmd/api/main.go
+run-worker:
+	@make env
+	go run cmd/worker/main.go
 run-cli:
 	@make env
 	go run cmd/cli/main.go

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
-	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	feature_cli "github.com/jjcheng/wawa-go/internal/feature/cli"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/setup"
@@ -18,23 +17,23 @@ import (
 
 var (
 	_dependencies *service.Dependencies
-	_user         dto_account.User
-	_appId        int32
 )
 
 func main() {
 	// set timezone to utc so no need to call .UTC() everytime
-	_appId = 1
 	time.Local = time.UTC
-	logger := service.NewLogger()
+	// set log to stdout as error will be handled by loggerService
+	log.SetOutput(os.Stdout)
+	log.Println("starting cli")
+	log.Printf("environment: %s\n", cfg.Default().Site.Environment)
 	// setup database
-	uow, err := setup.SetupDatabase(cfg.Default().Database.DSN(), logger)
+	logger := service.NewLogger()
+	unitOfWork, err := setup.SetupDatabase(cfg.Default().Database.DSN(), logger)
 	if err != nil {
-		panic(fmt.Sprintf("FAILED to connect to DB: %v", err.Error()))
+		panic(fmt.Sprintf("FAILED to setup database: %v", err.Error()))
 	}
 	// setup services
-	_dependencies = setup.SetupServices(uow, logger, false)
-	log.Println("server started")
+	_dependencies = setup.SetupServices(unitOfWork, logger)
 	fmt.Println()
 	// AD-HOC: put any ad-hoc tasks here
 	// crawl("https://www.gofit-gym.com/sg/")
@@ -80,7 +79,7 @@ func main() {
 }
 
 func shutdown(loggerService *service.Logger) {
-	// Shutdown telemetry service first to flush remaining telemetry
+	// shutdown telemetry service first to flush remaining telemetry
 	log.Println("zeroize global keys")
 	cfg.Default().Site.GlobalKeys.Zeroize()
 	log.Println("shutting down telemetry service")

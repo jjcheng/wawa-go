@@ -24,13 +24,13 @@ func (create *Create) Validate() []exception.InputException {
 	create.MetaPhoneNumberId = strings.TrimSpace(create.MetaPhoneNumberId)
 	create.MetaWABAId = strings.TrimSpace(create.MetaWABAId)
 	if create.MetaBusinessPortfolioId == "" {
-		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing meta_business_portfolio_id"))
+		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing meta business portfolio id"))
 	}
 	if create.MetaPhoneNumberId == "" {
-		errors = append(errors, exception.NewInputException("meta_phone_number_id", "missing meta_phone_number_id"))
+		errors = append(errors, exception.NewInputException("meta_phone_number_id", "missing meta phone number id"))
 	}
 	if create.MetaWABAId == "" {
-		errors = append(errors, exception.NewInputException("meta_waba_id", "missing meta_waba_id"))
+		errors = append(errors, exception.NewInputException("meta_waba_id", "missing meta WABA id"))
 	}
 	return errors
 }

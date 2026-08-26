@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -61,4 +62,28 @@ func (businessAccountRepository *WABusinessAccountRepository) CheckExists(ctx co
 		return false, exception.NewCustomException("error checking business account", http.StatusInternalServerError)
 	}
 	return count > 0, nil
+}
+
+func (businessAccountRepository *WABusinessAccountRepository) ListByMetaWABAIds(ctx context.Context, metaWABAIds []string) ([]dao_wa.BusinessAccount, *exception.Exception) {
+	ids := make([]string, 0, len(metaWABAIds))
+	for _, id := range metaWABAIds {
+		if id = strings.TrimSpace(id); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return []dao_wa.BusinessAccount{}, nil
+	}
+
+	var businessAccounts []dao_wa.BusinessAccount
+	result := businessAccountRepository.db.WithContext(ctx).
+		Model(&dao_wa.BusinessAccount{}).
+		Where("meta_waba_id IN ?", ids).
+		Order("id").
+		Find(&businessAccounts)
+	if result.Error != nil {
+		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAIds)
+		return nil, exception.NewCustomException(fmt.Sprintf("error getting business accounts: %v", result.Error), http.StatusInternalServerError)
+	}
+	return businessAccounts, nil
 }

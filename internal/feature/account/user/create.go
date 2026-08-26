@@ -37,7 +37,7 @@ func (create *Create) Validate() []exception.InputException {
 		errors = append(errors, exception.NewInputException("name", "missing name"))
 	}
 	if create.PhoneNumber == "" {
-		errors = append(errors, exception.NewInputException("phone_number", "missing phone_number"))
+		errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
 	}
 	if create.Type == "" {
 		errors = append(errors, exception.NewInputException("type", "missing type"))

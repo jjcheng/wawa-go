@@ -22,7 +22,7 @@ func (get *Get) Validate() []exception.InputException {
 	var errors []exception.InputException
 	get.MetaWABAId = strings.TrimSpace(get.MetaWABAId)
 	if get.MetaWABAId == "" {
-		errors = append(errors, exception.NewInputException("meta_waba_id", "missing meta_waba_id"))
+		errors = append(errors, exception.NewInputException("meta_waba_id", "missing meta WABA id"))
 	}
 	return errors
 }

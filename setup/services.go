@@ -2,6 +2,8 @@ package setup
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -11,29 +13,36 @@ import (
 )
 
 // initializes and returns all application services
-func SetupServices(unitOfWork repository.UnitOfWork, logger *service.Logger, startMessageQueue bool) *service.Dependencies {
+func SetupServices(unitOfWork repository.UnitOfWork, logger *service.Logger) *service.Dependencies {
 	fileService := service.NewFileService(logger)
 	messageQueueService := service.NewMessageQueue(logger)
 	whatsappService := service.NewWhatsapp(logger)
 	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, whatsappService)
-	if cfg.Default().AliyunSMQ.Listening && startMessageQueue {
-		go startQueueListener(dependencies)
-	}
 	return dependencies
 }
 
-func startQueueListener(dependencies *service.Dependencies) {
+func StartQueueListener(ctx context.Context, dependencies *service.Dependencies) {
 	logger := dependencies.Logger
 	messageQueueService := dependencies.MessageQueue
 	whatsappService := dependencies.Whatsapp
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.Default().AliyunSMQ.PollingWaitSeconds+5)*time.Second)
-		message, err := messageQueueService.ReceiveMessage(ctx)
+		pollCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.Default().AliyunSMQ.PollingWaitSeconds+5)*time.Second)
+		message, err := messageQueueService.ReceiveMessage(pollCtx)
 		cancel()
 		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
 			logger.Warnf("queue listener receive error: %v", err)
-			time.Sleep(time.Second)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Second):
+			}
 			continue
+		}
+		if ctx.Err() != nil {
+			return
 		}
 		if message == nil {
 			continue
@@ -47,27 +56,26 @@ func startQueueListener(dependencies *service.Dependencies) {
 }
 
 func processIncomingWhatsAppMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage) error {
-	// if strings.TrimSpace(incomingMessage.Text.Body) == "" {
-	// 	return nil
-	// }
-	// phoneNumberID := strings.TrimSpace(incomingMessage.PhoneNumberID)
-	// if phoneNumberID == "" {
-	// 	return fmt.Errorf("missing phone number id in incoming message")
-	// }
-	// go func() {
-	// 	dependencies.Whatsapp.StartTyping(ctx, phoneNumberID, incomingMessage.ID)
-	// }()
+	if strings.TrimSpace(incomingMessage.Text.Body) == "" {
+		return nil
+	}
+	phoneNumberID := strings.TrimSpace(incomingMessage.PhoneNumberID)
+	if phoneNumberID == "" {
+		return fmt.Errorf("missing phone number id in incoming message")
+	}
+	go func() {
+		dependencies.Whatsapp.StartTyping(ctx, phoneNumberID, incomingMessage.ID)
+	}()
 	// getUser := feature_account_user.Get{Identifier: phoneNumberID}
 	// getUserResponse := getUser.Handle(ctx, nil, dependencies)
 	// if !getUserResponse.Success || getUserResponse.Data == nil || getUserResponse.Data.App == nil {
 	// 	return fmt.Errorf("failed to identify user and app from identifier: %s", phoneNumberID)
 	// }
-	// _, err := dependencies.Whatsapp.SendMessage(ctx, &service.WhatsAppMessageRequest{
-	// 	PhoneNumberID: phoneNumberID,
-	// 	To:            incomingMessage.From,
-	// 	Type:          service.WhatsAppMessageTypeText,
-	// 	Text:          &service.WhatsAppTextObject{Body: "hello"},
-	// })
-	//return err
-	return nil
+	_, err := dependencies.Whatsapp.SendMessage(ctx, &service.WhatsAppMessageRequest{
+		PhoneNumberID: phoneNumberID,
+		To:            incomingMessage.From,
+		Type:          service.WhatsAppMessageTypeText,
+		Text:          &service.WhatsAppTextObject{Body: "hello"},
+	})
+	return err
 }

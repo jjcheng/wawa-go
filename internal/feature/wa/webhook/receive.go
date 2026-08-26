@@ -1,4 +1,4 @@
-package feature_wa
+package feature_wa_webhook
 
 import (
 	"context"

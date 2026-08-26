@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -17,8 +16,8 @@ import (
 )
 
 type Config struct {
-	Database  DatabaseConfig
 	Site      SiteConfig
+	Database  DatabaseConfig
 	AliyunOSS AliyunOSSConfig
 	AliyunSMQ AliyunSMQConfig
 	WhatsApp  WhatsAppConfig
@@ -64,7 +63,6 @@ type AliyunSMQConfig struct {
 	AccessKeySecret    string
 	QueueName          string
 	PollingWaitSeconds int64
-	Listening          bool
 }
 
 type WhatsAppConfig struct {
@@ -91,7 +89,6 @@ func Default() *Config {
 		if port == "" {
 			port = "9000" // Default for FC custom runtime
 		}
-
 		// load configs
 		configInstance = &Config{
 			Database: DatabaseConfig{
@@ -101,20 +98,19 @@ func Default() *Config {
 				Port:        os.Getenv("DB_PORT"),
 				Name:        os.Getenv("DB_NAME"),
 				SSLMode:     os.Getenv("DB_SSLMODE"),
-				MigrateName: "ai_test",
+				MigrateName: "wawa_test",
 			},
 			Site: SiteConfig{
-				Port:                port,
-				Version:             os.Getenv("VERSION"),
-				Environment:         types.Environment(os.Getenv("ENVIRONMENT")),
-				ServerKey:           os.Getenv("SERVER_KEY"),
-				ServerSalt:          os.Getenv("SERVER_SALT"),
-				HTTPRequestOwnerKey: "HTTP_REQUEST_OWNER",
-				HTTPRequestUserKey:  "HTTP_REQUEST_USER",
-				HTTPRequestItemKey:  "HTTP_REQUEST_ITEM",
-				HTTPHeaderAPIKey:    "x-api-key",
-				LocalTimezone:       os.Getenv("LOCAL_TIMEZONE"),
-				//BaseURL:                      os.Getenv("BASE_URL"),
+				Port:                         port,
+				Version:                      os.Getenv("VERSION"),
+				Environment:                  types.Environment(os.Getenv("ENVIRONMENT")),
+				ServerKey:                    os.Getenv("SERVER_KEY"),
+				ServerSalt:                   os.Getenv("SERVER_SALT"),
+				HTTPRequestOwnerKey:          "HTTP_REQUEST_OWNER",
+				HTTPRequestUserKey:           "HTTP_REQUEST_USER",
+				HTTPRequestItemKey:           "HTTP_REQUEST_ITEM",
+				HTTPHeaderAPIKey:             "x-api-key",
+				LocalTimezone:                os.Getenv("LOCAL_TIMEZONE"),
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
 				JWTTokenExpirySeconds:        15 * 60,
 				JWTRefreshTokenExpirySeconds: 7 * 24 * 60 * 60,
@@ -130,7 +126,6 @@ func Default() *Config {
 				AccessKeyID:        os.Getenv("ALIYUN_SMQ_ACCESS_KEY_ID"),
 				AccessKeySecret:    os.Getenv("ALIYUN_SMQ_ACCESS_KEY_SECRET"),
 				QueueName:          os.Getenv("ALIYUN_SMQ_QUEUE_NAME"),
-				Listening:          strings.ToLower(os.Getenv("ALIYUN_SMQ_LISTENING")) == "true",
 				PollingWaitSeconds: 15,
 			},
 			WhatsApp: WhatsAppConfig{

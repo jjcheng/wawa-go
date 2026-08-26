@@ -44,3 +44,8 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO p
 if there is a change of fc_user in RAM, call 
 `aliyun configure` with the latest ak and sk
 use `aliyun configure list` to get list of users used
+
+## https for localhost
+brew install ngrok
+ngrok config add-authtoken 3IOt9OL9Yep2k9AeK4oMseHiHHm_3hhgur73nfUDX4aHvknh2
+ngrok http 9000

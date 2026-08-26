@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -51,4 +52,28 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) GetByMetaBusin
 		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolio: %v", result.Error), http.StatusInternalServerError)
 	}
 	return businessPortfolio, nil
+}
+
+func (businessPortfolioRepository *WABusinessPortfolioRepository) ListByMetaBusinessPortfolioIds(ctx context.Context, metaBusinessPortfolioIds []string) ([]dao_wa.BusinessPortfolio, *exception.Exception) {
+	ids := make([]string, 0, len(metaBusinessPortfolioIds))
+	for _, id := range metaBusinessPortfolioIds {
+		if id = strings.TrimSpace(id); id != "" {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return []dao_wa.BusinessPortfolio{}, nil
+	}
+
+	var businessPortfolios []dao_wa.BusinessPortfolio
+	result := businessPortfolioRepository.db.WithContext(ctx).
+		Model(&dao_wa.BusinessPortfolio{}).
+		Where("meta_business_portfolio_id IN ?", ids).
+		Order("id").
+		Find(&businessPortfolios)
+	if result.Error != nil {
+		businessPortfolioRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioIds)
+		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolios: %v", result.Error), http.StatusInternalServerError)
+	}
+	return businessPortfolios, nil
 }

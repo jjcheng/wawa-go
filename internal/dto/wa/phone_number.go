@@ -12,6 +12,9 @@ type PhoneNumber struct {
 	MetaPhoneNumberId       string `json:"meta_phone_number_id"`
 	PhoneNumber             string `json:"phone_number"`
 	Name                    string `json:"name"`
+	// lazy loaded
+	BusinessPortfolio *BusinessPortfolio `json:"business_portfolio"`
+	BusinessAccount   *BusinessAccount   `json:"business_account"`
 }
 
 func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
@@ -21,8 +24,10 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 			EntryDate:  phoneNumber.EntryDate,
 			LastUpdate: phoneNumber.LastUpdate,
 		},
-		MetaPhoneNumberId: phoneNumber.MetaPhoneNumberId,
-		PhoneNumber:       phoneNumber.PhoneNumber,
-		Name:              phoneNumber.Name,
+		MetaBusinessPortfolioId: phoneNumber.MetaBusinessPortfolioId,
+		MetaWABAId:              phoneNumber.MetaWABAId,
+		MetaPhoneNumberId:       phoneNumber.MetaPhoneNumberId,
+		PhoneNumber:             phoneNumber.PhoneNumber,
+		Name:                    phoneNumber.Name,
 	}
 }

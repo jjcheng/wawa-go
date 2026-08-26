@@ -1,4 +1,4 @@
-package feature_wa
+package feature_wa_webhook
 
 import (
 	"context"
@@ -26,13 +26,13 @@ func (verify *Verify) Validate() []exception.InputException {
 	verify.Challenge = strings.TrimSpace(verify.Challenge)
 	errors := []exception.InputException{}
 	if verify.Mode == "" {
-		errors = append(errors, exception.NewInputException("hub.mode", "missing hub.mode"))
+		errors = append(errors, exception.NewInputException("hub.mode", "missing mode"))
 	}
 	if verify.VerifyToken == "" {
-		errors = append(errors, exception.NewInputException("hub.verify_token", "missing hub.verify_token"))
+		errors = append(errors, exception.NewInputException("hub.verify_token", "missing verify token"))
 	}
 	if verify.Challenge == "" {
-		errors = append(errors, exception.NewInputException("hub.challenge", "missing hub.challenge"))
+		errors = append(errors, exception.NewInputException("hub.challenge", "missing challenge"))
 	}
 	return errors
 }

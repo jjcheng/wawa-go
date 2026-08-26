@@ -25,11 +25,12 @@ import (
 func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies) {
 	registerCommonRoutes(router)
 	apiGenerator := feature.NewAPIGenerator()
-	// ai router groups
+	// router groups
 	authRouterGroup := router.Group("")
 	authRouterGroup.Use(middleware.Authenticate(dependencies))
 	unauthRouterGroup := router.Group("")
-	registerUserController(authRouterGroup, dependencies, apiGenerator)
+	registerAuthController(unauthRouterGroup, dependencies, apiGenerator)
+	registerAccountController(authRouterGroup, dependencies, apiGenerator)
 	registerWAController(authRouterGroup, unauthRouterGroup, dependencies, apiGenerator)
 	// generate api doc
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
