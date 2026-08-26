@@ -10,4 +10,5 @@ import (
 type WAUserPhoneNumberRepository interface {
 	Repository[dao_wa.UserPhoneNumber]
 	ListPhoneNumbersByUserId(ctx context.Context, userId int32) ([]dao_wa.PhoneNumber, *exception.Exception)
+	GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, *exception.Exception)
 }

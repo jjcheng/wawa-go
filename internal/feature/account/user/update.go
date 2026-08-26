@@ -42,9 +42,6 @@ func (update *Update) Validate() []exception.InputException {
 	if update.Email != "" && !helper.ValidateEmail(update.Email) {
 		errors = append(errors, exception.NewInputException("email", "invalid email"))
 	}
-	if update.Description == "" {
-		errors = append(errors, exception.NewInputException("description", "missing description"))
-	}
 	return errors
 }
 

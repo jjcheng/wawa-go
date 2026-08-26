@@ -1,12 +1,12 @@
 BEGIN;
 DROP SCHEMA "account" CASCADE;
 DROP SCHEMA "wa" CASCADE;
-DROP TABLE "account"."users";
-DROP TABLE "wa"."business_accounts";
 DROP TABLE "wa"."business_portfolios";
-DROP TABLE "account"."settings";
+DROP TABLE "wa"."business_accounts";
 DROP TABLE "wa"."phone_numbers";
 DROP INDEX "wa"."meta_business_portfolio_id_1787634107399_index";
+DROP TABLE "account"."users";
+DROP TABLE "account"."settings";
 DROP TABLE "wa"."user_phone_numbers";
 DROP TRIGGER settings_set_last_update ON account.settings;
 DROP TRIGGER users_set_last_update ON account.users;
