@@ -4,7 +4,11 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/jjcheng/wawa-go/internal/cfg"
+	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -53,6 +57,26 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	if !helper.VerifyPassword(login.Password, user.PasswordHash) {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid phone number or password")
 	}
+	ginContext, ok := ctx.Value("gin").(*gin.Context)
+	if !ok {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to create login session")
+	}
+	sessionToken := helper.GenerateRandomString(64)
+	if sessionToken == "" {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to create login session")
+	}
+	if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &dao_account.Session{
+		UserId:     user.Id,
+		TokenHash:  helper.HashSHA256Hex(sessionToken),
+		ExpiresAt:  time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second),
+		LastUsedAt: time.Now(),
+	}); err != nil {
+		dependencies.Logger.ErrorFunction(err, user.Id)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to create login session")
+	}
+	secure := cfg.Default().Site.Environment != types.EnvironmentDevelop
+	ginContext.SetSameSite(http.SameSiteLaxMode)
+	ginContext.SetCookie(cfg.Default().Site.SessionCookieName, sessionToken, cfg.Default().Site.SessionExpirySeconds, "/", "", secure, true)
 	result := dto_account.NewUser(*user)
 	return dto.NewSuccessResponse(&result)
 }

@@ -12,9 +12,7 @@ env:
 	sed -i '' "s|\$${DB_NAME}|$${DB_NAME//&/\\&}|g" .env; \
 	sed -i '' "s|\$${DB_SSLMODE}|$${DB_SSLMODE//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ENVIRONMENT}|$${ENVIRONMENT//&/\\&}|g" .env; \
-	sed -i '' "s|\$${BASE_URL}|$${BASE_URL//&/\\&}|g" .env; \
-	sed -i '' "s|\$${SERVER_KEY}|$${SERVER_KEY//&/\\&}|g" .env; \
-	sed -i '' "s|\$${SERVER_SALT}|$${SERVER_SALT//&/\\&}|g" .env; \
+	sed -i '' "s|\$${PORTAL_ORIGIN}|$${PORTAL_ORIGIN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${GOOGLE_MAP_APIKEY}|$${GOOGLE_MAP_APIKEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_ID}|$${ALIYUN_OSS_ACCESS_KEY_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_SECRET}|$${ALIYUN_OSS_ACCESS_KEY_SECRET//&/\\&}|g" .env; \

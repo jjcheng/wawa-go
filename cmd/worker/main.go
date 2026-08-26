@@ -32,8 +32,6 @@ func main() {
 	log.Println("worker started")
 	setup.StartQueueListener(ctx, dependencies)
 	log.Println("worker stopped")
-	log.Println("zeroize global keys")
-	cfg.Default().Site.GlobalKeys.Zeroize()
 	log.Println("shutting down telemetry service")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

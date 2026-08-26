@@ -1,7 +1,6 @@
 package cfg
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -34,20 +33,19 @@ type DatabaseConfig struct {
 }
 
 type SiteConfig struct {
-	Port                         string
-	Version                      string
-	Environment                  types.Environment
-	ServerKey                    string
-	ServerSalt                   string
-	HTTPRequestOwnerKey          string
-	HTTPRequestUserKey           string
-	HTTPRequestItemKey           string
-	HTTPHeaderAPIKey             string
-	LocalTimezone                string
-	JWTTokenExpirySeconds        int
-	JWTRefreshTokenExpirySeconds int
-	GoogleMapAPIKey              string
-	GlobalKeys                   *helper.CryptoKeys
+	Port                 string
+	Version              string
+	Environment          types.Environment
+	HTTPRequestOwnerKey  string
+	HTTPRequestUserKey   string
+	HTTPRequestItemKey   string
+	HTTPHeaderAPIKey     string
+	LocalTimezone        string
+	SessionCookieName    string
+	SessionExpirySeconds int
+	PortalOrigin         string
+	GoogleMapAPIKey      string
+	GlobalKeys           *helper.CryptoKeys
 }
 
 type AliyunOSSConfig struct {
@@ -101,19 +99,18 @@ func Default() *Config {
 				MigrateName: "wawa_test",
 			},
 			Site: SiteConfig{
-				Port:                         port,
-				Version:                      os.Getenv("VERSION"),
-				Environment:                  types.Environment(os.Getenv("ENVIRONMENT")),
-				ServerKey:                    os.Getenv("SERVER_KEY"),
-				ServerSalt:                   os.Getenv("SERVER_SALT"),
-				HTTPRequestOwnerKey:          "HTTP_REQUEST_OWNER",
-				HTTPRequestUserKey:           "HTTP_REQUEST_USER",
-				HTTPRequestItemKey:           "HTTP_REQUEST_ITEM",
-				HTTPHeaderAPIKey:             "x-api-key",
-				LocalTimezone:                os.Getenv("LOCAL_TIMEZONE"),
-				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
-				JWTTokenExpirySeconds:        15 * 60,
-				JWTRefreshTokenExpirySeconds: 7 * 24 * 60 * 60,
+				Port:                 port,
+				Version:              os.Getenv("VERSION"),
+				Environment:          types.Environment(os.Getenv("ENVIRONMENT")),
+				HTTPRequestOwnerKey:  "HTTP_REQUEST_OWNER",
+				HTTPRequestUserKey:   "HTTP_REQUEST_USER",
+				HTTPRequestItemKey:   "HTTP_REQUEST_ITEM",
+				HTTPHeaderAPIKey:     "x-api-key",
+				LocalTimezone:        os.Getenv("LOCAL_TIMEZONE"),
+				GoogleMapAPIKey:      os.Getenv("GOOGLE_MAP_APIKEY"),
+				SessionCookieName:    "wawa_session",
+				SessionExpirySeconds: 7 * 24 * 60 * 60,
+				PortalOrigin:         os.Getenv("PORTAL_ORIGIN"),
 			},
 			AliyunOSS: AliyunOSSConfig{
 				Endpoint:        os.Getenv("ALIYUN_OSS_ENDPOINT"),
@@ -136,8 +133,6 @@ func Default() *Config {
 				MaxDelayStartSeconds: 10,
 			},
 		}
-		// init crypto keys
-		configInstance.Site.GlobalKeys = configInstance.initCryptoKeys(1)
 	})
 	return configInstance
 }
@@ -220,23 +215,4 @@ func (config *DatabaseConfig) DropMigrationDB() {
 	if err != nil {
 		panic(err.Error())
 	}
-}
-
-func (config *Config) initCryptoKeys(serverKeyVersion int32) *helper.CryptoKeys {
-	// setup global crypto
-	masterKey := []byte(config.Site.ServerKey)
-	// Get or generate salt from environment variable
-	var salt []byte
-	// Load existing salt from environment
-	var err error
-	salt, err = base64.StdEncoding.DecodeString(config.Site.ServerSalt)
-	if err != nil {
-		panic("failed to decode CRYPTO_SALT: " + err.Error())
-	}
-	globalCryptoKeys, err := helper.DeriveKeys(masterKey, salt, serverKeyVersion, config.Site.Environment)
-	if err != nil {
-		panic("failed to derive crypto keys: " + err.Error())
-	}
-	log.Printf("crypo key ID: %s", globalCryptoKeys.KeyID)
-	return globalCryptoKeys
 }

@@ -59,8 +59,6 @@ func shutdown(loggerService *service.Logger, server *http.Server) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	log.Println("zeroize global keys")
-	cfg.Default().Site.GlobalKeys.Zeroize()
 	// shutdown telemetry service first to flush remaining telemetry
 	log.Println("shutting down telemetry service")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)

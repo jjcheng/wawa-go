@@ -28,8 +28,9 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 	// router groups
 	authRouterGroup := router.Group("")
 	authRouterGroup.Use(middleware.Authenticate(dependencies))
+	authRouterGroup.Use(middleware.CSRF())
 	unauthRouterGroup := router.Group("")
-	registerAuthController(unauthRouterGroup, dependencies, apiGenerator)
+	registerAuthController(authRouterGroup, unauthRouterGroup, dependencies, apiGenerator)
 	registerAccountController(authRouterGroup, dependencies, apiGenerator)
 	registerWAController(authRouterGroup, unauthRouterGroup, dependencies, apiGenerator)
 	// generate api doc

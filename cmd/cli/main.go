@@ -80,8 +80,6 @@ func main() {
 
 func shutdown(loggerService *service.Logger) {
 	// shutdown telemetry service first to flush remaining telemetry
-	log.Println("zeroize global keys")
-	cfg.Default().Site.GlobalKeys.Zeroize()
 	log.Println("shutting down telemetry service")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
