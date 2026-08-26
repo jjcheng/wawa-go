@@ -62,11 +62,11 @@ restore-db:
 deploy-staging-fc:
 	@make env target=staging
 	@echo "Running staging deployment to Aliyun FC..."
-	@chmod +x deploy-staging-fc.sh
-	@./deploy-staging-fc.sh
+	@chmod +x deploy_staging_fc.sh
+	@./deploy_staging_fc.sh
 deploy-staging-db:
 	@echo "Running staging database migration..."
-	@chmod +x deploy-staging-db.sh
-	@./deploy-staging-db.sh
+	@chmod +x deploy_staging_db.sh
+	@./deploy_staging_db.sh
 init-debugging:
 	@make env

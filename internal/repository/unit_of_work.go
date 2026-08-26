@@ -19,10 +19,4 @@ type UnitOfWork interface {
 	WABusinessAccountRepository() WABusinessAccountRepository
 	WAPhoneNumberRepository() WAPhoneNumberRepository
 	WAUserPhoneNumberRepository() WAUserPhoneNumberRepository
-
-	// CM
-	CMConversationRepository() CMConversationRepository
-	CMMessageRepository() CMMessageRepository
-	CMCachedMessageRepository() CMCachedMessageRepository
-	CMRefreshTokenRepository() CMRefreshTokenRepository
 }

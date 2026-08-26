@@ -20,11 +20,6 @@ type UnitOfWork struct {
 	waBusinessAccountRepository   repository.WABusinessAccountRepository
 	waPhoneNumberRepository       repository.WAPhoneNumberRepository
 	waUserPhoneNumberRepository   repository.WAUserPhoneNumberRepository
-	// CM
-	cmConversationRepository  repository.CMConversationRepository
-	cmMessageRepository       repository.CMMessageRepository
-	cmCachedMessageRepository repository.CMCachedMessageRepository
-	cmRefreshTokenRepository  repository.CMRefreshTokenRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -40,11 +35,6 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waBusinessAccountRepository = NewWABusinessAccountRepository(db, logger)
 	unitOfWork.waPhoneNumberRepository = NewWAPhoneNumberRepository(db, logger)
 	unitOfWork.waUserPhoneNumberRepository = NewWAUserPhoneNumberRepository(db, logger)
-	// CM
-	unitOfWork.cmConversationRepository = NewCMConversationRepository(db, logger)
-	unitOfWork.cmMessageRepository = NewCMMessageRepository(db, logger)
-	unitOfWork.cmCachedMessageRepository = NewCMCachedMessageRepository(db, logger)
-	unitOfWork.cmRefreshTokenRepository = NewCMRefreshTokenRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -76,23 +66,6 @@ func (unitOfWork *UnitOfWork) WAPhoneNumberRepository() repository.WAPhoneNumber
 
 func (unitOfWork *UnitOfWork) WAUserPhoneNumberRepository() repository.WAUserPhoneNumberRepository {
 	return unitOfWork.waUserPhoneNumberRepository
-}
-
-// CM
-func (unitOfWork *UnitOfWork) CMConversationRepository() repository.CMConversationRepository {
-	return unitOfWork.cmConversationRepository
-}
-
-func (unitOfWork *UnitOfWork) CMMessageRepository() repository.CMMessageRepository {
-	return unitOfWork.cmMessageRepository
-}
-
-func (unitOfWork *UnitOfWork) CMCachedMessageRepository() repository.CMCachedMessageRepository {
-	return unitOfWork.cmCachedMessageRepository
-}
-
-func (unitOfWork *UnitOfWork) CMRefreshTokenRepository() repository.CMRefreshTokenRepository {
-	return unitOfWork.cmRefreshTokenRepository
 }
 
 // transaction
