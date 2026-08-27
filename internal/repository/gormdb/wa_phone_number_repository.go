@@ -40,6 +40,24 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Get(ctx context.Context, i
 	return phoneNumber, nil
 }
 
+func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioByMetaPhoneNumberId(ctx context.Context, metaPhoneNmberId string) (*dao_wa.BusinessPortfolio, *exception.Exception) {
+	var businessPortfolio *dao_wa.BusinessPortfolio
+	result := phoneNumberRepository.db.WithContext(ctx).
+		Table("wa.business_portfolios").
+		Select("wa.business_portfolios.*").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.meta_business_portfolio_id = wa.business_portfolios.meta_business_portfolio_id").
+		Where("wa.phone_numbers.meta_phone_number_id = ?", metaPhoneNmberId).
+		First(&businessPortfolio)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, exception.NewCustomException("business portfolio not found", http.StatusNotFound)
+		}
+		phoneNumberRepository.logger.ErrorFunction(result.Error, metaPhoneNmberId)
+		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolio: %v", result.Error), http.StatusInternalServerError)
+	}
+	return businessPortfolio, nil
+}
+
 func (phoneNumberRepository *WAPhoneNumberRepository) GetByBusinessPortfolioId(ctx context.Context, id int32, businessPortfolioId int32) (*dao_wa.PhoneNumber, *exception.Exception) {
 	var phoneNumber *dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("id = ? AND business_portfolio_id = ?", id, businessPortfolioId).First(&phoneNumber)

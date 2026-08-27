@@ -13,4 +13,5 @@ type WABusinessAccountRepository interface {
 	GetByMetaWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessAccount, *exception.Exception)
 	CheckExists(ctx context.Context, metaWABAId string) (bool, *exception.Exception)
 	ListByMetaWABAIds(ctx context.Context, metaWABAIds []string) ([]dao_wa.BusinessAccount, *exception.Exception)
+	GetBusinessPortfolioByWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessPortfolio, *exception.Exception)
 }

@@ -54,6 +54,24 @@ func (businessAccountRepository *WABusinessAccountRepository) GetByMetaWABAId(ct
 	return businessAccount, nil
 }
 
+func (businessAccountRepository *WABusinessAccountRepository) GetBusinessPortfolioByWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessPortfolio, *exception.Exception) {
+	var businessPortfolio *dao_wa.BusinessPortfolio
+	result := businessAccountRepository.db.WithContext(ctx).
+		Table("wa.business_portfolios").
+		Select("wa.business_portfolios.*").
+		Joins("JOIN wa.business_accounts ON wa.business_accounts.meta_business_portfolio_id = wa.business_portfolios.meta_business_portfolio_id").
+		Where("wa.business_accounts.meta_waba_id = ?", metaWABAId).
+		First(&businessPortfolio)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, exception.NewCustomException("business portfolio not found", http.StatusNotFound)
+		}
+		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
+		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolio: %v", result.Error), http.StatusInternalServerError)
+	}
+	return businessPortfolio, nil
+}
+
 func (businessAccountRepository *WABusinessAccountRepository) CheckExists(ctx context.Context, metaWABAId string) (bool, *exception.Exception) {
 	var count int64
 	result := businessAccountRepository.db.WithContext(ctx).Model(&dao_wa.BusinessAccount{}).Where("meta_waba_id = ?", metaWABAId).Count(&count)

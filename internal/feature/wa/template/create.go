@@ -10,7 +10,6 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	feature_wa "github.com/jjcheng/wawa-go/internal/feature/wa"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -60,7 +59,6 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := create.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Template](errors)
 	}
-
 	phoneNumbers, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
 	if ex != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](ex.StatusCode, ex.Message)
@@ -75,12 +73,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if !authorized {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusForbidden, "you are not authorized to access this WABA")
 	}
-
-	whatsapp, tokenEx := feature_wa.ClientForWABA(ctx, dependencies, create.MetaWABAId)
-	if tokenEx != nil {
-		return dto.NewFailedResponse[*dto_wa.Template](tokenEx.StatusCode, tokenEx.Message)
+	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumbers[0].MetaBusinessPortfolioId)
+	if ex != nil {
+		return dto.NewFailedResponse[*dto_wa.Template](ex.StatusCode, ex.Message)
 	}
-	template, err := whatsapp.CreateTemplate(ctx, create.MetaWABAId, create.Payload())
+	template, err := dependencies.Whatsapp.CreateTemplate(ctx, create.MetaWABAId, create.Payload(), businessPortfolio.AccessToken)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, create.MetaWABAId, create.Name)
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, "failed to create WhatsApp template")

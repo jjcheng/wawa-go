@@ -121,7 +121,11 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createUserPhoneNumberResponse.StatusCode, createUserPhoneNumberResponse.Message)
 	}
 	// finalize with meta
-	if err := dependencies.Whatsapp.RegisterPhoneNumber(ctx, embeddedSignup.Data.PhoneNumberId); err != nil {
+	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, embeddedSignup.Data.BusinessId)
+	if ex != nil {
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](ex.StatusCode, ex.Message)
+	}
+	if err := dependencies.Whatsapp.RegisterPhoneNumber(ctx, embeddedSignup.Data.PhoneNumberId, businessPortfolio.AccessToken); err != nil {
 		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusBadGateway, fmt.Sprintf("error registering phone number: %v", err))
 	}
 	return dto.NewSuccessResponse(&dto_wa.EmbeddedSignupResponse{

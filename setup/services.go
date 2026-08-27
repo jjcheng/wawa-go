@@ -3,8 +3,6 @@ package setup
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -77,26 +75,23 @@ func storeWhatsAppHistoryMessage(ctx context.Context, dependencies *service.Depe
 }
 
 func processIncomingWhatsAppMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage) error {
-	if strings.TrimSpace(incomingMessage.Text.Body) == "" {
-		return nil
-	}
-	phoneNumberID := strings.TrimSpace(incomingMessage.PhoneNumberID)
-	if phoneNumberID == "" {
-		return fmt.Errorf("missing phone number id in incoming message")
-	}
 	go func() {
-		dependencies.Whatsapp.StartTyping(ctx, phoneNumberID, incomingMessage.ID)
+		businessPortfolio, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, incomingMessage.PhoneNumberID)
+		if ex != nil {
+			return
+		}
+		dependencies.Whatsapp.StartTyping(ctx, incomingMessage.PhoneNumberID, incomingMessage.ID, businessPortfolio.AccessToken)
 	}()
 	// getUser := feature_account_user.Get{Identifier: phoneNumberID}
 	// getUserResponse := getUser.Handle(ctx, nil, dependencies)
 	// if !getUserResponse.Success || getUserResponse.Data == nil || getUserResponse.Data.App == nil {
 	// 	return fmt.Errorf("failed to identify user and app from identifier: %s", phoneNumberID)
 	// }
-	_, err := dependencies.Whatsapp.SendMessage(ctx, &service.WhatsAppMessageRequest{
-		PhoneNumberID: phoneNumberID,
-		To:            incomingMessage.From,
-		Type:          service.WhatsAppMessageTypeText,
-		Text:          &service.WhatsAppTextObject{Body: "hello"},
-	})
-	return err
+	// _, err := dependencies.Whatsapp.SendMessage(ctx, &service.WhatsAppMessageRequest{
+	// 	PhoneNumberID: phoneNumberID,
+	// 	To:            incomingMessage.From,
+	// 	Type:          service.WhatsAppMessageTypeText,
+	// 	Text:          &service.WhatsAppTextObject{Body: "hello"},
+	// })
+	return nil
 }

@@ -8,7 +8,6 @@ import (
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/exception"
-	feature_wa "github.com/jjcheng/wawa-go/internal/feature/wa"
 	"github.com/jjcheng/wawa-go/internal/service"
 )
 
@@ -39,11 +38,11 @@ func (create Create) Handle(ctx context.Context, _, dependencies *service.Depend
 		return dto.NewFailedResponse[*dao_wa.BusinessAccount](ex.StatusCode, ex.Message)
 	}
 	// get waba name
-	whatsapp, tokenEx := feature_wa.ClientForWABA(ctx, dependencies, create.MetaWABAId)
-	if tokenEx != nil {
-		return dto.NewFailedResponse[*dao_wa.BusinessAccount](tokenEx.StatusCode, tokenEx.Message)
+	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, create.MetaBusinessProtfolioId)
+	if ex != nil {
+		return dto.NewFailedResponse[*dao_wa.BusinessAccount](ex.StatusCode, ex.Message)
 	}
-	wabaName, err := whatsapp.GetWABAName(ctx, create.MetaWABAId)
+	wabaName, err := dependencies.Whatsapp.GetWABAName(ctx, create.MetaWABAId, businessPortfolio.AccessToken)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, create.MetaWABAId)
 		return dto.NewFailedResponse[*dao_wa.BusinessAccount](http.StatusBadGateway, "error getting WABA name")

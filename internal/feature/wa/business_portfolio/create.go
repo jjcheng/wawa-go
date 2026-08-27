@@ -39,14 +39,13 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	if ex != nil && ex.StatusCode != http.StatusNotFound {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](ex.StatusCode, ex.Message)
 	}
-	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, create.MetaBusinessPortfolioId)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business name")
-	}
-	// TODO: get access token and access token expires in
 	businessTokenResponse, err := dependencies.Whatsapp.GetBusinessAccessToken(ctx, create.TemporaryCode)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business access token")
+	}
+	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, create.MetaBusinessPortfolioId, businessTokenResponse.AccessToken)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business name")
 	}
 	if existing != nil {
 		if existing.Name != businessName {

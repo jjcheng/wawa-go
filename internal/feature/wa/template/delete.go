@@ -9,7 +9,6 @@ import (
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	feature_wa "github.com/jjcheng/wawa-go/internal/feature/wa"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -56,11 +55,11 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if !authorized {
 		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authorized to access this WABA")
 	}
-	whatsapp, tokenEx := feature_wa.ClientForWABA(ctx, dependencies, delete.MetaWABAId)
-	if tokenEx != nil {
-		return dto.NewFailedResponse[any](tokenEx.StatusCode, tokenEx.Message)
+	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumbers[0].MetaBusinessPortfolioId)
+	if ex != nil {
+		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
 	}
-	if err := whatsapp.DeleteTemplate(ctx, delete.MetaWABAId, delete.Name, delete.ID); err != nil {
+	if err := dependencies.Whatsapp.DeleteTemplate(ctx, delete.MetaWABAId, delete.Name, delete.ID, businessPortfolio.AccessToken); err != nil {
 		dependencies.Logger.ErrorFunction(err, delete.MetaWABAId, delete.Name, delete.ID)
 		return dto.NewFailedResponse[any](http.StatusBadGateway, "failed to delete WhatsApp template")
 	}
