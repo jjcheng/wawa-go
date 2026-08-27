@@ -9,6 +9,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
+	feature_wa "github.com/jjcheng/wawa-go/internal/feature/wa"
 	"github.com/jjcheng/wawa-go/internal/service"
 )
 
@@ -47,7 +48,11 @@ func (create Create) Handle(ctx context.Context, _, dependencies *service.Depend
 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "phone number already exists")
 	}
 	// get display phone number and name by whatsapp service
-	displayPhoneNumber, displayName, err := dependencies.Whatsapp.GetDisplayPhoneNumberAndName(ctx, create.MetaPhoneNumberId)
+	whatsapp, tokenEx := feature_wa.ClientForWABA(ctx, dependencies, create.MetaWABAId)
+	if tokenEx != nil {
+		return dto.NewFailedResponse[*dto_wa.PhoneNumber](tokenEx.StatusCode, tokenEx.Message)
+	}
+	displayPhoneNumber, displayName, err := whatsapp.GetDisplayPhoneNumberAndName(ctx, create.MetaPhoneNumberId)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadGateway, "error getting phone number details")
 	}

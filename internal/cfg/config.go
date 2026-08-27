@@ -67,6 +67,8 @@ type WhatsAppConfig struct {
 	BaseURL              string
 	APIVersion           string
 	AccessToken          string
+	AppID                string
+	AppSecret            string
 	WebhookVerifyToken   string
 	MaxDelayStartSeconds float32
 }
@@ -129,6 +131,8 @@ func Default() *Config {
 				BaseURL:              "https://graph.facebook.com",
 				APIVersion:           "v25.0",
 				AccessToken:          os.Getenv("WHATSAPP_ACCESS_TOKEN"),
+				AppID:                os.Getenv("META_APP_ID"),
+				AppSecret:            os.Getenv("META_APP_SECRET"),
 				WebhookVerifyToken:   os.Getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN"),
 				MaxDelayStartSeconds: 10,
 			},

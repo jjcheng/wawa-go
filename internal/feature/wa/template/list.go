@@ -10,6 +10,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa "github.com/jjcheng/wawa-go/internal/feature/wa"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -53,10 +54,13 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		}
 		wabaIDs = []string{list.MetaWABAId}
 	}
-
 	templates := make([]dto_wa.Template, 0)
 	for _, wabaID := range wabaIDs {
-		wabaTemplates, err := dependencies.Whatsapp.ListTemplates(ctx, wabaID)
+		whatsapp, tokenEx := feature_wa.ClientForWABA(ctx, dependencies, wabaID)
+		if tokenEx != nil {
+			return dto.NewFailedResponse[[]dto_wa.Template](tokenEx.StatusCode, tokenEx.Message)
+		}
+		wabaTemplates, err := whatsapp.ListTemplates(ctx, wabaID)
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, wabaID)
 			return dto.NewFailedResponse[[]dto_wa.Template](http.StatusBadGateway, "failed to list WhatsApp templates")

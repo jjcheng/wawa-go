@@ -8,6 +8,7 @@ import (
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa "github.com/jjcheng/wawa-go/internal/feature/wa"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -48,7 +49,11 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if !authorized {
 		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authorized to remove this phone number")
 	}
-	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId); err != nil {
+	whatsapp, tokenEx := feature_wa.ClientForWABA(ctx, dependencies, phoneNumber.MetaWABAId)
+	if tokenEx != nil {
+		return dto.NewFailedResponse[any](tokenEx.StatusCode, tokenEx.Message)
+	}
+	if err := whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId); err != nil {
 		dependencies.Logger.ErrorFunction(err, phoneNumber.MetaPhoneNumberId)
 		return dto.NewFailedResponse[any](http.StatusBadGateway, "failed to remove phone number from WhatsApp")
 	}

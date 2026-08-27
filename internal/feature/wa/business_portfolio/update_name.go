@@ -35,7 +35,12 @@ func (update UpdateName) Handle(ctx context.Context, _ *dto_account.User, depend
 	if ex != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](ex.StatusCode, ex.Message)
 	}
-	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, update.MetaBusinessPortfolioId)
+	businessPortfolio, tokenEx := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, update.MetaBusinessPortfolioId)
+	if tokenEx != nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](tokenEx.StatusCode, tokenEx.Message)
+	}
+	whatsapp := dependencies.Whatsapp.WithBusinessAccessToken(businessPortfolio.AccessToken)
+	businessName, err := whatsapp.GetBusinessName(ctx, update.MetaBusinessPortfolioId)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, update.MetaBusinessPortfolioId)
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business name")

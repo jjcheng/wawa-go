@@ -1,14 +1,19 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/big"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -18,20 +23,29 @@ import (
 )
 
 type Whatsapp struct {
-	logger      *Logger
-	baseURL     string
-	apiVersion  string
-	accessToken string
+	logger              *Logger
+	baseURL             string
+	apiVersion          string
+	businessAccessToken string
+	appID               string
+	appSecret           string
 }
 
 func NewWhatsapp(logger *Logger) *Whatsapp {
 	config := cfg.Default().WhatsApp
 	return &Whatsapp{
-		logger:      logger,
-		baseURL:     strings.TrimRight(strings.TrimSpace(config.BaseURL), "/"),
-		apiVersion:  strings.TrimSpace(config.APIVersion),
-		accessToken: strings.TrimSpace(config.AccessToken),
+		logger:     logger,
+		baseURL:    strings.TrimRight(strings.TrimSpace(config.BaseURL), "/"),
+		apiVersion: strings.TrimSpace(config.APIVersion),
+		appID:      strings.TrimSpace(config.AppID),
+		appSecret:  strings.TrimSpace(config.AppSecret),
 	}
+}
+
+func (whatsapp *Whatsapp) WithBusinessAccessToken(businessAccessToken string) *Whatsapp {
+	client := *whatsapp
+	client.businessAccessToken = strings.TrimSpace(businessAccessToken)
+	return &client
 }
 
 type WhatsAppMessageType string
@@ -288,6 +302,158 @@ type WhatsAppPhoneNumberDetailsResponse struct {
 	DisplayPhoneNumber string `json:"display_phone_number"`
 	VerifiedName       string `json:"verified_name"`
 	ID                 string `json:"id"`
+}
+
+type WhatsAppMediaResponse struct {
+	ID       string `json:"id"`
+	URL      string `json:"url"`
+	MimeType string `json:"mime_type"`
+	Sha256   string `json:"sha256"`
+	FileSize int64  `json:"file_size"`
+}
+
+type WhatsAppMediaUploadResponse struct {
+	ID string `json:"id"`
+}
+
+type WhatsAppBusinessTokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type,omitempty"`
+	ExpiresIn   int64  `json:"expires_in,omitempty"`
+}
+
+// use code returned in embedded signup for a business access token
+func (whatsapp *Whatsapp) GetBusinessAccessToken(ctx context.Context, code string) (*WhatsAppBusinessTokenResponse, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		return nil, fmt.Errorf("code is required")
+	}
+	if whatsapp.appID == "" {
+		return nil, fmt.Errorf("Meta app ID is not configured")
+	}
+	if whatsapp.appSecret == "" {
+		return nil, fmt.Errorf("Meta app secret is not configured")
+	}
+	query := url.Values{}
+	query.Set("client_id", whatsapp.appID)
+	query.Set("client_secret", whatsapp.appSecret)
+	query.Set("code", code)
+	endpoint := fmt.Sprintf("%s/%s/oauth/access_token?%s", whatsapp.baseURL, whatsapp.apiVersion, query.Encode())
+	var tokenResponse WhatsAppBusinessTokenResponse
+	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &tokenResponse); err != nil {
+		whatsapp.logger.ErrorFunction(err)
+		return nil, err
+	}
+	if strings.TrimSpace(tokenResponse.AccessToken) == "" {
+		return nil, fmt.Errorf("business access token is missing from Meta response")
+	}
+	return &tokenResponse, nil
+}
+
+func (whatsapp *Whatsapp) DownloadMedia(ctx context.Context, mediaID string) ([]byte, string, error) {
+	mediaID = strings.TrimSpace(mediaID)
+	if mediaID == "" {
+		return nil, "", fmt.Errorf("media ID is required")
+	}
+
+	metadataEndpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(mediaID))
+	var metadata WhatsAppMediaResponse
+	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, metadataEndpoint, nil, &metadata); err != nil {
+		whatsapp.logger.ErrorFunction(err, mediaID)
+		return nil, "", err
+	}
+	if strings.TrimSpace(metadata.URL) == "" {
+		return nil, "", fmt.Errorf("media URL is missing from Meta response")
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, metadata.URL, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create media download request: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+whatsapp.businessAccessToken)
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, "", fmt.Errorf("media download request failed: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return nil, "", fmt.Errorf("media download failed with status %d", response.StatusCode)
+	}
+	content, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read media content: %w", err)
+	}
+	contentType := response.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = metadata.MimeType
+	}
+	return content, contentType, nil
+}
+
+func (whatsapp *Whatsapp) UploadMedia(ctx context.Context, phoneNumberID string, filename string, contentType string, content []byte) (string, error) {
+	phoneNumberID = strings.TrimSpace(phoneNumberID)
+	filename = strings.TrimSpace(filename)
+	contentType = strings.TrimSpace(contentType)
+	if phoneNumberID == "" {
+		return "", fmt.Errorf("phone number ID is required")
+	}
+	if filename == "" {
+		return "", fmt.Errorf("filename is required")
+	}
+	if contentType == "" {
+		return "", fmt.Errorf("content type is required")
+	}
+	if len(content) == 0 {
+		return "", fmt.Errorf("media content is required")
+	}
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	if err := writer.WriteField("messaging_product", WhatsAppMessagingProduct); err != nil {
+		return "", fmt.Errorf("failed to write messaging product: %w", err)
+	}
+	partHeaders := make(textproto.MIMEHeader)
+	partHeaders.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, filepath.Base(filename)))
+	partHeaders.Set("Content-Type", contentType)
+	part, err := writer.CreatePart(partHeaders)
+	if err != nil {
+		return "", fmt.Errorf("failed to create media form file: %w", err)
+	}
+	if _, err := part.Write(content); err != nil {
+		return "", fmt.Errorf("failed to write media content: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return "", fmt.Errorf("failed to close media form: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("%s/%s/%s/media", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
+	if err != nil {
+		return "", fmt.Errorf("failed to create media upload request: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+whatsapp.businessAccessToken)
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return "", fmt.Errorf("media upload request failed: %w", err)
+	}
+	defer response.Body.Close()
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read media upload response: %w", err)
+	}
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		responseText := string(responseBody)
+		return "", parseWhatsAppAPIError(response.StatusCode, &responseText)
+	}
+	var uploadResponse WhatsAppMediaUploadResponse
+	if err := json.Unmarshal(responseBody, &uploadResponse); err != nil {
+		return "", fmt.Errorf("failed to parse media upload response: %w", err)
+	}
+	if strings.TrimSpace(uploadResponse.ID) == "" {
+		return "", fmt.Errorf("media ID is missing from Meta response")
+	}
+	return uploadResponse.ID, nil
 }
 
 func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID string) error {
@@ -563,55 +729,15 @@ func (whatsapp *Whatsapp) StartTyping(ctx context.Context, phoneNumberID string,
 	return &response, nil
 }
 
-func (whatsapp *Whatsapp) GetMessageHistory(ctx context.Context, query *WhatsAppMessageHistoryQuery) (*WhatsAppMessageHistoryResponse, error) {
-	params := url.Values{}
-	if query != nil {
-		if strings.TrimSpace(query.MessageID) != "" {
-			params.Set("message_id", strings.TrimSpace(query.MessageID))
-		}
-		if strings.TrimSpace(query.Fields) != "" {
-			params.Set("fields", strings.TrimSpace(query.Fields))
-		}
-		if query.Limit > 0 {
-			params.Set("limit", fmt.Sprintf("%d", query.Limit))
-		}
-		if strings.TrimSpace(query.After) != "" {
-			params.Set("after", strings.TrimSpace(query.After))
-		}
-		if strings.TrimSpace(query.Before) != "" {
-			params.Set("before", strings.TrimSpace(query.Before))
-		}
-	}
-
-	endpoint := whatsapp.buildEndpoint("", "message_history")
-	if encoded := params.Encode(); encoded != "" {
-		endpoint = endpoint + "?" + encoded
-	}
-
-	var response WhatsAppMessageHistoryResponse
-	err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &response)
-	if err != nil {
-		whatsapp.logger.ErrorFunction(err, query)
-		return nil, err
-	}
-	return &response, nil
-}
-
+// shared
 func (whatsapp *Whatsapp) buildEndpoint(phoneNumberID string, edge string) string {
 	url := fmt.Sprintf("%s/%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, phoneNumberID, strings.TrimPrefix(edge, "/"))
 	return url
 }
 
-func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, method string, endpoint string, payload any, target any, requestAccessTokens ...string) error {
-	accessToken := whatsapp.accessToken
-	if len(requestAccessTokens) > 0 {
-		accessToken = strings.TrimSpace(requestAccessTokens[0])
-	}
-	if accessToken == "" {
-		return fmt.Errorf("whatsapp access token is not configured")
-	}
+func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, method string, endpoint string, payload any, target any) error {
 	headers := map[string]string{
-		"Authorization": "Bearer " + accessToken,
+		"Authorization": "Bearer " + whatsapp.businessAccessToken,
 	}
 	if userAgent := helper.GetUserAgent(ctx); userAgent != nil && strings.TrimSpace(*userAgent) != "" {
 		headers["User-Agent"] = *userAgent

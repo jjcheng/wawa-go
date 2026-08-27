@@ -1,0 +1,26 @@
+BEGIN;
+ALTER TABLE account.users DISABLE TRIGGER USER;
+INSERT INTO "account"."users" ("entry_date","last_update","name","phone_number","email","password_hash","description","type","status","id") VALUES ('2026-08-26 09:26:38.266','2026-08-26 09:39:17.531','jjcheng','6590073708','jj@coreconcept.tech','$2a$10$DK5va.yiZw4CscOW/iMZvuYi6gSTCVVCNz1n.5DlhV2KKQhlD0nee','Test admin user','ADMIN','ACTIVE',1) RETURNING "id";
+ALTER TABLE account.users ENABLE TRIGGER USER;
+ALTER TABLE wa.business_portfolios DISABLE TRIGGER USER;
+INSERT INTO "wa"."business_portfolios" ("entry_date","last_update","meta_business_portfolio_id","name","access_token","access_token_expires_in","id") VALUES ('2026-08-26 10:51:12.054','2026-08-27 01:14:40.456','849324861267321','CoreConcept','EAAWM5ByCKEABR53NxTcoFzNrnS4VvCZC3rsomeNM7qb8ZCGDEQ8xZBLXLIPU75nQHpzbn7FgQjSE2ptXENZCvBBZAqZCKcA9Wc4VbYcffDC4sNBGx3TUChyJCoV0jlzEZAQSjZBoAA6YI7RofRiuXZBUtWE92zNWM24aYczkDYVyM2oM1LHLHPyqEWjYgHIJqnAZDZD',99999999,1) RETURNING "id";
+ALTER TABLE wa.business_portfolios ENABLE TRIGGER USER;
+ALTER TABLE wa.business_accounts DISABLE TRIGGER USER;
+INSERT INTO "wa"."business_accounts" ("entry_date","last_update","meta_business_portfolio_id","meta_waba_id","name","id") VALUES ('2026-08-26 10:51:45.621','2026-08-26 10:51:45.621','849324861267321','1776785346656019','CoreConcept WABA',1) RETURNING "id";
+ALTER TABLE wa.business_accounts ENABLE TRIGGER USER;
+ALTER TABLE wa.phone_numbers DISABLE TRIGGER USER;
+INSERT INTO "wa"."phone_numbers" ("entry_date","last_update","meta_business_portfolio_id","meta_waba_id","meta_phone_number_id","phone_number","name","id") VALUES ('2026-08-26 10:51:48.782','2026-08-26 10:51:48.782','849324861267321','1776785346656019','1227066513819446','6580993376','an an',3) RETURNING "id";
+ALTER TABLE wa.phone_numbers ENABLE TRIGGER USER;
+ALTER TABLE wa.user_phone_numbers DISABLE TRIGGER USER;
+INSERT INTO "wa"."user_phone_numbers" ("entry_date","last_update","user_id","phone_number_id","id") VALUES ('2026-08-26 10:52:09.402','2026-08-26 10:52:09.402',1,3,1) RETURNING "id";
+ALTER TABLE wa.user_phone_numbers ENABLE TRIGGER USER;
+-- Reset identity sequences after inserting records with explicit IDs;
+-- This ensures auto-increment starts from the correct value after existing data;
+SELECT setval(pg_get_serial_sequence('account.users', 'id'), (SELECT MAX(id) FROM account.users));
+SELECT setval(pg_get_serial_sequence('wa.business_portfolios', 'id'), (SELECT MAX(id) FROM wa.business_portfolios));
+SELECT setval(pg_get_serial_sequence('wa.business_accounts', 'id'), (SELECT MAX(id) FROM wa.business_accounts));
+SELECT setval(pg_get_serial_sequence('wa.phone_numbers', 'id'), (SELECT MAX(id) FROM wa.phone_numbers));
+SELECT setval(pg_get_serial_sequence('wa.user_phone_numbers', 'id'), (SELECT MAX(id) FROM wa.user_phone_numbers));
+
+COMMIT;
+ANALYZE;

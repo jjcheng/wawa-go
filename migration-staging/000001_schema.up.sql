@@ -10,6 +10,8 @@ CREATE TABLE "wa"."business_portfolios" (
   "name" account.citext NOT NULL,
   "entry_date" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "last_update" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "access_token" text NOT NULL,
+  "access_token_expires_in" integer NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "meta_business_portfolio_id_unique" UNIQUE ("meta_business_portfolio_id")
 );

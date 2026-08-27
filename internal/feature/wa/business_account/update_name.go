@@ -10,6 +10,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa "github.com/jjcheng/wawa-go/internal/feature/wa"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -35,7 +36,11 @@ func (update UpdateName) Handle(ctx context.Context, _ *dto_account.User, depend
 	if ex != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](ex.StatusCode, ex.Message)
 	}
-	wabaName, err := dependencies.Whatsapp.GetWABAName(ctx, update.MetaWABAId)
+	whatsapp, tokenEx := feature_wa.ClientForWABA(ctx, dependencies, update.MetaWABAId)
+	if tokenEx != nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](tokenEx.StatusCode, tokenEx.Message)
+	}
+	wabaName, err := whatsapp.GetWABAName(ctx, update.MetaWABAId)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, update.MetaWABAId)
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, "error getting WABA name")

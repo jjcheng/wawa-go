@@ -15,13 +15,18 @@ import (
 
 type Create struct {
 	MetaBusinessPortfolioId string `json:"meta_business_portfolio_id" val:"required" description:"return in embedded signup"`
+	TemporaryCode           string `json:"temporary_code" val:"required" description:"temporary code returned in embedded signup"`
 }
 
 func (create *Create) Validate() []exception.InputException {
 	var errors []exception.InputException
 	create.MetaBusinessPortfolioId = strings.TrimSpace(create.MetaBusinessPortfolioId)
+	create.TemporaryCode = strings.TrimSpace(create.TemporaryCode)
 	if create.MetaBusinessPortfolioId == "" {
 		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing meta business portfolio id"))
+	}
+	if create.TemporaryCode == "" {
+		errors = append(errors, exception.NewInputException("temporary_token", "missing temporary code"))
 	}
 	return errors
 }
@@ -38,9 +43,16 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business name")
 	}
+	// TODO: get access token and access token expires in
+	businessTokenResponse, err := dependencies.Whatsapp.GetBusinessAccessToken(ctx, create.TemporaryCode)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business access token")
+	}
 	if existing != nil {
 		if existing.Name != businessName {
 			existing.Name = businessName
+			existing.AccessToken = businessTokenResponse.AccessToken
+			existing.AccessTokenExpiresIn = int32(businessTokenResponse.ExpiresIn)
 			if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, existing); err != nil {
 				dependencies.Logger.ErrorFunction(err, create)
 				return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, "error updating business portfolio")
@@ -52,6 +64,8 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	businessPortfolio := dao_wa.BusinessPortfolio{
 		MetaBusinessPortfolioId: create.MetaBusinessPortfolioId,
 		Name:                    businessName,
+		AccessToken:             businessTokenResponse.AccessToken,
+		AccessTokenExpiresIn:    int32(businessTokenResponse.ExpiresIn),
 	}
 	if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Insert(ctx, &businessPortfolio); err != nil {
 		dependencies.Logger.ErrorFunction(err, create)
@@ -60,11 +74,3 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	d := dto_wa.NewBusinessPortfolio(businessPortfolio, true)
 	return dto.NewSuccessResponse(&d)
 }
-
-// func (Create) APISettings() feature.APISettings {
-// 	return feature.NewAPISettings("Create WhatsApp business portfolio", "Create or refresh a WhatsApp business portfolio from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/wa/v1/business-portfolios", true, false, types.APITagAccount, []feature.APIError{
-// 		feature.NewAPIError(*exception.NewCustomException("error getting business name", http.StatusBadGateway)),
-// 		feature.NewAPIError(*exception.NewCustomException("error creating business portfolio", http.StatusInternalServerError)),
-// 		feature.NewAPIError(*exception.NewCustomException("error updating business portfolio", http.StatusInternalServerError)),
-// 	})
-// }
