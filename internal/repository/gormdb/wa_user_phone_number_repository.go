@@ -3,11 +3,8 @@ package gormdb
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/http"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
-	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"gorm.io/gorm"
@@ -27,7 +24,7 @@ func NewWAUserPhoneNumberRepository(db *gorm.DB, logger *service.Logger) reposit
 	}
 }
 
-func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersByUserId(ctx context.Context, userId int32) ([]dao_wa.PhoneNumber, *exception.Exception) {
+func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersByUserId(ctx context.Context, userId int32) ([]dao_wa.PhoneNumber, error) {
 	var phoneNumbers []dao_wa.PhoneNumber
 	result := userPhoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers").
@@ -38,12 +35,13 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersBy
 		Find(&phoneNumbers)
 	if result.Error != nil {
 		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId)
-		return nil, exception.NewCustomException(fmt.Sprintf("error listing user phone numbers: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return phoneNumbers, nil
 }
 
-func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, *exception.Exception) {
+func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, error) {
+	// business account
 	var businessAccount dao_wa.BusinessAccount
 	result := userPhoneNumberRepository.db.WithContext(ctx).
 		Table("wa.business_accounts").
@@ -55,12 +53,12 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetBusinessPortfol
 		First(&businessAccount)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil, exception.NewCustomException("business account not found", http.StatusNotFound)
+			return nil, nil, errors.New("business account not found")
 		}
 		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId)
-		return nil, nil, exception.NewCustomException(fmt.Sprintf("error getting business account: %v", result.Error), http.StatusInternalServerError)
+		return nil, nil, result.Error
 	}
-
+	// business portfolio
 	var businessPortfolio dao_wa.BusinessPortfolio
 	result = userPhoneNumberRepository.db.WithContext(ctx).
 		Model(&dao_wa.BusinessPortfolio{}).
@@ -68,10 +66,10 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetBusinessPortfol
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil, exception.NewCustomException("business portfolio not found", http.StatusNotFound)
+			return nil, nil, errors.New("business portfolio not found")
 		}
 		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId, businessAccount.MetaBusinessPortfolioId)
-		return nil, nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolio: %v", result.Error), http.StatusInternalServerError)
+		return nil, nil, result.Error
 	}
 	return &businessPortfolio, &businessAccount, nil
 }

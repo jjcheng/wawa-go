@@ -19,3 +19,8 @@ const (
 	ExceptionTypeMissingAPIKey       ExceptionType = "MISSING_API_KEY"
 	ExceptionTypeTooManyRequest      ExceptionType = "TOO_MANY_REQUESTS"
 )
+
+const (
+	ExceptionMessageInternalServerError string = "Woops, something wrong with our server."
+	ExceptionMessageBadGateway          string = "Sorry, an error occured at the vendor."
+)

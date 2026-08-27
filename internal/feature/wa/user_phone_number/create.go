@@ -2,6 +2,7 @@ package feature_wa_user_phone_number
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
@@ -12,6 +13,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Create struct {
@@ -34,19 +36,24 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	if errors := create.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.UserPhoneNumber](errors)
 	}
-	if _, ex := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, create.UserId); ex != nil {
-		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](ex.StatusCode, ex.Message)
+	if _, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, create.UserId); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusNotFound, "user not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if _, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, create.PhoneNumberId); ex != nil {
-		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](ex.StatusCode, ex.Message)
+	if _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, create.PhoneNumberId); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusNotFound, "phone number not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	userPhoneNumber := dao_wa.UserPhoneNumber{
 		UserId:        create.UserId,
 		PhoneNumberId: create.PhoneNumberId,
 	}
 	if err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().Insert(ctx, &userPhoneNumber); err != nil {
-		dependencies.Logger.ErrorFunction(err, create)
-		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusInternalServerError, "error creating user phone number")
+		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	d := dto_wa.NewUserPhoneNumber(userPhoneNumber)
 	return dto.NewSuccessResponse(&d)
@@ -63,7 +70,9 @@ func (Create) APISettings() feature.APISettings {
 		false,
 		types.APITagAccount,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("error creating user phone number", http.StatusInternalServerError)),
+			feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)
 }

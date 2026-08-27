@@ -2,6 +2,7 @@ package feature_wa_phone_number
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -10,6 +11,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Delete struct {
@@ -30,13 +32,16 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	phoneNumber, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, delete.PhoneNumberId)
-	if ex != nil {
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, delete.PhoneNumberId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")
+		}
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	phoneNumbers, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
-	if ex != nil {
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
+	if err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	authorized := false
 	for _, assignedPhoneNumber := range phoneNumbers {
@@ -46,19 +51,20 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 	}
 	if !authorized {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authorized to remove this phone number")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to remove this phone number")
 	}
-	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumber.MetaBusinessPortfolioId)
-	if ex != nil {
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumber.MetaBusinessPortfolioId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
+		}
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, businessPortfolio.MetaBusinessPortfolioId); err != nil {
-		dependencies.Logger.ErrorFunction(err, phoneNumber.MetaPhoneNumberId)
-		return dto.NewFailedResponse[any](http.StatusBadGateway, "failed to remove phone number from WhatsApp")
+		return dto.NewFailedResponse[any](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().DeleteById(ctx, phoneNumber.Id); err != nil {
-		dependencies.Logger.ErrorFunction(err, phoneNumber.Id)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to remove phone number")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
@@ -75,9 +81,10 @@ func (Delete) APISettings() feature.APISettings {
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized to remove this phone number", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("failed to remove phone number from WhatsApp", http.StatusBadGateway)),
-			feature.NewAPIError(*exception.NewCustomException("failed to remove phone number", http.StatusInternalServerError)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized to remove this phone number", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException("Meta business portfolio not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)
 }

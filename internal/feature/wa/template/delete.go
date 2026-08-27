@@ -2,6 +2,7 @@ package feature_wa_template
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Delete struct {
@@ -40,10 +42,9 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-
 	phoneNumbers, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
 	if ex != nil {
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	authorized := false
 	for _, phoneNumber := range phoneNumbers {
@@ -53,15 +54,17 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 	}
 	if !authorized {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authorized to access this WABA")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to access this WABA")
 	}
 	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumbers[0].MetaBusinessPortfolioId)
 	if ex != nil {
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+		if errors.Is(ex, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusNotFound, "business portfolio not found")
+		}
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if err := dependencies.Whatsapp.DeleteTemplate(ctx, delete.MetaWABAId, delete.Name, delete.ID, businessPortfolio.AccessToken); err != nil {
-		dependencies.Logger.ErrorFunction(err, delete.MetaWABAId, delete.Name, delete.ID)
-		return dto.NewFailedResponse[any](http.StatusBadGateway, "failed to delete WhatsApp template")
+		return dto.NewFailedResponse[any](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
@@ -77,8 +80,9 @@ func (Delete) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WABA", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("failed to delete WhatsApp template", http.StatusBadGateway)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WABA", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)
 }

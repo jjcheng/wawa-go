@@ -2,6 +2,7 @@ package feature_account_user
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Create struct {
@@ -60,9 +62,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
 	// check phone number exists
-	existing, ex := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, create.PhoneNumber)
-	if ex != nil && ex.StatusCode != 404 {
-		return dto.NewFailedResponse[*dto_account.User](ex.StatusCode, ex.Message)
+	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, create.PhoneNumber)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
 	}
 	if existing != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusBadRequest, "phone number already exists")
@@ -70,7 +74,8 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	// generate password hash
 	passwordHash, err := helper.HashPassword(create.Password)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to generate password hash")
+		dependencies.Logger.ErrorFunction(err, create.Password)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	// create app
 	newUser := dao_account.User{
@@ -84,8 +89,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	err = dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id, create)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to create user")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	d := dto_account.NewUser(newUser)
 	return dto.NewSuccessResponse(&d)
@@ -95,7 +99,6 @@ func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings("Create new user", "Allow user to login using password", types.HttpRequestTypeJSON, "POST", "/account/users/v1", true, false, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not admin", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("phone number already exists", http.StatusBadRequest)),
-		feature.NewAPIError(*exception.NewCustomException("failed to generate password hash", http.StatusInternalServerError)),
-		feature.NewAPIError(*exception.NewCustomException("failed to create user", http.StatusInternalServerError)),
+		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})
 }

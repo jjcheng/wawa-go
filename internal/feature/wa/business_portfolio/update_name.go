@@ -2,6 +2,7 @@ package feature_wa_business_portfolio
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type UpdateName struct {
@@ -31,23 +33,20 @@ func (update UpdateName) Handle(ctx context.Context, _ *dto_account.User, depend
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessPortfolio](errors)
 	}
-	existing, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, update.MetaBusinessPortfolioId)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](ex.StatusCode, ex.Message)
-	}
-	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, update.MetaBusinessPortfolioId)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](ex.StatusCode, ex.Message)
-	}
-	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, update.MetaBusinessPortfolioId, businessPortfolio.AccessToken)
+	existing, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, update.MetaBusinessPortfolioId)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, update.MetaBusinessPortfolioId)
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business name")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusNotFound, "business portfolio not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, update.MetaBusinessPortfolioId, existing.AccessToken)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	existing.Name = businessName
 	if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, existing); err != nil {
-		dependencies.Logger.ErrorFunction(err, update)
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, "error updating business portfolio")
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewBusinessPortfolio(*existing, false)
 	return dto.NewSuccessResponse(&result)
@@ -64,8 +63,9 @@ func (UpdateName) APISettings() feature.APISettings {
 		false,
 		types.APITagAccount,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("error getting business name", http.StatusBadGateway)),
-			feature.NewAPIError(*exception.NewCustomException("error updating business portfolio", http.StatusInternalServerError)),
+			feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)
 }

@@ -2,6 +2,7 @@ package feature_account_admin
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -10,6 +11,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type UpdateStatus struct {
@@ -44,29 +46,34 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 	if user.Id == int32(updateStatus.UserId) {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot update status of yourself")
 	}
-	existingUser, ex := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, int32(updateStatus.UserId))
-	if ex != nil {
-		if ex.StatusCode == http.StatusNotFound {
+	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, int32(updateStatus.UserId))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "user not found")
 		}
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	currentBusinessPortfolio, _, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if ex != nil {
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+	currentBusinessPortfolio, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
+		}
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	targetBusinessPortfolio, _, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(updateStatus.UserId))
-	if ex != nil {
-		return dto.NewFailedResponse[any](ex.StatusCode, ex.Message)
+	targetBusinessPortfolio, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(updateStatus.UserId))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
+		}
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if currentBusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to update this user")
 	}
 	existingUser.Status = updateStatus.Status
-	err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existingUser)
+	err = dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existingUser)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id, updateStatus)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "error updating user status")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
@@ -77,6 +84,7 @@ func (UpdateStatus) APISettings() feature.APISettings {
 		feature.NewAPIError(*exception.NewCustomException("you cannot update status of yourself", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException("you are not authorized to update this user", http.StatusUnauthorized)),
-		feature.NewAPIError(*exception.NewCustomException("error updating user status", http.StatusInternalServerError)),
+		feature.NewAPIError(*exception.NewCustomException("Meta business portfolio not found", http.StatusNotFound)),
+		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})
 }

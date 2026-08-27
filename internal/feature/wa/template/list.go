@@ -2,6 +2,7 @@ package feature_wa_template
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type List struct {
@@ -27,9 +29,9 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if errors := list.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_wa.Template](errors)
 	}
-	phoneNumbers, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
-	if ex != nil {
-		return dto.NewFailedResponse[[]dto_wa.Template](ex.StatusCode, ex.Message)
+	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
+	if err != nil {
+		return dto.NewFailedResponse[[]dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if len(phoneNumbers) == 0 {
 		return dto.NewFailedResponse[[]dto_wa.Template](http.StatusNotFound, "no phone number for this user")
@@ -49,20 +51,22 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	wabaIDs := assignedWABAIDs
 	if list.MetaWABAId != "" {
 		if _, exists := seen[list.MetaWABAId]; !exists {
-			return dto.NewFailedResponse[[]dto_wa.Template](http.StatusForbidden, "you are not authorized to access this WABA")
+			return dto.NewFailedResponse[[]dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
 		}
 		wabaIDs = []string{list.MetaWABAId}
 	}
-	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumbers[0].MetaBusinessPortfolioId)
-	if ex != nil {
-		return dto.NewFailedResponse[[]dto_wa.Template](ex.StatusCode, ex.Message)
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumbers[0].MetaBusinessPortfolioId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[[]dto_wa.Template](http.StatusNotFound, "business portfolio not found")
+		}
+		return dto.NewFailedResponse[[]dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	templates := make([]dto_wa.Template, 0)
 	for _, wabaID := range wabaIDs {
 		wabaTemplates, err := dependencies.Whatsapp.ListTemplates(ctx, wabaID, businessPortfolio.AccessToken)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, wabaID)
-			return dto.NewFailedResponse[[]dto_wa.Template](http.StatusBadGateway, "failed to list WhatsApp templates")
+			return dto.NewFailedResponse[[]dto_wa.Template](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 		}
 		for index := range wabaTemplates {
 			wabaTemplates[index].MetaWABAId = wabaID
@@ -83,9 +87,11 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WABA", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("failed to list WhatsApp templates", http.StatusBadGateway)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WABA", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 			feature.NewAPIError(*exception.NewCustomException("no phone number for this user", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
 		},
 	)
 }

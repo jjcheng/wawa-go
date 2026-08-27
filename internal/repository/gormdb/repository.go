@@ -39,6 +39,7 @@ func (repository *Repository[T]) GetById(ctx context.Context, id int32) (*T, err
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, true
 		}
+		repository.logger.ErrorFunction(err, repository.entityName, id)
 		return nil, err, false
 	}
 	return &entity, nil, false
@@ -47,6 +48,7 @@ func (repository *Repository[T]) GetById(ctx context.Context, id int32) (*T, err
 func (repository *Repository[T]) ListAll(ctx context.Context) ([]T, error) {
 	var entities []T
 	if err := repository.db.WithContext(ctx).Order("id").Find(&entities).Error; err != nil {
+		repository.logger.ErrorFunction(err, repository.entityName)
 		return nil, err
 	}
 	return entities, nil
@@ -61,10 +63,10 @@ func (repository *Repository[T]) Insert(ctx context.Context, entity *T) error {
 	repository.setField(entity, "Id", int32(0))
 	result := repository.db.WithContext(ctx).Omit("id").Create(entity)
 	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			repository.logger.ErrorFunction(result.Error, repository.entityName, entity)
+		}
 		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("no row inserted")
 	}
 	return nil
 }
@@ -83,10 +85,10 @@ func (repository *Repository[T]) InsertBulk(ctx context.Context, entities []T) e
 	}
 	result := repository.db.WithContext(ctx).Omit("id").CreateInBatches(entities, len(entities))
 	if err := result.Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			repository.logger.ErrorFunction(err, repository.entityName, entities)
+		}
 		return err
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("no row inserted")
 	}
 	return nil
 }
@@ -96,6 +98,9 @@ func (repository *Repository[T]) Update(ctx context.Context, entity *T) error {
 	repository.setField(entity, "LastUpdate", now)
 	result := repository.db.WithContext(ctx).Select("*").Where("id = ?", (*entity).Base().Id).Updates(entity) //need to select * first, otherwise zero (default) values won't update
 	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			repository.logger.ErrorFunction(result.Error, repository.entityName, entity)
+		}
 		return result.Error
 	}
 	return nil
@@ -106,6 +111,9 @@ func (repository *Repository[T]) UpdateFields(ctx context.Context, id int32, fie
 	fields["last_update"] = time.Now()
 	result := repository.db.WithContext(ctx).Model(&entity).Where("id = ?", id).Updates(fields)
 	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			repository.logger.ErrorFunction(result.Error, repository.entityName, id, fields)
+		}
 		return result.Error
 	}
 	return nil
@@ -118,6 +126,9 @@ func (repository *Repository[T]) Delete(ctx context.Context, entity *T) error {
 func (repository *Repository[T]) DeleteById(ctx context.Context, id int32) error {
 	var entity T
 	if err := repository.db.WithContext(ctx).Model(entity).Delete("id = ?", id).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			repository.logger.ErrorFunction(err, repository.entityName, id)
+		}
 		return err
 	}
 	return nil
@@ -126,6 +137,7 @@ func (repository *Repository[T]) DeleteById(ctx context.Context, id int32) error
 func (repository *Repository[T]) DeleteAll(ctx context.Context) error {
 	var entity T
 	if err := repository.db.WithContext(ctx).Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&entity).Error; err != nil {
+		repository.logger.ErrorFunction(err, repository.entityName)
 		return err
 	}
 	return nil

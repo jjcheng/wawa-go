@@ -3,12 +3,9 @@ package gormdb
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/http"
 	"strings"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
-	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"gorm.io/gorm"
@@ -28,33 +25,33 @@ func NewWABusinessAccountRepository(db *gorm.DB, logger *service.Logger) reposit
 	}
 }
 
-func (businessAccountRepository *WABusinessAccountRepository) Get(ctx context.Context, id int32) (*dao_wa.BusinessAccount, *exception.Exception) {
+func (businessAccountRepository *WABusinessAccountRepository) Get(ctx context.Context, id int32) (*dao_wa.BusinessAccount, error) {
 	var businessAccount *dao_wa.BusinessAccount
 	result := businessAccountRepository.db.WithContext(ctx).Model(&dao_wa.BusinessAccount{}).Where("id = ?", id).First(&businessAccount)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, exception.NewCustomException("business account not found", http.StatusNotFound)
+			return nil, errors.New("business account not found")
 		}
 		businessAccountRepository.logger.ErrorFunction(result.Error, id)
-		return nil, exception.NewCustomException(fmt.Sprintf("error getting business account: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return businessAccount, nil
 }
 
-func (businessAccountRepository *WABusinessAccountRepository) GetByMetaWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessAccount, *exception.Exception) {
+func (businessAccountRepository *WABusinessAccountRepository) GetByMetaWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessAccount, error) {
 	var businessAccount *dao_wa.BusinessAccount
 	result := businessAccountRepository.db.WithContext(ctx).Model(&dao_wa.BusinessAccount{}).Where("meta_waba_id = ?", metaWABAId).First(&businessAccount)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, exception.NewCustomException("business account not found", http.StatusNotFound)
+			return nil, errors.New("business account not found")
 		}
 		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
-		return nil, exception.NewCustomException(fmt.Sprintf("error getting business account: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return businessAccount, nil
 }
 
-func (businessAccountRepository *WABusinessAccountRepository) GetBusinessPortfolioByWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessPortfolio, *exception.Exception) {
+func (businessAccountRepository *WABusinessAccountRepository) GetBusinessPortfolioByWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessPortfolio, error) {
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	result := businessAccountRepository.db.WithContext(ctx).
 		Table("wa.business_portfolios").
@@ -64,25 +61,25 @@ func (businessAccountRepository *WABusinessAccountRepository) GetBusinessPortfol
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, exception.NewCustomException("business portfolio not found", http.StatusNotFound)
+			return nil, errors.New("business portfolio not found")
 		}
 		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
-		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolio: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return businessPortfolio, nil
 }
 
-func (businessAccountRepository *WABusinessAccountRepository) CheckExists(ctx context.Context, metaWABAId string) (bool, *exception.Exception) {
+func (businessAccountRepository *WABusinessAccountRepository) CheckExists(ctx context.Context, metaWABAId string) (bool, error) {
 	var count int64
 	result := businessAccountRepository.db.WithContext(ctx).Model(&dao_wa.BusinessAccount{}).Where("meta_waba_id = ?", metaWABAId).Count(&count)
 	if result.Error != nil {
 		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
-		return false, exception.NewCustomException("error checking business account", http.StatusInternalServerError)
+		return false, result.Error
 	}
 	return count > 0, nil
 }
 
-func (businessAccountRepository *WABusinessAccountRepository) ListByMetaWABAIds(ctx context.Context, metaWABAIds []string) ([]dao_wa.BusinessAccount, *exception.Exception) {
+func (businessAccountRepository *WABusinessAccountRepository) ListByMetaWABAIds(ctx context.Context, metaWABAIds []string) ([]dao_wa.BusinessAccount, error) {
 	ids := make([]string, 0, len(metaWABAIds))
 	for _, id := range metaWABAIds {
 		if id = strings.TrimSpace(id); id != "" {
@@ -92,7 +89,6 @@ func (businessAccountRepository *WABusinessAccountRepository) ListByMetaWABAIds(
 	if len(ids) == 0 {
 		return []dao_wa.BusinessAccount{}, nil
 	}
-
 	var businessAccounts []dao_wa.BusinessAccount
 	result := businessAccountRepository.db.WithContext(ctx).
 		Model(&dao_wa.BusinessAccount{}).
@@ -101,7 +97,7 @@ func (businessAccountRepository *WABusinessAccountRepository) ListByMetaWABAIds(
 		Find(&businessAccounts)
 	if result.Error != nil {
 		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAIds)
-		return nil, exception.NewCustomException(fmt.Sprintf("error getting business accounts: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return businessAccounts, nil
 }

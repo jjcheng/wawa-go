@@ -2,7 +2,7 @@ package feature_wa_webhook
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -19,6 +19,7 @@ import (
 	feature_wa_user_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/user_phone_number"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type EmbeddedSignup struct {
@@ -63,9 +64,9 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		return dto.NewInvalidInputResponse[*dto_wa.EmbeddedSignupResponse](errors)
 	}
 	// check phone number already exist
-	exist, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().CheckExists(ctx, embeddedSignup.Data.PhoneNumberId)
-	if ex != nil && ex.StatusCode != http.StatusNotFound {
-		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](ex.StatusCode, ex.Message)
+	exist, err := dependencies.UnitOfWork.WAPhoneNumberRepository().CheckExists(ctx, embeddedSignup.Data.PhoneNumberId)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if exist {
 		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusBadRequest, "phone number already exists")
@@ -121,12 +122,15 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createUserPhoneNumberResponse.StatusCode, createUserPhoneNumberResponse.Message)
 	}
 	// finalize with meta
-	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, embeddedSignup.Data.BusinessId)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](ex.StatusCode, ex.Message)
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, embeddedSignup.Data.BusinessId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusNotFound, "business portfolio not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if err := dependencies.Whatsapp.RegisterPhoneNumber(ctx, embeddedSignup.Data.PhoneNumberId, businessPortfolio.AccessToken); err != nil {
-		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusBadGateway, fmt.Sprintf("error registering phone number: %v", err))
+		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	return dto.NewSuccessResponse(&dto_wa.EmbeddedSignupResponse{
 		PhoneNumber: *createPhoneNumberResponse.Data,
@@ -136,5 +140,10 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 
 // api endpoint only for testing
 func (EmbeddedSignup) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Process WhatsApp embedded signup", "Create the organization, WhatsApp business account, phone number, and user from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/wa/v1/embedded-signup", false, true, types.APITagWA, nil)
+	return feature.NewAPISettings("Process WhatsApp embedded signup", "Create the organization, WhatsApp business account, phone number, and user from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/wa/v1/embedded-signup", false, true, types.APITagWA, []feature.APIError{
+		feature.NewAPIError(*exception.NewCustomException("phone number already exists", http.StatusBadRequest)),
+		feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
+		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
+		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
+	})
 }

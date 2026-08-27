@@ -2,6 +2,7 @@ package feature_wa_business_portfolio
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -11,6 +12,8 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Create struct {
@@ -23,7 +26,7 @@ func (create *Create) Validate() []exception.InputException {
 	create.MetaBusinessPortfolioId = strings.TrimSpace(create.MetaBusinessPortfolioId)
 	create.TemporaryCode = strings.TrimSpace(create.TemporaryCode)
 	if create.MetaBusinessPortfolioId == "" {
-		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing meta business portfolio id"))
+		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing Meta business portfolio id"))
 	}
 	if create.TemporaryCode == "" {
 		errors = append(errors, exception.NewInputException("temporary_token", "missing temporary code"))
@@ -35,17 +38,17 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	if errors := create.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessPortfolio](errors)
 	}
-	existing, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, create.MetaBusinessPortfolioId)
-	if ex != nil && ex.StatusCode != http.StatusNotFound {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](ex.StatusCode, ex.Message)
+	existing, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, create.MetaBusinessPortfolioId)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	businessTokenResponse, err := dependencies.Whatsapp.GetBusinessAccessToken(ctx, create.TemporaryCode)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business access token")
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, create.MetaBusinessPortfolioId, businessTokenResponse.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, "error getting business name")
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	if existing != nil {
 		if existing.Name != businessName {
@@ -53,8 +56,7 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 			existing.AccessToken = businessTokenResponse.AccessToken
 			existing.AccessTokenExpiresIn = int32(businessTokenResponse.ExpiresIn)
 			if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, existing); err != nil {
-				dependencies.Logger.ErrorFunction(err, create)
-				return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, "error updating business portfolio")
+				return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 			}
 		}
 		d := dto_wa.NewBusinessPortfolio(*existing, false)
@@ -67,8 +69,7 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 		AccessTokenExpiresIn:    int32(businessTokenResponse.ExpiresIn),
 	}
 	if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Insert(ctx, &businessPortfolio); err != nil {
-		dependencies.Logger.ErrorFunction(err, create)
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, "error creating business portfolio")
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	d := dto_wa.NewBusinessPortfolio(businessPortfolio, true)
 	return dto.NewSuccessResponse(&d)

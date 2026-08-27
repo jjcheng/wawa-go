@@ -2,6 +2,7 @@ package feature_account_user
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type UpdateProfile struct {
@@ -33,15 +35,16 @@ func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, 
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
-	existing, ex := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_account.User](ex.StatusCode, ex.Message)
+	existing, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")
+		}
 	}
 	existing.Email = update.Email
 	existing.Description = update.Description
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id, update)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to update user profile")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	d := dto_account.NewUser(*existing)
 	return dto.NewSuccessResponse(&d)
@@ -49,6 +52,7 @@ func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, 
 
 func (UpdateProfile) APISettings() feature.APISettings {
 	return feature.NewAPISettings("Update user profile", "Update logged in user's profile such as email and description", types.HttpRequestTypeJSON, "PATCH", "/account/users/v1/profile", true, true, types.APITagAccount, []feature.APIError{
-		feature.NewAPIError(*exception.NewCustomException("failed to update user profile", http.StatusInternalServerError)),
+		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
+		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})
 }

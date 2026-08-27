@@ -334,7 +334,7 @@ func (whatsapp *Whatsapp) GetBusinessAccessToken(ctx context.Context, code strin
 	endpoint := fmt.Sprintf("%s/%s/oauth/access_token?%s", whatsapp.baseURL, whatsapp.apiVersion, query.Encode())
 	var tokenResponse WhatsAppBusinessTokenResponse
 	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &tokenResponse, ""); err != nil {
-		whatsapp.logger.ErrorFunction(err)
+		whatsapp.logger.ErrorFunction(err, code)
 		return nil, err
 	}
 	if strings.TrimSpace(tokenResponse.AccessToken) == "" {
@@ -357,7 +357,6 @@ func (whatsapp *Whatsapp) DownloadMedia(ctx context.Context, mediaID string, bus
 	if strings.TrimSpace(metadata.URL) == "" {
 		return nil, "", fmt.Errorf("media URL is missing from Meta response")
 	}
-
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, metadata.URL, nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create media download request: %w", err)

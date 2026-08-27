@@ -2,6 +2,7 @@ package feature_wa_user_phone_number
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -11,6 +12,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type List struct {
@@ -26,7 +28,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}
 	phoneNumbers, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
 	if ex != nil {
-		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](ex.StatusCode, ex.Message)
+		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	// populate the PhoneNumber's BusinessPortfolio and BusinessAccount object using the newly created func
 	// first gather distinct MetaBusinessPortfolioId and MetaWABAId first
@@ -46,11 +48,14 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}
 	portfolios, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().ListByMetaBusinessPortfolioIds(ctx, portfolioIDs)
 	if ex != nil {
-		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](ex.StatusCode, ex.Message)
+		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	accounts, ex := dependencies.UnitOfWork.WABusinessAccountRepository().ListByMetaWABAIds(ctx, wabaIDs)
 	if ex != nil {
-		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](ex.StatusCode, ex.Message)
+		if errors.Is(ex, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusNotFound, "business account not found")
+		}
+		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	portfolioByID := make(map[string]dto_wa.BusinessPortfolio, len(portfolios))
 	for _, portfolio := range portfolios {
@@ -85,7 +90,8 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("error listing user phone numbers", http.StatusInternalServerError)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
+			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
 		},
 	)
 }

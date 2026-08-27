@@ -2,6 +2,7 @@ package feature_wa_business_portfolio
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Get struct {
@@ -31,9 +33,12 @@ func (get Get) Handle(ctx context.Context, _ *dto_account.User, dependencies *se
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessPortfolio](errors)
 	}
-	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, get.MetaBusinessPortfolioId)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](ex.StatusCode, ex.Message)
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, get.MetaBusinessPortfolioId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusNotFound, "business portfolio not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewBusinessPortfolio(*businessPortfolio, false)
 	return dto.NewSuccessResponse(&result)
@@ -51,7 +56,7 @@ func (Get) APISettings() feature.APISettings {
 		types.APITagAccount,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("error getting business portfolio", http.StatusInternalServerError)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)
 }

@@ -2,6 +2,7 @@ package feature_wa_phone_number
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -10,6 +11,8 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Create struct {
@@ -39,21 +42,24 @@ func (create Create) Handle(ctx context.Context, _, dependencies *service.Depend
 	if errors := create.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.PhoneNumber](errors)
 	}
-	exists, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().CheckExists(ctx, create.MetaPhoneNumberId)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_wa.PhoneNumber](ex.StatusCode, ex.Message)
+	exists, err := dependencies.UnitOfWork.WAPhoneNumberRepository().CheckExists(ctx, create.MetaPhoneNumberId)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if exists {
 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "phone number already exists")
 	}
 	// get display phone number and name by whatsapp service
-	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, create.MetaBusinessPortfolioId)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_wa.PhoneNumber](ex.StatusCode, ex.Message)
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, create.MetaBusinessPortfolioId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusNotFound, "business portfolio not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	displayPhoneNumber, displayName, err := dependencies.Whatsapp.GetDisplayPhoneNumberAndName(ctx, create.MetaPhoneNumberId, businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadGateway, "error getting phone number details")
+		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	phoneNumber := dao_wa.PhoneNumber{
 		MetaBusinessPortfolioId: create.MetaBusinessPortfolioId,
@@ -63,8 +69,7 @@ func (create Create) Handle(ctx context.Context, _, dependencies *service.Depend
 		Name:                    displayName,
 	}
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Insert(ctx, &phoneNumber); err != nil {
-		dependencies.Logger.ErrorFunction(err, create)
-		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, "error creating phone number")
+		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	d := dto_wa.NewPhoneNumber(phoneNumber)
 	return dto.NewSuccessResponse(&d)

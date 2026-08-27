@@ -3,12 +3,9 @@ package gormdb
 import (
 	"context"
 	"errors"
-	"fmt"
-	"net/http"
 	"strings"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
-	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"gorm.io/gorm"
@@ -28,33 +25,33 @@ func NewWABusinessPortfolioRepository(db *gorm.DB, logger *service.Logger) repos
 	}
 }
 
-func (businessPortfolioRepository *WABusinessPortfolioRepository) Get(ctx context.Context, id int32) (*dao_wa.BusinessPortfolio, *exception.Exception) {
+func (businessPortfolioRepository *WABusinessPortfolioRepository) Get(ctx context.Context, id int32) (*dao_wa.BusinessPortfolio, error) {
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	result := businessPortfolioRepository.db.WithContext(ctx).Model(&dao_wa.BusinessPortfolio{}).Where("id = ?", id).First(&businessPortfolio)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, exception.NewCustomException("business portfolio not found", http.StatusNotFound)
+			return nil, errors.New("business portfolio not found")
 		}
 		businessPortfolioRepository.logger.ErrorFunction(result.Error, id)
-		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolio: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return businessPortfolio, nil
 }
 
-func (businessPortfolioRepository *WABusinessPortfolioRepository) GetByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) (*dao_wa.BusinessPortfolio, *exception.Exception) {
+func (businessPortfolioRepository *WABusinessPortfolioRepository) GetByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) (*dao_wa.BusinessPortfolio, error) {
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	result := businessPortfolioRepository.db.WithContext(ctx).Model(&dao_wa.BusinessPortfolio{}).Where("meta_business_portfolio_id = ?", metaBusinessPortfolioId).First(&businessPortfolio)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, exception.NewCustomException("business portfolio not found", http.StatusNotFound)
+			return nil, errors.New("business portfolio not found")
 		}
 		businessPortfolioRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioId)
-		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolio: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return businessPortfolio, nil
 }
 
-func (businessPortfolioRepository *WABusinessPortfolioRepository) ListByMetaBusinessPortfolioIds(ctx context.Context, metaBusinessPortfolioIds []string) ([]dao_wa.BusinessPortfolio, *exception.Exception) {
+func (businessPortfolioRepository *WABusinessPortfolioRepository) ListByMetaBusinessPortfolioIds(ctx context.Context, metaBusinessPortfolioIds []string) ([]dao_wa.BusinessPortfolio, error) {
 	ids := make([]string, 0, len(metaBusinessPortfolioIds))
 	for _, id := range metaBusinessPortfolioIds {
 		if id = strings.TrimSpace(id); id != "" {
@@ -73,7 +70,7 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) ListByMetaBusi
 		Find(&businessPortfolios)
 	if result.Error != nil {
 		businessPortfolioRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioIds)
-		return nil, exception.NewCustomException(fmt.Sprintf("error getting business portfolios: %v", result.Error), http.StatusInternalServerError)
+		return nil, result.Error
 	}
 	return businessPortfolios, nil
 }

@@ -2,6 +2,7 @@ package feature_auth
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Login struct {
@@ -44,26 +46,28 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	if errors := login.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
-	user, ex := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, login.PhoneNumber)
-	if ex != nil {
-		if ex.StatusCode == http.StatusNotFound {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid phone number or password")
+	user, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, login.PhoneNumber)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "invalid phone number or password")
 		}
-		return dto.NewFailedResponse[*dto_account.User](ex.StatusCode, ex.Message)
-	}
-	if user.Status == types.UserStatusInactive {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "user is inactive")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if !helper.VerifyPassword(login.Password, user.PasswordHash) {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid phone number or password")
 	}
+	if user.Status == types.UserStatusInactive {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "user is inactive")
+	}
 	ginContext, ok := ctx.Value("gin").(*gin.Context)
 	if !ok {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to create login session")
+		dependencies.Logger.ErrorFunction(errors.New("ginContext not ok"))
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	sessionToken := helper.GenerateRandomString(64)
-	if sessionToken == "" {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to create login session")
+	sessionToken, err := helper.GenerateRandomString(64)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, 64)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &dao_account.Session{
 		UserId:     user.Id,
@@ -71,8 +75,7 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 		ExpiresAt:  time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second),
 		LastUsedAt: time.Now(),
 	}); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to create login session")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	secure := cfg.Default().Site.Environment != types.EnvironmentDevelop
 	ginContext.SetSameSite(http.SameSiteLaxMode)
@@ -94,6 +97,7 @@ func (Login) APISettings() feature.APISettings {
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("invalid phone number or password", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("user is inactive", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)
 }

@@ -2,6 +2,7 @@ package feature_account_user
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type ChangePassword struct {
@@ -46,21 +48,24 @@ func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_accou
 	if errors := changePassword.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
-	existing, ex := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
-	if ex != nil {
-		return dto.NewFailedResponse[*dto_account.User](ex.StatusCode, ex.Message)
+	existing, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")
+		}
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if !helper.VerifyPassword(changePassword.OldPassword, existing.PasswordHash) {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid old password")
 	}
 	passwordHash, err := helper.HashPassword(changePassword.NewPassword)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to generate password hash")
+		dependencies.Logger.ErrorFunction(err, changePassword.NewPassword)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	existing.PasswordHash = passwordHash
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id, changePassword)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, "failed to change password")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	d := dto_account.NewUser(*existing)
 	return dto.NewSuccessResponse(&d)
@@ -69,7 +74,7 @@ func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_accou
 func (ChangePassword) APISettings() feature.APISettings {
 	return feature.NewAPISettings("Change password", "Change the logged in user's password", types.HttpRequestTypeJSON, http.MethodPatch, "/account/users/v1/password", true, true, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("invalid old password", http.StatusUnauthorized)),
-		feature.NewAPIError(*exception.NewCustomException("failed to generate password hash", http.StatusInternalServerError)),
-		feature.NewAPIError(*exception.NewCustomException("failed to change password", http.StatusInternalServerError)),
+		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
+		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})
 }
