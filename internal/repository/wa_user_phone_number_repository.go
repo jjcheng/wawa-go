@@ -10,4 +10,5 @@ type WAUserPhoneNumberRepository interface {
 	Repository[dao_wa.UserPhoneNumber]
 	ListPhoneNumbersByUserId(ctx context.Context, userId int32) ([]dao_wa.PhoneNumber, error)
 	GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, error)
+	GetValidBusinessAccount(ctx context.Context, userId int32, metaWABAId string) (*dao_wa.BusinessAccount, error)
 }

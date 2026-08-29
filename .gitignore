@@ -37,7 +37,7 @@ coverage.*
 .image_tag
 .timestamp
 node_modules
-files/ai
+files/wa
 files/ura
 files/pn/project-jsons
 files/gamma

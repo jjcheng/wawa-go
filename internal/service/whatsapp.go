@@ -6,6 +6,7 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -20,6 +22,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/helper"
+	"github.com/jjcheng/wawa-go/internal/types"
 )
 
 type Whatsapp struct {
@@ -280,6 +283,18 @@ type WhatsAppGraphAPIError struct {
 	ErrorUserMsg   string `json:"error_user_msg,omitempty"`
 }
 
+type WhatsAppAPIError struct {
+	StatusCode int
+	GraphError WhatsAppGraphAPIError
+}
+
+func (err *WhatsAppAPIError) Error() string {
+	if err.GraphError.ErrorUserMsg != "" {
+		return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg)
+	}
+	return fmt.Sprintf("whatsapp api error %d (subcode %d): %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message)
+}
+
 type WhatsAppBusinessResponse struct {
 	Name string `json:"name"`
 }
@@ -333,7 +348,7 @@ func (whatsapp *Whatsapp) GetBusinessAccessToken(ctx context.Context, code strin
 	query.Set("code", code)
 	endpoint := fmt.Sprintf("%s/%s/oauth/access_token?%s", whatsapp.baseURL, whatsapp.apiVersion, query.Encode())
 	var tokenResponse WhatsAppBusinessTokenResponse
-	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &tokenResponse, ""); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "get_business_access_token", http.MethodGet, endpoint, nil, &tokenResponse, ""); err != nil {
 		whatsapp.logger.ErrorFunction(err, code)
 		return nil, err
 	}
@@ -350,7 +365,7 @@ func (whatsapp *Whatsapp) DownloadMedia(ctx context.Context, mediaID string, bus
 	}
 	metadataEndpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(mediaID))
 	var metadata WhatsAppMediaResponse
-	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, metadataEndpoint, nil, &metadata, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "download_media", http.MethodGet, metadataEndpoint, nil, &metadata, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, mediaID)
 		return nil, "", err
 	}
@@ -397,7 +412,6 @@ func (whatsapp *Whatsapp) UploadMedia(ctx context.Context, phoneNumberID string,
 	if len(content) == 0 {
 		return "", fmt.Errorf("media content is required")
 	}
-
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	if err := writer.WriteField("messaging_product", WhatsAppMessagingProduct); err != nil {
@@ -416,7 +430,6 @@ func (whatsapp *Whatsapp) UploadMedia(ctx context.Context, phoneNumberID string,
 	if err := writer.Close(); err != nil {
 		return "", fmt.Errorf("failed to close media form: %w", err)
 	}
-
 	endpoint := fmt.Sprintf("%s/%s/%s/media", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
 	if err != nil {
@@ -461,7 +474,7 @@ func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID
 		"pin":               fmt.Sprintf("%06d", pinNumber.Int64()),
 	}
 	endpoint := whatsapp.buildEndpoint(phoneNumberID, "register")
-	if err := whatsapp.doJSONRequest(ctx, http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "register_phone_number", http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, phoneNumberID)
 		return err
 	}
@@ -477,7 +490,7 @@ func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID s
 		return fmt.Errorf("invalid phone number ID: must be a numeric Meta ID")
 	}
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
-	if err := whatsapp.doJSONRequest(ctx, http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "remove_phone_number", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, phoneNumberID)
 		return err
 	}
@@ -497,7 +510,7 @@ func (whatsapp *Whatsapp) GetBusinessName(ctx context.Context, metaBusinessPortf
 	query.Set("fields", "name")
 	endpoint += "?" + query.Encode()
 	var response WhatsAppBusinessResponse
-	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "get_business_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, metaBusinessPortfolioId)
 		return "", err
 	}
@@ -517,7 +530,7 @@ func (whatsapp *Whatsapp) GetWABAName(ctx context.Context, wabaId string, busine
 	query.Set("fields", "name,currency,timezone_id")
 	endpoint += "?" + query.Encode()
 	var response WhatsAppWABAResponse
-	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "get_waba_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
 		return "", err
 	}
@@ -525,6 +538,153 @@ func (whatsapp *Whatsapp) GetWABAName(ctx context.Context, wabaId string, busine
 		return "", fmt.Errorf("WABA name is missing from the WhatsApp API response")
 	}
 	return response.Name, nil
+}
+
+func (whatsapp *Whatsapp) GetWABAsByBusinessPortfolioId(ctx context.Context, businessPortfolioId string, businessAccessToken string) ([]WhatsAppWABAResponse, error) {
+	query := url.Values{}
+	query.Set("fields", "id,name,currency,timezone_id")
+	endpoint := fmt.Sprintf("%s/%s/%s/owned_whatsapp_business_accounts?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(businessPortfolioId), query.Encode())
+	wabas := make([]WhatsAppWABAResponse, 0)
+	for endpoint != "" {
+		var response struct {
+			Data   []WhatsAppWABAResponse `json:"data"`
+			Paging *WhatsAppPaging        `json:"paging,omitempty"`
+		}
+		if err := whatsapp.doJSONRequest(ctx, "get_all_wabas_by_business_portfolio_id", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+			whatsapp.logger.ErrorFunction(err, businessPortfolioId)
+			return nil, err
+		}
+		wabas = append(wabas, response.Data...)
+		if response.Paging == nil {
+			break
+		}
+		endpoint = strings.TrimSpace(response.Paging.Next)
+	}
+	return wabas, nil
+}
+
+func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
+	wabaId = strings.TrimSpace(wabaId)
+	if wabaId == "" {
+		return nil, fmt.Errorf("wabaId is required")
+	}
+	query := url.Values{}
+	query.Set("fields", fmt.Sprintf("analytics.start(%d).end(%d).granularity(%s)", start, end, granularity))
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	var response struct {
+		Analytics dto_wa.MessageAnalytics `json:"analytics"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, "get_waba_usage", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId)
+		return nil, err
+	}
+	return &response.Analytics, nil
+}
+
+func (whatsapp *Whatsapp) GetWABAPricingCosts(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.PricingAnalytics, error) {
+	wabaId = strings.TrimSpace(wabaId)
+	if wabaId == "" {
+		return nil, fmt.Errorf("wabaId is required")
+	}
+	query := url.Values{}
+	query.Set("fields", fmt.Sprintf("pricing_analytics.start(%d).end(%d).granularity(%s).metric_types([%s])", start, end, granularity, strconv.Quote("COST")))
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	var response struct {
+		Analytics dto_wa.PricingAnalytics `json:"pricing_analytics"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, "get_waba_pricing_costs", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId)
+		return nil, err
+	}
+	return &response.Analytics, nil
+}
+
+func (whatsapp *Whatsapp) GetPhoneNumberPricingCosts(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.PricingAnalytics, error) {
+	wabaId = strings.TrimSpace(wabaId)
+	query := url.Values{}
+	query.Set("fields", fmt.Sprintf("pricing_analytics.start(%d).end(%d).granularity(%s).metric_types([%s]).dimensions([%s])", start, end, granularity, strconv.Quote("COST"), strconv.Quote("PHONE")))
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	var response struct {
+		Analytics dto_wa.PricingAnalytics `json:"pricing_analytics"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, "get_phone_number_pricing_costs", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId)
+		return nil, err
+	}
+	return &response.Analytics, nil
+}
+
+func (whatsapp *Whatsapp) GetAllPhoneNumbersByWABAId(ctx context.Context, wabaId string, businessAccessToken string) ([]WhatsAppPhoneNumberDetailsResponse, error) {
+	query := url.Values{}
+	query.Set("fields", "id,display_phone_number,verified_name")
+	endpoint := fmt.Sprintf("%s/%s/%s/phone_numbers?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	phoneNumbers := make([]WhatsAppPhoneNumberDetailsResponse, 0)
+	for endpoint != "" {
+		var response struct {
+			Data   []WhatsAppPhoneNumberDetailsResponse `json:"data"`
+			Paging *dto_wa.AnalyticsPaging              `json:"paging,omitempty"`
+		}
+		if err := whatsapp.doJSONRequest(ctx, "get_all_phone_numbers_by_waba_id", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+			whatsapp.logger.ErrorFunction(err, wabaId)
+			return nil, err
+		}
+		phoneNumbers = append(phoneNumbers, response.Data...)
+		if response.Paging == nil {
+			break
+		}
+		endpoint = strings.TrimSpace(response.Paging.Next)
+	}
+	return phoneNumbers, nil
+}
+
+func (whatsapp *Whatsapp) GetPhoneNumberUsage(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) ([]dto_wa.PhoneNumberMessageAnalytics, error) {
+	wabaId = strings.TrimSpace(wabaId)
+	metaPhoneNumbers, err := whatsapp.GetAllPhoneNumbersByWABAId(ctx, wabaId, businessAccessToken)
+	if err != nil {
+		return nil, err
+	}
+	phoneNumbers := make([]dto_wa.PhoneNumberMessageAnalytics, 0, len(metaPhoneNumbers))
+	for _, phoneNumber := range metaPhoneNumbers {
+		displayPhoneNumber := strings.TrimSpace(phoneNumber.DisplayPhoneNumber)
+		normalizedPhoneNumber := normalizeWhatsAppPhoneNumber(displayPhoneNumber)
+		if normalizedPhoneNumber == "" {
+			continue
+		}
+		analytics, err := whatsapp.getMessageAnalyticsForPhoneNumber(ctx, "get_phone_numbers_usage", wabaId, normalizedPhoneNumber, start, end, granularity, businessAccessToken)
+		if err != nil {
+			whatsapp.logger.ErrorFunction(err, wabaId, displayPhoneNumber)
+			return nil, err
+		}
+		phoneNumbers = append(phoneNumbers, dto_wa.PhoneNumberMessageAnalytics{
+			ID:                 phoneNumber.ID,
+			DisplayPhoneNumber: displayPhoneNumber,
+			VerifiedName:       phoneNumber.VerifiedName,
+			Analytics:          *analytics,
+		})
+	}
+	return phoneNumbers, nil
+}
+
+func normalizeWhatsAppPhoneNumber(phoneNumber string) string {
+	return strings.Map(func(character rune) rune {
+		if character >= '0' && character <= '9' {
+			return character
+		}
+		return -1
+	}, phoneNumber)
+}
+
+func (whatsapp *Whatsapp) getMessageAnalyticsForPhoneNumber(ctx context.Context, requestType string, wabaId string, phoneNumber string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
+	query := url.Values{}
+	query.Set("fields", fmt.Sprintf("analytics.start(%d).end(%d).granularity(%s).phone_numbers([%s])", start, end, granularity, strconv.Quote(phoneNumber)))
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	var response struct {
+		Analytics dto_wa.MessageAnalytics `json:"analytics"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, requestType, http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		return nil, err
+	}
+	return &response.Analytics, nil
 }
 
 func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, businessAccessToken string) ([]dto_wa.Template, error) {
@@ -535,7 +695,7 @@ func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, busi
 	templates := []dto_wa.Template{}
 	for endpoint != "" {
 		var response dto_wa.TemplateListResponse
-		if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		if err := whatsapp.doJSONRequest(ctx, "list_templates", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 			whatsapp.logger.ErrorFunction(err, wabaId)
 			return nil, err
 		}
@@ -548,10 +708,101 @@ func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, busi
 	return templates, nil
 }
 
+func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
+	wabaId = strings.TrimSpace(wabaId)
+	if wabaId == "" {
+		return nil, nil, fmt.Errorf("wabaId is required")
+	}
+	query := url.Values{}
+	query.Set("fields", "id,name,status,category,language,parameter_format,components,quality_score,rejected_reason,previous_category")
+	if after = strings.TrimSpace(after); after != "" {
+		query.Set("after", after)
+	}
+	if limit > 0 {
+		query.Set("limit", strconv.Itoa(limit))
+	}
+	endpoint := fmt.Sprintf("%s/%s/%s/message_templates?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	var response dto_wa.TemplateListResponse
+	if err := whatsapp.doJSONRequest(ctx, "list_templates_page", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId)
+		return nil, nil, err
+	}
+	return response.Data, response.Paging, nil
+}
+
+func (whatsapp *Whatsapp) GetTemplateCosts(ctx context.Context, wabaId string, start string, end string, templateIds []string, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
+	return whatsapp.getTemplateAnalytics(ctx, "get_template_costs", wabaId, start, end, templateIds, "cost", businessAccessToken)
+}
+
+func (whatsapp *Whatsapp) EnableTemplateInsights(ctx context.Context, wabaId string, businessAccessToken string) error {
+	wabaId = strings.TrimSpace(wabaId)
+	if wabaId == "" {
+		return fmt.Errorf("wabaId is required")
+	}
+	query := url.Values{}
+	query.Set("is_enabled_for_insights", "true")
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	if err := whatsapp.doJSONRequest(ctx, "enable_template_insights", http.MethodPost, endpoint, nil, nil, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId)
+		return err
+	}
+	return nil
+}
+
+func (whatsapp *Whatsapp) GetTemplateUsage(ctx context.Context, wabaId string, start string, end string, templateIds []string, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
+	return whatsapp.getTemplateAnalytics(ctx, "get_template_usage", wabaId, start, end, templateIds, "sent,delivered,read,clicked", businessAccessToken)
+}
+
+func (whatsapp *Whatsapp) getTemplateAnalytics(ctx context.Context, requestType string, wabaId string, start string, end string, templateIds []string, metricTypes string, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
+	wabaId = strings.TrimSpace(wabaId)
+	if wabaId == "" {
+		return nil, fmt.Errorf("wabaId is required")
+	}
+	if start == "" || end == "" {
+		return nil, fmt.Errorf("start and end are required")
+	}
+	if len(templateIds) == 0 || len(templateIds) > 10 {
+		return nil, fmt.Errorf("templateIds must contain between 1 and 10 template IDs")
+	}
+	query := url.Values{}
+	query.Set("start", start)
+	query.Set("end", end)
+	query.Set("granularity", "daily")
+	query.Set("metric_types", metricTypes)
+	query.Set("use_waba_timezone", "true")
+	query.Set("template_ids", "["+strings.Join(templateIds, ",")+"]")
+	endpoint := fmt.Sprintf("%s/%s/%s/template_analytics?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	analytics := make([]dto_wa.TemplateAnalytics, 0)
+	insightsEnabled := false
+	for endpoint != "" {
+		var response dto_wa.TemplateAnalyticsListResponse
+		err := whatsapp.doJSONRequest(ctx, requestType, http.MethodGet, endpoint, nil, &response, businessAccessToken)
+		var apiErr *WhatsAppAPIError
+		if err != nil && !insightsEnabled && errors.As(err, &apiErr) && apiErr.GraphError.ErrorSubcode == 4182004 {
+			if enableErr := whatsapp.EnableTemplateInsights(ctx, wabaId, businessAccessToken); enableErr != nil {
+				whatsapp.logger.ErrorFunction(enableErr, wabaId)
+				return nil, enableErr
+			}
+			insightsEnabled = true
+			err = whatsapp.doJSONRequest(ctx, requestType, http.MethodGet, endpoint, nil, &response, businessAccessToken)
+		}
+		if err != nil {
+			whatsapp.logger.ErrorFunction(err, wabaId, templateIds)
+			return nil, err
+		}
+		analytics = append(analytics, response.Data...)
+		if response.Paging == nil {
+			break
+		}
+		endpoint = strings.TrimSpace(response.Paging.Next)
+	}
+	return analytics, nil
+}
+
 func (whatsapp *Whatsapp) CreateTemplate(ctx context.Context, wabaId string, payload map[string]any, businessAccessToken string) (*dto_wa.Template, error) {
 	endpoint := fmt.Sprintf("%s/%s/%s/message_templates", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
 	var response dto_wa.Template
-	if err := whatsapp.doJSONRequest(ctx, http.MethodPost, endpoint, payload, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "create_template", http.MethodPost, endpoint, payload, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId, payload)
 		return nil, err
 	}
@@ -564,7 +815,7 @@ func (whatsapp *Whatsapp) DeleteTemplate(ctx context.Context, wabaId string, nam
 	query.Set("name", name)
 	query.Set("hsm_id", templateId)
 	endpoint := fmt.Sprintf("%s/%s/%s/message_templates?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
-	if err := whatsapp.doJSONRequest(ctx, http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "delete_template", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId, name, templateId)
 		return err
 	}
@@ -577,7 +828,7 @@ func (whatsapp *Whatsapp) GetDisplayPhoneNumberAndName(ctx context.Context, meta
 	query.Set("fields", "display_phone_number,verified_name")
 	endpoint += "?" + query.Encode()
 	var response WhatsAppPhoneNumberDetailsResponse
-	if err := whatsapp.doJSONRequest(ctx, http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "get_display_phone_number_and_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, metaPhoneNumberId)
 		return "", "", err
 	}
@@ -663,7 +914,7 @@ func (whatsapp *Whatsapp) SendMessage(ctx context.Context, request *WhatsAppMess
 		request.RecipientType = WhatsAppRecipientIndividual
 	}
 	var response WhatsAppMessageResponse
-	err := whatsapp.doJSONRequest(ctx, http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
+	err := whatsapp.doJSONRequest(ctx, "send_message", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
 	if err != nil {
 		whatsapp.logger.ErrorFunction(err, request)
 		return nil, err
@@ -672,10 +923,6 @@ func (whatsapp *Whatsapp) SendMessage(ctx context.Context, request *WhatsAppMess
 }
 
 func (whatsapp *Whatsapp) MarkAsRead(ctx context.Context, phoneNumberID string, messageID string, businessAccessToken string) (*WhatsAppMessageResponse, error) {
-	phoneNumberID = strings.TrimSpace(phoneNumberID)
-	if phoneNumberID == "" {
-		return nil, fmt.Errorf("phoneNumberID is required")
-	}
 	messageID = strings.TrimSpace(messageID)
 	request := &WhatsAppMessageRequest{
 		MessagingProduct: WhatsAppMessagingProduct,
@@ -683,7 +930,7 @@ func (whatsapp *Whatsapp) MarkAsRead(ctx context.Context, phoneNumberID string, 
 		MessageID:        messageID,
 	}
 	var response WhatsAppMessageResponse
-	err := whatsapp.doJSONRequest(ctx, http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
+	err := whatsapp.doJSONRequest(ctx, "mark_as_read", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
 	if err != nil {
 		whatsapp.logger.ErrorFunction(err, request)
 		return nil, err
@@ -701,7 +948,7 @@ func (whatsapp *Whatsapp) StartTyping(ctx context.Context, phoneNumberID string,
 		},
 	}
 	var response WhatsAppMessageResponse
-	err := whatsapp.doJSONRequest(ctx, http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
+	err := whatsapp.doJSONRequest(ctx, "start_typeing", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
 	if err != nil {
 		whatsapp.logger.ErrorFunction(err, request)
 		return nil, err
@@ -715,7 +962,7 @@ func (whatsapp *Whatsapp) buildEndpoint(phoneNumberID string, edge string) strin
 	return url
 }
 
-func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, method string, endpoint string, payload any, target any, businessAccessToken string) error {
+func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, requestType string, method string, endpoint string, payload any, target any, businessAccessToken string) error {
 	businessAccessToken = strings.TrimSpace(businessAccessToken)
 	headers := map[string]string{}
 	if businessAccessToken != "" {
@@ -740,7 +987,12 @@ func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, method string, endp
 	if err != nil {
 		return err
 	}
-	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
+	if responseBody != nil && strings.TrimSpace(*responseBody) != "" {
+		if err := saveWhatsAppRawResponse(requestType, endpoint, method, bodyMap, *responseBody); err != nil {
+			whatsapp.logger.Warnf("failed to save WhatsApp raw response: %v", err)
+		}
+	}
+	if statusCode < 200 || statusCode >= 300 {
 		return parseWhatsAppAPIError(statusCode, responseBody)
 	}
 	if target == nil || responseBody == nil || strings.TrimSpace(*responseBody) == "" {
@@ -752,6 +1004,34 @@ func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, method string, endp
 	return nil
 }
 
+func saveWhatsAppRawResponse(requestType string, endpoint string, method string, requestBody any, responseBody string) error {
+	if cfg.Default().Site.Environment != types.EnvironmentDevelop {
+		return nil
+	}
+	if err := os.MkdirAll("files/wa", 0755); err != nil {
+		return fmt.Errorf("failed to create raw response directory: %w", err)
+	}
+	filename := fmt.Sprintf("%s.json", requestType)
+	var responseObject any
+	if err := json.Unmarshal([]byte(responseBody), &responseObject); err != nil {
+		return fmt.Errorf("failed to parse raw response: %w", err)
+	}
+	exchange := map[string]any{
+		"type": requestType,
+		"request": map[string]any{
+			"method": method,
+			"url":    endpoint,
+			"body":   requestBody,
+		},
+		"response": responseObject,
+	}
+	data, err := json.MarshalIndent(exchange, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal raw exchange: %w", err)
+	}
+	return helper.WriteToFile(string(data), filepath.Join("files/wa", filename))
+}
+
 func parseWhatsAppAPIError(statusCode int, responseBody *string) error {
 	if responseBody == nil || strings.TrimSpace(*responseBody) == "" {
 		return fmt.Errorf("whatsapp api request failed with status %d", statusCode)
@@ -760,10 +1040,5 @@ func parseWhatsAppAPIError(statusCode int, responseBody *string) error {
 	if err != nil || parsed == nil || parsed.Error.Message == "" {
 		return fmt.Errorf("whatsapp api request failed with status %d: %s", statusCode, strings.TrimSpace(*responseBody))
 	}
-
-	graphErr := parsed.Error
-	if graphErr.ErrorUserMsg != "" {
-		return fmt.Errorf("whatsapp api error %d (subcode %d): %s - %s", graphErr.Code, graphErr.ErrorSubcode, graphErr.Message, graphErr.ErrorUserMsg)
-	}
-	return fmt.Errorf("whatsapp api error %d (subcode %d): %s", graphErr.Code, graphErr.ErrorSubcode, graphErr.Message)
+	return &WhatsAppAPIError{StatusCode: statusCode, GraphError: parsed.Error}
 }

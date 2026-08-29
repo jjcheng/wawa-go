@@ -40,6 +40,25 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersBy
 	return phoneNumbers, nil
 }
 
+func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetValidBusinessAccount(ctx context.Context, userId int32, metaWABAId string) (*dao_wa.BusinessAccount, error) {
+	var businessAccount dao_wa.BusinessAccount
+	result := userPhoneNumberRepository.db.WithContext(ctx).
+		Table("wa.business_accounts").
+		Select("wa.business_accounts.*").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.meta_waba_id = wa.business_accounts.meta_waba_id").
+		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.phone_number_id = wa.phone_numbers.id").
+		Where("wa.user_phone_numbers.user_id = ? AND wa.business_accounts.meta_waba_id = ?", userId, metaWABAId).
+		First(&businessAccount)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, gorm.ErrRecordNotFound
+		}
+		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId, metaWABAId)
+		return nil, result.Error
+	}
+	return &businessAccount, nil
+}
+
 func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, error) {
 	// business account
 	var businessAccount dao_wa.BusinessAccount

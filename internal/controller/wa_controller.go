@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
+	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
@@ -57,7 +58,14 @@ func registerWAController(authGroup, unauthGroup *gin.RouterGroup, dependencies 
 	registerRoute[*dto_wa.UserPhoneNumber, feature_wa_user_phone_number.Create](authGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_phone_number.Delete](authGroup, dependencies, apiGenerator)
 	// template
-	registerRoute[[]dto_wa.Template, feature_wa_template.List](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto.ListResponse[dto_wa.Template], feature_wa_template.List](authGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.Template, feature_wa_template.Create](authGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_template.Delete](authGroup, dependencies, apiGenerator)
+	// analytics
+	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.PricingAnalytics, feature_wa_business_account.GetCosts](authGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_wa.PhoneNumberMessageAnalytics, feature_wa_phone_number.GetUsage](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.PricingAnalytics, feature_wa_phone_number.GetCosts](authGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetCosts](authGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetUsage](authGroup, dependencies, apiGenerator)
 }

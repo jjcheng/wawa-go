@@ -87,3 +87,20 @@ func (phoneNumberRepository *WAPhoneNumberRepository) CheckExists(ctx context.Co
 	}
 	return count > 0, nil
 }
+
+func (phoneNumberRepository *WAPhoneNumberRepository) ListBusinessAccounts(ctx context.Context, userId int32) ([]dao_wa.BusinessAccount, error) {
+	var businessAccounts []dao_wa.BusinessAccount
+	result := phoneNumberRepository.db.WithContext(ctx).
+		Table("wa.business_accounts").
+		Select("DISTINCT wa.business_accounts.*").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.meta_waba_id = wa.business_accounts.meta_waba_id").
+		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.phone_number_id = wa.phone_numbers.id").
+		Where("wa.user_phone_numbers.user_id = ?", userId).
+		Order("wa.business_accounts.id").
+		Find(&businessAccounts)
+	if result.Error != nil {
+		phoneNumberRepository.logger.ErrorFunction(result.Error, userId)
+		return nil, result.Error
+	}
+	return businessAccounts, nil
+}

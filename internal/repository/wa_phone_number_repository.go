@@ -13,4 +13,5 @@ type WAPhoneNumberRepository interface {
 	ListByBusinessPortfolioId(ctx context.Context, businessPortfolioId int32) (*[]dao_wa.PhoneNumber, error)
 	CheckExists(ctx context.Context, metaPhoneNumberId string) (bool, error)
 	GetBusinessPortfolioByMetaPhoneNumberId(ctx context.Context, metaPhoneNmberId string) (*dao_wa.BusinessPortfolio, error)
+	ListBusinessAccounts(ctx context.Context, id int32) ([]dao_wa.BusinessAccount, error)
 }

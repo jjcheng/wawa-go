@@ -66,7 +66,6 @@ type AliyunSMQConfig struct {
 type WhatsAppConfig struct {
 	BaseURL              string
 	APIVersion           string
-	AccessToken          string
 	AppID                string
 	AppSecret            string
 	WebhookVerifyToken   string
@@ -129,8 +128,7 @@ func Default() *Config {
 			},
 			WhatsApp: WhatsAppConfig{
 				BaseURL:              "https://graph.facebook.com",
-				APIVersion:           "v25.0",
-				AccessToken:          os.Getenv("WHATSAPP_ACCESS_TOKEN"),
+				APIVersion:           "v26.0",
 				AppID:                os.Getenv("META_APP_ID"),
 				AppSecret:            os.Getenv("META_APP_SECRET"),
 				WebhookVerifyToken:   os.Getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN"),

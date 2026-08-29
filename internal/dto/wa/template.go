@@ -20,5 +20,33 @@ type TemplateListResponse struct {
 }
 
 type TemplatePaging struct {
-	Next string `json:"next,omitempty"`
+	Previous string `json:"previous,omitempty"`
+	Next     string `json:"next,omitempty"`
+}
+
+type TemplateAnalytics struct {
+	WABATimezone string                       `json:"waba_timezone,omitempty"`
+	Granularity  string                       `json:"granularity,omitempty"`
+	ProductType  string                       `json:"product_type,omitempty"`
+	DataPoints   []TemplateAnalyticsDataPoint `json:"data_points"`
+}
+
+type TemplateAnalyticsDataPoint struct {
+	TemplateID string                  `json:"template_id"`
+	Start      int64                   `json:"start"`
+	End        int64                   `json:"end"`
+	Sent       int64                   `json:"sent,omitempty"`
+	Delivered  int64                   `json:"delivered,omitempty"`
+	Read       int64                   `json:"read,omitempty"`
+	Cost       []TemplateAnalyticsCost `json:"cost,omitempty"`
+}
+
+type TemplateAnalyticsCost struct {
+	Type  string  `json:"type"`
+	Value float64 `json:"value"`
+}
+
+type TemplateAnalyticsListResponse struct {
+	Data   []TemplateAnalytics `json:"data"`
+	Paging *TemplatePaging     `json:"paging,omitempty"`
 }
