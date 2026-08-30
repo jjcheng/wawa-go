@@ -8,8 +8,8 @@ import (
 	"github.com/jjcheng/wawa-go/internal/service"
 )
 
-func registerAuthController(authGroup *gin.RouterGroup, unauthGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
-	registerRoute[*dto_account.User, feature_auth.Login](unauthGroup, dependencies, apiGenerator)
-	registerRoute[*dto_account.User, feature_auth.Me](authGroup, dependencies, apiGenerator)
-	registerRoute[any, feature_auth.Logout](authGroup, dependencies, apiGenerator)
+func registerAuthController(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
+	registerRoute[*dto_account.User, feature_auth.Login](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_account.User, feature_auth.Me](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_auth.Logout](routerGroup, dependencies, apiGenerator)
 }

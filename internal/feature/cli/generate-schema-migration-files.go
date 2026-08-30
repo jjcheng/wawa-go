@@ -38,7 +38,7 @@ func migrateSchema(ctx context.Context) ([]string, []string) {
 		cfg.Default().Database.Password,
 		cfg.Default().Database.Host,
 		cfg.Default().Database.Port,
-		cfg.Default().Database.MigrateName,
+		cfg.Default().Database.MigrationName,
 		cfg.Default().Database.SSLMode)
 
 	targetClient, err := sqlclient.Open(ctx, targetDBUrl)

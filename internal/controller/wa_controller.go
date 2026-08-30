@@ -19,9 +19,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func registerWAController(authGroup, unauthGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
+func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
 	// verify endpoint
-	unauthGroup.GET(feature_wa_webhook.Verify{}.APISettings().Path, middleware.BindRequest[string, feature_wa_webhook.Verify](), func(ctx *gin.Context) {
+	routerGroup.GET(feature_wa_webhook.Verify{}.APISettings().Path, middleware.BindRequest[string, feature_wa_webhook.Verify](), func(ctx *gin.Context) {
 		requestObject := ctx.MustGet(cfg.Default().Site.HTTPRequestItemKey).(feature_wa_webhook.Verify)
 		responseObject := requestObject.Handle(ctx.Request.Context(), nil, dependencies)
 		if !responseObject.Success {
@@ -31,7 +31,7 @@ func registerWAController(authGroup, unauthGroup *gin.RouterGroup, dependencies 
 		ctx.String(responseObject.StatusCode, responseObject.Data)
 	})
 	// receive something, can be messages, status etc...
-	unauthGroup.POST(feature_wa_webhook.Receive{}.APISettings().Path, func(ctx *gin.Context) {
+	routerGroup.POST(feature_wa_webhook.Receive{}.APISettings().Path, func(ctx *gin.Context) {
 		rawBody, err := ctx.GetRawData()
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "failed to read raw body"})
@@ -46,26 +46,26 @@ func registerWAController(authGroup, unauthGroup *gin.RouterGroup, dependencies 
 		ctx.JSON(responseObject.StatusCode, responseObject)
 	})
 	// embedded signup
-	registerRoute[*dto_wa.EmbeddedSignupResponse, feature_wa_webhook.EmbeddedSignup](unauthGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.EmbeddedSignupResponse, feature_wa_webhook.EmbeddedSignup](routerGroup, dependencies, apiGenerator)
 	// business portfolio
-	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.Get](authGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.UpdateName](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.UpdateName](routerGroup, dependencies, apiGenerator)
 	// business account
-	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Get](authGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.UpdateName](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.UpdateName](routerGroup, dependencies, apiGenerator)
 	// phone number
-	registerRoute[[]dto_wa.PhoneNumber, feature_wa_user_phone_number.List](authGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.UserPhoneNumber, feature_wa_user_phone_number.Create](authGroup, dependencies, apiGenerator)
-	registerRoute[any, feature_wa_phone_number.Delete](authGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_wa.PhoneNumber, feature_wa_user_phone_number.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.UserPhoneNumber, feature_wa_user_phone_number.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_phone_number.Delete](routerGroup, dependencies, apiGenerator)
 	// template
-	registerRoute[*dto.ListResponse[dto_wa.Template], feature_wa_template.List](authGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.Template, feature_wa_template.Create](authGroup, dependencies, apiGenerator)
-	registerRoute[any, feature_wa_template.Delete](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto.ListResponse[dto_wa.Template], feature_wa_template.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.Template, feature_wa_template.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_template.Delete](routerGroup, dependencies, apiGenerator)
 	// analytics
-	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](authGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.PricingAnalytics, feature_wa_business_account.GetCosts](authGroup, dependencies, apiGenerator)
-	registerRoute[[]dto_wa.PhoneNumberMessageAnalytics, feature_wa_phone_number.GetUsage](authGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.PricingAnalytics, feature_wa_phone_number.GetCosts](authGroup, dependencies, apiGenerator)
-	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetCosts](authGroup, dependencies, apiGenerator)
-	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetUsage](authGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.PricingAnalytics, feature_wa_business_account.GetCosts](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_wa.PhoneNumberMessageAnalytics, feature_wa_phone_number.GetUsage](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.PricingAnalytics, feature_wa_phone_number.GetCosts](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetCosts](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetUsage](routerGroup, dependencies, apiGenerator)
 }

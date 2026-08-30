@@ -12,7 +12,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	feature_cli "github.com/jjcheng/wawa-go/internal/feature/cli"
 	"github.com/jjcheng/wawa-go/internal/service"
-	"github.com/jjcheng/wawa-go/setup"
+	"github.com/jjcheng/wawa-go/internal/setup"
 )
 
 var (
@@ -59,8 +59,7 @@ func main() {
 		log.Println(os.Args[1])
 		switch os.Args[1] {
 		case "migration-files":
-			feature_cli.GenerateMigrationFiles(ctx, false)
-			feature_cli.GenerateMigrationFiles(ctx, true)
+			feature_cli.GenerateMigrationFiles(ctx)
 		case "restore-db":
 			feature_cli.RestoreLocalDBFromMigrationFiles()
 		default:
@@ -100,8 +99,7 @@ func showHelp() {
 	ctx := context.Background()
 	switch option {
 	case "1":
-		feature_cli.GenerateMigrationFiles(ctx, false)
-		feature_cli.GenerateMigrationFiles(ctx, true)
+		feature_cli.GenerateMigrationFiles(ctx)
 	case "2":
 		feature_cli.RestoreLocalDBFromMigrationFiles()
 	}

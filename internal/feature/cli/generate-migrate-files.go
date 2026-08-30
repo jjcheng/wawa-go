@@ -16,7 +16,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
-	"github.com/jjcheng/wawa-go/setup"
+	"github.com/jjcheng/wawa-go/internal/setup"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres" // register the postgres driver
@@ -26,16 +26,9 @@ import (
 
 // this does not migrate but generate the migration files (.up.sql and .down.sql)
 // it will first create a temp database using the existing migration files, then compare with local db to generate additional migration files if needed
-func GenerateMigrationFiles(ctx context.Context, forStaging bool) []string {
-	if forStaging {
-		log.Println("========GENERATING STAGING MIGRATION FILES========")
-	} else {
-		log.Println("========GENERATING DEVELOP MIGRATION FILES========")
-	}
+func GenerateMigrationFiles(ctx context.Context) []string {
+	log.Println("========GENERATING MIGRATION FILES========")
 	migrationFolder := "migration"
-	if forStaging {
-		migrationFolder = "migration-staging"
-	}
 	abs, err := filepath.Abs(migrationFolder)
 	if err != nil {
 		panic(err.Error())
@@ -58,14 +51,14 @@ func GenerateMigrationFiles(ctx context.Context, forStaging bool) []string {
 	}
 	//1. migrate the existing .up and .down to migration database
 	log.Println("creating migration database")
-	cfg.Default().Database.CreateMigrationDB()
+	setup.CreateMigrationDB(cfg.Default().Database)
 	mig, err := migrate.New("file://"+abs, cfg.Default().Database.MigrateURL())
 	if err != nil {
 		panic("migrate.New failed: " + err.Error())
 	}
 	defer func() {
 		log.Println("dropping migration database")
-		cfg.Default().Database.DropMigrationDB()
+		setup.DropMigrationDB(cfg.Default().Database)
 	}()
 	log.Println("migrating up")
 	if err := mig.Up(); err != nil && err != migrate.ErrNoChange {

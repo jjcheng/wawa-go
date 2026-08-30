@@ -55,7 +55,7 @@ func CustomRecovery(recovery gin.RecoveryFunc, logger *service.Logger) gin.Handl
 				requestUser, exist := c.Get(cfg.Default().Site.HTTPRequestUserKey)
 				var userId int32
 				if exist {
-					user := requestUser.(dto_account.User)
+					user := requestUser.(*dto_account.User)
 					userId = user.Id
 				}
 				requestItem, exist := c.Get(cfg.Default().Site.HTTPRequestItemKey)
@@ -71,7 +71,7 @@ func CustomRecovery(recovery gin.RecoveryFunc, logger *service.Logger) gin.Handl
 						}
 					}
 				}
-				logger.Fatal(err.(error), c.Request.URL.Path, c.Request.URL.RawQuery, c.Request.Method, c.Request.UserAgent(), c.ClientIP(), string(httpRequest), string(debug.Stack()), userId, requestJSON, http.StatusInternalServerError)
+				logger.Fatal(err.(error), c.Request.URL.Path, c.Request.URL.RawQuery, c.Request.Method, c.Request.UserAgent(), c.ClientIP(), string(httpRequest), string(debug.Stack()), userId, requestJSON, http.StatusInternalServerError, GetRequestID(c))
 				recovery(c, err)
 			}
 		}()

@@ -131,7 +131,7 @@ func (logger *Logger) Warnf(message string, v ...any) {
 }
 
 // = log.Println("[FATAL] ")
-func (logger *Logger) Fatal(err error, path string, query string, method string, userAgent string, remoteAddress string, requestBody string, stack string, appId int32, requestJSON string, statusCode int) {
+func (logger *Logger) Fatal(err error, path string, query string, method string, userAgent string, remoteAddress string, requestBody string, stack string, appId int32, requestJSON string, statusCode int, requestID string) {
 	if logger.telemetryService != nil {
 		dic := logger.newPropertiesDic(err.Error())
 		dic["appId"] = fmt.Sprint(appId)
@@ -144,6 +144,7 @@ func (logger *Logger) Fatal(err error, path string, query string, method string,
 		dic["requestJSON"] = requestJSON
 		dic["stack"] = stack
 		dic["status"] = fmt.Sprint(statusCode)
+		dic["requestId"] = requestID
 		logger.telemetryService.TrackError(err, dic)
 	}
 }

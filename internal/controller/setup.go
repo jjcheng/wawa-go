@@ -26,13 +26,11 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 	registerCommonRoutes(router)
 	apiGenerator := feature.NewAPIGenerator()
 	// router groups
-	authRouterGroup := router.Group("")
-	authRouterGroup.Use(middleware.Authenticate(dependencies))
-	authRouterGroup.Use(middleware.CSRF())
-	unauthRouterGroup := router.Group("")
-	registerAuthController(authRouterGroup, unauthRouterGroup, dependencies, apiGenerator)
-	registerAccountController(authRouterGroup, dependencies, apiGenerator)
-	registerWAController(authRouterGroup, unauthRouterGroup, dependencies, apiGenerator)
+	routerGroup := router.Group("")
+	routerGroup.Use(middleware.Authenticate(dependencies))
+	registerAuthController(routerGroup, dependencies, apiGenerator)
+	registerAccountController(routerGroup, dependencies, apiGenerator)
+	registerWAController(routerGroup, dependencies, apiGenerator)
 	// generate api doc
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		generateAPIDoc(apiGenerator, dependencies.Logger)
@@ -42,14 +40,17 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 func registerCommonRoutes(router *gin.Engine) {
 	router.GET("/health", func(ctx *gin.Context) {
 		healthResponseObject := dto.NewSuccessResponse(map[string]any{"version": cfg.Default().Site.Version, "environment": cfg.Default().Site.Environment})
+		healthResponseObject.RequestId = middleware.GetRequestID(ctx)
 		ctx.JSON(healthResponseObject.StatusCode, healthResponseObject)
 	})
 	router.NoRoute(func(ctx *gin.Context) {
 		responseObject := dto.NewFailedResponse[any](http.StatusBadRequest, "route not found")
+		responseObject.RequestId = middleware.GetRequestID(ctx)
 		ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 	})
 	router.NoMethod(func(ctx *gin.Context) {
 		responseObject := dto.NewFailedResponse[any](http.StatusMethodNotAllowed, "method not allowed")
+		responseObject.RequestId = middleware.GetRequestID(ctx)
 		ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 	})
 	// only serve static content in develop and staging server
@@ -72,6 +73,11 @@ func registerRoute[R any, T feature.RequestObject[R]](server *gin.RouterGroup, d
 		if exist {
 			user = v.(*dto_account.User)
 		}
+		if requestType.APISettings().Auth && user == nil {
+			responseObject := dto.NewFailedResponse[R](http.StatusUnauthorized, "authentication required")
+			ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+			return
+		}
 		// Put gin context in request context for features that need it
 		reqCtx := context.WithValue(ctx.Request.Context(), "gin", ctx)
 		responseObject := requestObject.Handle(reqCtx, user, dependencies)
@@ -79,6 +85,7 @@ func registerRoute[R any, T feature.RequestObject[R]](server *gin.RouterGroup, d
 		responseObject.StartAt = startAt
 		responseObject.EndAt = endAt
 		responseObject.TimeTaken = helper.GetTimeDifferenceInMS(endAt, startAt)
+		responseObject.RequestId = middleware.GetRequestID(ctx)
 		if !responseObject.Success {
 			ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 			return

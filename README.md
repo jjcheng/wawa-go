@@ -22,7 +22,9 @@ az ad sp create-for-rbac \
 
 `make migration-files`
 
-This generate the db migration files. If you are not intenting to merge to staging branch, no need to run this.
+This generates migration SQL files in `migration/`; it does not update a remote database. The CLI creates a temporary comparison database named by `MigrationName`, applies the committed migration files, compares it with the local database, and writes new schema/data files only when changes are found.
+
+Staging uses the same committed `migration/` history. `deploy_staging_db.sh` obtains its remote connection settings from `DB_HOST_EXTERNAL`, `DB_USER_EXTERNAL`, `DB_PASSWORD_EXTERNAL`, `DB_NAME`, `DB_PORT`, and `DB_SSLMODE` in `.env.staging` or `.env`; it never contains database credentials in source.
 
 
 ## grant permissions to the web user paix_web

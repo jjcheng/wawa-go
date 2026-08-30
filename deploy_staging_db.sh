@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # migrate-staging-db.sh - Run staging migrations against Cloud DB
-# WARNING: This applies 'migration-staging' schemas/data to your configured Cloud DB.
+# WARNING: This applies 'migration' schemas/data to your configured Cloud DB.
 # Use caution if this overwrites production data.
 
 set -e
@@ -34,17 +34,29 @@ check_prerequisites() {
 
 run() {
     print_step "Connecting to Cloud Database..."
-    # Configured DSN with safe timeouts
-    # use root user to migrate
-    DSN="postgres://paix_root:KeWXPs8A6zDt8K@@pgm-t4nr29cnn5b1e56bbo.rwlb.singapore.rds.aliyuncs.com:5432/ai?sslmode=disable&connect_timeout=10&options=-c%20lock_timeout%3D2s"
-    
-    print_warning "Source: file://migration-staging"
-    print_warning "Target: pgm-t4nr29cnn5b1e56bbo.rwlb.singapore.rds.aliyuncs.com / ai"
-    
-    # Run migration
-    migrate -source file://migration-staging -database "$DSN" up
-    
-    print_success "Cloud Database updated with Staging Migrations!"
+
+    MIGRATION_DB_HOST="${DB_HOST_EXTERNAL:-}"
+    MIGRATION_DB_USER="${DB_USER_EXTERNAL:-}"
+    MIGRATION_DB_PASSWORD="${DB_PASSWORD_EXTERNAL:-}"
+    MIGRATION_DB_NAME="${DB_NAME:-}"
+    MIGRATION_DB_PORT="${DB_PORT:-5432}"
+    MIGRATION_DB_SSLMODE="${DB_SSLMODE:-disable}"
+
+    if [ -z "$MIGRATION_DB_USER" ] || [ -z "$MIGRATION_DB_PASSWORD" ] || [ -z "$MIGRATION_DB_HOST" ] || [ -z "$MIGRATION_DB_NAME" ]; then
+        print_error "Missing migration database settings. Expected DB_HOST_EXTERNAL, DB_USER_EXTERNAL, DB_PASSWORD_EXTERNAL, DB_NAME, and DB_PORT."
+        exit 1
+    fi
+
+    encoded_user=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$MIGRATION_DB_USER")
+    encoded_password=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$MIGRATION_DB_PASSWORD")
+    DSN="postgres://${encoded_user}:${encoded_password}@${MIGRATION_DB_HOST}:${MIGRATION_DB_PORT}/${MIGRATION_DB_NAME}?sslmode=${MIGRATION_DB_SSLMODE}&connect_timeout=10&options=-c%20lock_timeout%3D2s"
+
+    print_warning "Source: file://migration"
+    print_warning "Target: ${MIGRATION_DB_HOST} / ${MIGRATION_DB_NAME}"
+
+    migrate -source file://migration -database "$DSN" up
+
+    print_success "Cloud Database Successfully Migrated!"
 }
 
 check_prerequisites

@@ -13,6 +13,7 @@ import (
 // SetupRouter initializes and returns a Gin router with middleware and basic routes
 func SetupRouter(logger *service.Logger) *gin.Engine {
 	router := gin.New()
+	router.Use(middleware.RequestID())
 	router.Use(middleware.CORS())
 	err := router.SetTrustedProxies(nil)
 	if err != nil {

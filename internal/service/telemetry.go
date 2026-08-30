@@ -104,7 +104,7 @@ func (ots *Telemetry) GetTracer(name string) trace.Tracer {
 }
 
 // TrackHTTPRequest sends HTTP request telemetry to Application Insights
-func (ots *Telemetry) TrackHTTPRequest(method, path, query, requestJSON, userAgent, remoteAddress, requestBody string, userId int32, responseSize int, duration time.Duration, statusCode int) {
+func (ots *Telemetry) TrackHTTPRequest(method, path, query, requestJSON, userAgent, remoteAddress, requestBody string, userId int32, responseSize int, duration time.Duration, statusCode int, requestID string) {
 	requestTelemetry := appinsights.NewRequestTelemetry(method, path, duration, fmt.Sprint(statusCode))
 	requestTelemetry.Name = "HTTP REQUEST"
 	requestTelemetry.Success = statusCode < 400
@@ -119,6 +119,7 @@ func (ots *Telemetry) TrackHTTPRequest(method, path, query, requestJSON, userAge
 	requestTelemetry.Properties["requestJSON"] = requestJSON
 	requestTelemetry.Properties["status"] = fmt.Sprint(statusCode)
 	requestTelemetry.Properties["responseSize"] = fmt.Sprint(responseSize)
+	requestTelemetry.Properties["requestId"] = requestID
 	ots.appInsightsClient.Track(requestTelemetry)
 	ots.appInsightsClient.Channel().Flush()
 }

@@ -8,7 +8,7 @@ import (
 
 type Repository[T dao.DAO] interface {
 	// READ
-	GetById(ctx context.Context, id int32) (*T, error, bool)
+	GetById(ctx context.Context, id int32) (*T, error)
 	ListAll(ctx context.Context) ([]T, error)
 	// WRITE
 	Insert(ctx context.Context, entity *T) error

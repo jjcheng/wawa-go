@@ -52,6 +52,18 @@ func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context
 	return item, nil
 }
 
+func (accountUserRepository *AccountUserRepository) GetByAccessTokenHash(ctx context.Context, accessTokenHash string) (*dao_account.User, error) {
+	var item *dao_account.User
+	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("access_token_hash = ?", accessTokenHash).First(&item)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			accountUserRepository.logger.ErrorFunction(result.Error, accessTokenHash)
+		}
+		return nil, result.Error
+	}
+	return item, nil
+}
+
 func (accountUserRepository *AccountUserRepository) GetByEmailOrPhoneNumber(ctx context.Context, email string, phoneNumber string) (*dao_account.User, error) {
 	var item *dao_account.User
 	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("email = ? OR phone_number = ?", email, phoneNumber).First(&item)

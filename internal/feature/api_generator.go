@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -39,12 +40,12 @@ func NewAPIGenerator() *APIGenerator {
 		Components: &openapi3.Components{
 			Schemas: make(map[string]*openapi3.SchemaRef),
 			SecuritySchemes: map[string]*openapi3.SecuritySchemeRef{
-				"apiKey": {
+				"userAccessToken": {
 					Value: &openapi3.SecurityScheme{
 						Type:        "apiKey",
 						In:          "header",
-						Name:        "x-api-key",
-						Description: "API Key authentication",
+						Name:        cfg.Default().Site.HTTPHeaderUserAccessTokenKey,
+						Description: "User access token authentication",
 					},
 				},
 			},
@@ -86,7 +87,7 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 	if settings.Auth {
 		operation.Security = &openapi3.SecurityRequirements{
 			{
-				"apiKey": []string{},
+				"userAccessToken": []string{},
 			},
 		}
 	}

@@ -19,6 +19,7 @@ type ResponseBase struct {
 	StartAt     time.Time                  `json:"-"`
 	EndAt       time.Time                  `json:"-"`
 	TimeTaken   int64                      `json:"time_taken" val:"required" description:"time taken in miliseconds" example:"100"`
+	RequestId   string                     `json:"request_id,omitempty" description:"request correlation id"`
 	InputErrors []exception.InputException `json:"input_errors,omitempty" description:"list of input violations with details if any"`
 }
 

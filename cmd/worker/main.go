@@ -10,7 +10,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/service"
-	"github.com/jjcheng/wawa-go/setup"
+	"github.com/jjcheng/wawa-go/internal/setup"
 )
 
 func main() {

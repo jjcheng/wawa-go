@@ -64,6 +64,7 @@ func logRaw(c *gin.Context, startAt time.Time, appId int32, requestBody string, 
 				c.Writer.Size(),
 				time.Since(startAt),
 				c.Writer.Status(),
+				GetRequestID(c),
 			)
 		}()
 	}

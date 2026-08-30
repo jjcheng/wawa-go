@@ -32,17 +32,17 @@ func NewRepository[T dao.DAO](db *gorm.DB, logger *service.Logger) repository.Re
 	return &repository
 }
 
-func (repository *Repository[T]) GetById(ctx context.Context, id int32) (*T, error, bool) {
+func (repository *Repository[T]) GetById(ctx context.Context, id int32) (*T, error) {
 	var entity T
 	result := repository.db.WithContext(ctx).First(&entity, "id = ?", id)
 	if err := result.Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, true
+			return nil, err
 		}
 		repository.logger.ErrorFunction(err, repository.entityName, id)
-		return nil, err, false
+		return nil, err
 	}
-	return &entity, nil, false
+	return &entity, nil
 }
 
 func (repository *Repository[T]) ListAll(ctx context.Context) ([]T, error) {

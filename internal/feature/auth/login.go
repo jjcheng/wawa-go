@@ -7,9 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jjcheng/wawa-go/internal/cfg"
-	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -59,28 +57,21 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	if user.Status == types.UserStatusInactive {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "user is inactive")
 	}
-	ginContext, ok := ctx.Value("gin").(*gin.Context)
-	if !ok {
-		dependencies.Logger.ErrorFunction(errors.New("ginContext not ok"))
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	sessionToken, err := helper.GenerateRandomString(64)
+	accessToken, err := helper.GenerateRandomString(64)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, 64)
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &dao_account.Session{
-		UserId:     user.Id,
-		TokenHash:  helper.HashSHA256Hex(sessionToken),
-		ExpiresAt:  time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second),
-		LastUsedAt: time.Now(),
+	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
+	if err := dependencies.UnitOfWork.AccountUserRepository().UpdateFields(ctx, user.Id, map[string]any{
+		"access_token_hash":   helper.HashSHA256Hex(accessToken),
+		"access_token_expiry": accessTokenExpiry,
 	}); err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	secure := cfg.Default().Site.Environment != types.EnvironmentDevelop
-	ginContext.SetSameSite(http.SameSiteLaxMode)
-	ginContext.SetCookie(cfg.Default().Site.SessionCookieName, sessionToken, cfg.Default().Site.SessionExpirySeconds, "/", "", secure, true)
 	result := dto_account.NewUser(*user)
+	result.AccessToken = accessToken
+	result.AccessTokenExpiry = &accessTokenExpiry
 	return dto.NewSuccessResponse(&result)
 }
 

@@ -1,10 +1,10 @@
 {
   "components": {
     "securitySchemes": {
-      "apiKey": {
-        "description": "API Key authentication",
+      "userAccessToken": {
+        "description": "User access token authentication",
         "in": "header",
-        "name": "x-api-key",
+        "name": "x-wawa-user-access-token",
         "type": "apiKey"
       }
     }
@@ -312,7 +312,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Change password",
@@ -612,7 +612,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Update user profile",
@@ -1240,7 +1240,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Get WhatsApp WABA pricing costs",
@@ -1613,7 +1613,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Get WhatsApp business account usage",
@@ -2275,7 +2275,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Delete WhatsApp template",
@@ -2648,7 +2648,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "List WhatsApp templates",
@@ -3008,7 +3008,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Create WhatsApp template",
@@ -3388,7 +3388,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Get WhatsApp template costs",
@@ -3768,7 +3768,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "Get WhatsApp template usage",
@@ -4109,7 +4109,7 @@
         },
         "security": [
           {
-            "apiKey": []
+            "userAccessToken": []
           }
         ],
         "summary": "List user WhatsApp phone numbers",

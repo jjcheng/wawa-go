@@ -12,7 +12,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/controller"
 	"github.com/jjcheng/wawa-go/internal/service"
-	"github.com/jjcheng/wawa-go/setup"
+	"github.com/jjcheng/wawa-go/internal/setup"
 )
 
 func main() {
@@ -55,19 +55,10 @@ func main() {
 }
 
 func shutdown(loggerService *service.Logger, server *http.Server) {
-	log.Println("shutting down server")
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
-	// shutdown telemetry service first to flush remaining telemetry
-	log.Println("shutting down telemetry service")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
-	if telemetryService := loggerService.TelemetryService(); telemetryService != nil {
-		if err := telemetryService.Shutdown(shutdownCtx); err != nil {
-			loggerService.ErrorFunction(err, "telemetry service failed to shutdown")
-		}
-	}
+	log.Println("shutting down server")
 	// shutdown the HTTP engine
 	log.Println("shutting down HTTP engine")
 	serverCtx, serverCancel := context.WithTimeout(context.Background(), 5*time.Second)
