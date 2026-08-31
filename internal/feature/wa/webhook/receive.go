@@ -43,7 +43,7 @@ func (Receive) APISettings() feature.APISettings {
 		"Receives incoming WhatsApp webhook events and pushes incoming messages into the queue.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
-		"/wa/v1/receive",
+		"/v1/wa/receive",
 		false,
 		false,
 		types.APITagWA,

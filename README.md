@@ -8,6 +8,9 @@ lsof -iTCP:9000 -sTCP:LISTEN
 
 kill [process id]
 
+# business logic
+1 user can only manage 1 WABA
+
 ## before committing to develop branch
 
 `make migration-files`

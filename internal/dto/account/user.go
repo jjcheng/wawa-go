@@ -16,7 +16,7 @@ type User struct {
 	Description       string           `json:"description"`
 	Type              types.UserType   `json:"type"`
 	Status            types.UserStatus `json:"status"`
-	AccessToken       string           `json:"access_token,omitempty" description:"use this access token for subsequent API calls; returned only on login"`
+	AccessToken       string           `json:"access_token,omitempty"`
 	AccessTokenExpiry *time.Time       `json:"access_token_expiry,omitempty" description:"access token expiry time"`
 }
 
@@ -27,13 +27,12 @@ func NewUser(user dao_account.User) User {
 			EntryDate:  user.EntryDate,
 			LastUpdate: user.LastUpdate,
 		},
-		Name:              user.Name,
-		PhoneNumber:       user.PhoneNumber,
-		Email:             user.Email,
-		Description:       user.Description,
-		Type:              user.Type,
-		Status:            user.Status,
-		AccessTokenExpiry: user.AccessTokenExpiry,
+		Name:        user.Name,
+		PhoneNumber: user.PhoneNumber,
+		Email:       user.Email,
+		Description: user.Description,
+		Type:        user.Type,
+		Status:      user.Status,
 	}
 	return d
 }

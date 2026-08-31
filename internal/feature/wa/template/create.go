@@ -95,7 +95,7 @@ func (Create) APISettings() feature.APISettings {
 		"Creates a WhatsApp message template for an authorized WABA.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
-		"/wa/v1/templates",
+		"/v1/wa/templates",
 		true,
 		true,
 		types.APITagWA,

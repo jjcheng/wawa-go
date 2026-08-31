@@ -102,7 +102,7 @@ func Default() *Config {
 				HTTPRequestUserKey:           "HTTP_REQUEST_USER",
 				HTTPRequestItemKey:           "HTTP_REQUEST_ITEM",
 				HTTPRequestIdKey:             "HTTP_REQUEST_ID",
-				HTTPHeaderUserAccessTokenKey: "x-wawa-user-access-token",
+				HTTPHeaderUserAccessTokenKey: "x-user-access-token",
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
 				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days
 			},

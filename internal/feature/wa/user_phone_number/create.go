@@ -65,7 +65,7 @@ func (Create) APISettings() feature.APISettings {
 		"Assigns a WhatsApp phone number to a user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
-		"/wa/v1/user-phone-numbers",
+		"/v1/wa/user-phone-numbers",
 		true,
 		false,
 		types.APITagAccount,

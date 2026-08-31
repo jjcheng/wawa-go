@@ -75,7 +75,7 @@ func (Delete) APISettings() feature.APISettings {
 		"Deletes a WhatsApp message template for an authorized WABA.",
 		types.HttpRequestTypeJSON,
 		http.MethodDelete,
-		"/wa/v1/templates",
+		"/v1/wa/templates",
 		true,
 		true,
 		types.APITagWA,

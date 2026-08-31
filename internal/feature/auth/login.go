@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
+	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -57,18 +58,30 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	if user.Status == types.UserStatusInactive {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "user is inactive")
 	}
+	// create user session
 	accessToken, err := helper.GenerateRandomString(64)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, 64)
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
-	if err := dependencies.UnitOfWork.AccountUserRepository().UpdateFields(ctx, user.Id, map[string]any{
-		"access_token_hash":   helper.HashSHA256Hex(accessToken),
-		"access_token_expiry": accessTokenExpiry,
-	}); err != nil {
+	session := dao_account.Session{
+		UserId:            user.Id,
+		AccessTokenHashed: helper.HashSHA256Hex(accessToken),
+		ExpiresAt:         accessTokenExpiry,
+		LastUsedAt:        time.Now(),
+	}
+	if ip := helper.GetClientIP(ctx); ip != nil {
+		session.IP = *ip
+	}
+	if userAgent := helper.GetUserAgent(ctx); userAgent != nil {
+		session.UserAgent = *userAgent
+	}
+	err = dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session)
+	if err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	// return user
 	result := dto_account.NewUser(*user)
 	result.AccessToken = accessToken
 	result.AccessTokenExpiry = &accessTokenExpiry
@@ -78,10 +91,10 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 func (Login) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"User login",
-		"Authenticates a user with their phone number and password.",
+		"Authenticates a user with their phone number and password, return an access token",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
-		"/auth/v1/login",
+		"/v1/auth/login",
 		false,
 		true,
 		types.APITagAuth,

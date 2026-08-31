@@ -89,7 +89,7 @@ func (GetCosts) APISettings() feature.APISettings {
 		"Gets WhatsApp pricing costs by phone number.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
-		"/wa/v1/phone-numbers/costs",
+		"/v1/wa/phone-numbers/costs",
 		true,
 		false,
 		types.APITagWA,

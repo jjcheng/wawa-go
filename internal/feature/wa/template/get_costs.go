@@ -86,7 +86,7 @@ func (getCosts GetCosts) Handle(ctx context.Context, user *dto_account.User, dep
 }
 
 func (GetCosts) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Get WhatsApp template costs", "Gets cost analytics for WhatsApp message templates.", types.HttpRequestTypeQuery, http.MethodGet, "/wa/v1/templates/costs", true, true, types.APITagWA, []feature.APIError{
+	return feature.NewAPISettings("Get WhatsApp template costs", "Gets cost analytics for WhatsApp message templates.", types.HttpRequestTypeQuery, http.MethodGet, "/v1/wa/templates/costs", true, true, types.APITagWA, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WABA", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),

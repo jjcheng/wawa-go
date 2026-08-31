@@ -65,7 +65,7 @@ func (UpdateName) APISettings() feature.APISettings {
 		"Refreshes and stores the WABA name from the WhatsApp API.",
 		types.HttpRequestTypeJSON,
 		http.MethodPatch,
-		"/wa/v1/business-accounts/name",
+		"/v1/wa/business-accounts/name",
 		true,
 		false,
 		types.APITagAccount,

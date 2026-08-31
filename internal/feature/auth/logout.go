@@ -17,15 +17,10 @@ func (logout Logout) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "authentication required")
 	}
-	if err := dependencies.UnitOfWork.AccountUserRepository().UpdateFields(ctx, user.Id, map[string]any{
-		"access_token_hash":   nil,
-		"access_token_expiry": nil,
-	}); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to clear login session")
-	}
+	dependencies.UnitOfWork.AccountSessionRepository().Logout(ctx, user.Id)
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 
 func (Logout) APISettings() feature.APISettings {
-	return feature.NewAPISettings("User logout", "Ends the authenticated user's session", types.HttpRequestTypeJSON, http.MethodPost, "/auth/v1/logout", true, false, types.APITagAuth, nil)
+	return feature.NewAPISettings("User logout", "Ends the authenticated user's session", types.HttpRequestTypeJSON, http.MethodPost, "/v1/auth/logout", true, false, types.APITagAuth, nil)
 }

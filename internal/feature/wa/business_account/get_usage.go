@@ -89,7 +89,7 @@ func (GetUsage) APISettings() feature.APISettings {
 		"Gets message delivery usage for a WhatsApp Business Account.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
-		"/wa/v1/business-accounts/usage",
+		"/v1/wa/business-accounts/usage",
 		true,
 		true,
 		types.APITagWA,

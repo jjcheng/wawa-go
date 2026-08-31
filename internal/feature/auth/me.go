@@ -17,5 +17,5 @@ func (me Me) Handle(_ context.Context, user *dto_account.User, _ *service.Depend
 }
 
 func (Me) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Get current user", "Returns the authenticated user", types.HttpRequestTypeNone, "GET", "/auth/v1/me", true, false, types.APITagAuth, nil)
+	return feature.NewAPISettings("Get current user", "Returns the authenticated user", types.HttpRequestTypeNone, "GET", "/v1/auth/me", true, false, types.APITagAuth, nil)
 }

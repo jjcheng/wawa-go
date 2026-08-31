@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -17,23 +16,36 @@ import (
 )
 
 type Get struct {
-	MetaWABAId string `form:"meta_waba_id" val:"required" description:"meta WABA id"`
+	//MetaWABAId string `uri:"meta_waba_id" description:"meta WABA id"`
 }
 
 func (get *Get) Validate() []exception.InputException {
-	var errors []exception.InputException
-	get.MetaWABAId = strings.TrimSpace(get.MetaWABAId)
-	if get.MetaWABAId == "" {
-		errors = append(errors, exception.NewInputException("meta_waba_id", "missing Meta WABA id"))
-	}
-	return errors
+	// var errors []exception.InputException
+	// get.MetaWABAId = strings.TrimSpace(get.MetaWABAId)
+	// return errors
+	return nil
 }
 
-func (get Get) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
+func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
+	if user == nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusForbidden, "you are not authenticated")
+	}
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, get.MetaWABAId)
+	// if get.MetaWABAId != "" {
+	// 	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, get.MetaWABAId)
+	// 	if err != nil {
+	// 		if errors.Is(err, gorm.ErrRecordNotFound) {
+	// 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
+	// 		}
+	// 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	// 	}
+	// 	result := dto_wa.NewBusinessAccount(*businessAccount)
+	// 	return dto.NewSuccessResponse(&result)
+	// } else {
+	// get user's business account
+	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByUserId(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
@@ -42,20 +54,22 @@ func (get Get) Handle(ctx context.Context, _ *dto_account.User, dependencies *se
 	}
 	result := dto_wa.NewBusinessAccount(*businessAccount)
 	return dto.NewSuccessResponse(&result)
+	//}
 }
 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp business account",
 		"Gets a WhatsApp business account by its WABA ID.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeNone,
 		http.MethodGet,
-		"/wa/v1/business-accounts",
+		"/v1/wa/business-accounts",
 		true,
 		false,
 		types.APITagAccount,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

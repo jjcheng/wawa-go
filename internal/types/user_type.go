@@ -3,8 +3,9 @@ package types
 type UserType string
 
 const (
-	UserTypeAdmin UserType = "ADMIN" // manage users
-	UserTypeStaff UserType = "STAFF" // manage phone numbers
+	UserTypeAdmin   UserType = "ADMIN"   // can do everything
+	UserTypeStaff   UserType = "SUPPORT" // can send messages
+	UserTypeAccount UserType = "ACCOUNT" // can view usage and cost
 )
 
 var UserTypes = []UserType{UserTypeAdmin, UserTypeStaff}
@@ -17,9 +18,9 @@ const (
 	UserStatusInactive        UserStatus = "INACTIVE"
 )
 
-type CreateUserSource string
+// type CreateUserSource string
 
-const (
-	CreateUserSourceEmbededSignUp CreateUserSource = "EMBEDED_SIGNUP"
-	CreateUserSourceAdmin         CreateUserSource = "ADMIN"
-)
+// const (
+// 	CreateUserSourceEmbededSignUp CreateUserSource = "EMBEDED_SIGNUP"
+// 	CreateUserSourceAdmin         CreateUserSource = "ADMIN"
+// )

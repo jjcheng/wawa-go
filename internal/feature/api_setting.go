@@ -11,7 +11,7 @@ type APISettings struct {
 	Type            types.HttpRequestType
 	Method          string
 	Path            string
-	Auth            bool // if the endpoint need authentication
+	Auth            bool
 	Public          bool
 	Tag             types.APITag
 	Errors          []APIError
@@ -32,7 +32,7 @@ func NewAPISettings(summary string, description string, t types.HttpRequestType,
 		Path:            endpoint,
 		Auth:            auth,
 		Public:          public,
-		Tag:             tag, // Initialize empty tag - can be set manually later
+		Tag:             tag,
 		Errors:          errors,
 		BodyContentType: "application/json",
 	}

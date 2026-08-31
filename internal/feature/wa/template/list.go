@@ -80,7 +80,7 @@ func (List) APISettings() feature.APISettings {
 		"Lists WhatsApp message templates available to the authenticated user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
-		"/wa/v1/templates",
+		"/v1/wa/templates",
 		true,
 		true,
 		types.APITagWA,

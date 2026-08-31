@@ -49,6 +49,47 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) GetByMetaBusin
 	return businessPortfolio, nil
 }
 
+func (businessPortfolioRepository *WABusinessPortfolioRepository) GetByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, error) {
+	var userPhoneNumber dao_wa.UserPhoneNumber
+	var phoneNumber dao_wa.PhoneNumber
+	var businessPortfolio *dao_wa.BusinessPortfolio
+
+	// Get the user's phone number mapping
+	result := businessPortfolioRepository.db.WithContext(ctx).
+		Where("user_id = ?", userId).
+		First(&userPhoneNumber)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessPortfolioRepository.logger.ErrorFunction(result.Error, userId)
+		}
+		return nil, result.Error
+	}
+
+	// Get the phone number details
+	result = businessPortfolioRepository.db.WithContext(ctx).
+		Where("id = ?", userPhoneNumber.PhoneNumberId).
+		First(&phoneNumber)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessPortfolioRepository.logger.ErrorFunction(result.Error, userPhoneNumber.PhoneNumberId)
+		}
+		return nil, result.Error
+	}
+
+	// Get the business portfolio by Meta Business Portfolio ID
+	result = businessPortfolioRepository.db.WithContext(ctx).
+		Where("meta_business_portfolio_id = ?", phoneNumber.MetaBusinessPortfolioId).
+		First(&businessPortfolio)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessPortfolioRepository.logger.ErrorFunction(result.Error, phoneNumber.MetaBusinessPortfolioId)
+		}
+		return nil, result.Error
+	}
+
+	return businessPortfolio, nil
+}
+
 func (businessPortfolioRepository *WABusinessPortfolioRepository) ListByMetaBusinessPortfolioIds(ctx context.Context, metaBusinessPortfolioIds []string) ([]dao_wa.BusinessPortfolio, error) {
 	ids := make([]string, 0, len(metaBusinessPortfolioIds))
 	for _, id := range metaBusinessPortfolioIds {

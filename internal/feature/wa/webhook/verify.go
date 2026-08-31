@@ -55,7 +55,7 @@ func (Verify) APISettings() feature.APISettings {
 		"Verifies webhook subscription challenge from WhatsApp.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
-		"/wa/v1/receive",
+		"/v1/wa/receive",
 		false,
 		false,
 		types.APITagWA,

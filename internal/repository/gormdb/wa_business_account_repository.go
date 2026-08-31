@@ -49,13 +49,65 @@ func (businessAccountRepository *WABusinessAccountRepository) GetByMetaWABAId(ct
 	return businessAccount, nil
 }
 
+func (businessAccountRepository *WABusinessAccountRepository) GetByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessAccount, error) {
+	var userPhoneNumber dao_wa.UserPhoneNumber
+	var phoneNumber dao_wa.PhoneNumber
+	var businessAccount *dao_wa.BusinessAccount
+
+	// Get the user's phone number mapping
+	result := businessAccountRepository.db.WithContext(ctx).
+		Where("user_id = ?", userId).
+		First(&userPhoneNumber)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, userId)
+		}
+		return nil, result.Error
+	}
+
+	// Get the phone number details
+	result = businessAccountRepository.db.WithContext(ctx).
+		Where("id = ?", userPhoneNumber.PhoneNumberId).
+		First(&phoneNumber)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, userPhoneNumber.PhoneNumberId)
+		}
+		return nil, result.Error
+	}
+
+	// Get the business account by WABA ID
+	result = businessAccountRepository.db.WithContext(ctx).
+		Where("meta_waba_id = ?", phoneNumber.MetaWABAId).
+		First(&businessAccount)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, phoneNumber.MetaWABAId)
+		}
+		return nil, result.Error
+	}
+
+	return businessAccount, nil
+}
+
 func (businessAccountRepository *WABusinessAccountRepository) GetBusinessPortfolioByWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessPortfolio, error) {
 	var businessPortfolio *dao_wa.BusinessPortfolio
+	var businessAccount dao_wa.BusinessAccount
+
+	// First get the business account to find the portfolio ID
 	result := businessAccountRepository.db.WithContext(ctx).
-		Table("wa.business_portfolios").
-		Select("wa.business_portfolios.*").
-		Joins("JOIN wa.business_accounts ON wa.business_accounts.meta_business_portfolio_id = wa.business_portfolios.meta_business_portfolio_id").
-		Where("wa.business_accounts.meta_waba_id = ?", metaWABAId).
+		Where("meta_waba_id = ?", metaWABAId).
+		First(&businessAccount)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
+		}
+		return nil, result.Error
+	}
+
+	// Then get the portfolio using the portfolio ID
+	result = businessAccountRepository.db.WithContext(ctx).
+		Where("meta_business_portfolio_id = ?", businessAccount.MetaBusinessPortfolioId).
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -97,4 +149,57 @@ func (businessAccountRepository *WABusinessAccountRepository) ListByMetaWABAIds(
 		return nil, result.Error
 	}
 	return businessAccounts, nil
+}
+
+func (businessAccountRepository *WABusinessAccountRepository) GetBusinessAccountAndPortfolioByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, error) {
+	var userPhoneNumber dao_wa.UserPhoneNumber
+	var phoneNumber dao_wa.PhoneNumber
+	var businessAccount *dao_wa.BusinessAccount
+	var businessPortfolio *dao_wa.BusinessPortfolio
+
+	// Get the user's phone number mapping
+	result := businessAccountRepository.db.WithContext(ctx).
+		Where("user_id = ?", userId).
+		First(&userPhoneNumber)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, userId)
+		}
+		return nil, nil, result.Error
+	}
+
+	// Get the phone number details
+	result = businessAccountRepository.db.WithContext(ctx).
+		Where("id = ?", userPhoneNumber.PhoneNumberId).
+		First(&phoneNumber)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, userPhoneNumber.PhoneNumberId)
+		}
+		return nil, nil, result.Error
+	}
+
+	// Get the business account by WABA ID
+	result = businessAccountRepository.db.WithContext(ctx).
+		Where("meta_waba_id = ?", phoneNumber.MetaWABAId).
+		First(&businessAccount)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, phoneNumber.MetaWABAId)
+		}
+		return nil, nil, result.Error
+	}
+
+	// Get the business portfolio
+	result = businessAccountRepository.db.WithContext(ctx).
+		Where("meta_business_portfolio_id = ?", businessAccount.MetaBusinessPortfolioId).
+		First(&businessPortfolio)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, businessAccount.MetaBusinessPortfolioId)
+		}
+		return nil, nil, result.Error
+	}
+
+	return businessPortfolio, businessAccount, nil
 }

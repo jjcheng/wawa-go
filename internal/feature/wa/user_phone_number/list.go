@@ -85,7 +85,7 @@ func (List) APISettings() feature.APISettings {
 		"Lists the WhatsApp phone numbers assigned to the authenticated user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
-		"/wa/v1/user-phone-numbers",
+		"/v1/wa/user-phone-numbers",
 		true,
 		true,
 		types.APITagWA,

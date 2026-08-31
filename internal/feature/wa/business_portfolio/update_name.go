@@ -58,7 +58,7 @@ func (UpdateName) APISettings() feature.APISettings {
 		"Refreshes and stores the business portfolio name from the WhatsApp API.",
 		types.HttpRequestTypeJSON,
 		http.MethodPatch,
-		"/wa/v1/business-portfolios/name",
+		"/v1/wa/business-portfolios/name",
 		true,
 		false,
 		types.APITagAccount,

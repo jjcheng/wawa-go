@@ -74,6 +74,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	// create business portfolio
 	createBusinessPortfolioResponse := (feature_wa_business_portfolio.Create{
 		MetaBusinessPortfolioId: embeddedSignup.Data.BusinessId,
+		TemporaryCode:           embeddedSignup.Data.Code,
 	}).Handle(ctx, nil, dependencies)
 	if !createBusinessPortfolioResponse.Success {
 		return dto.NewFailedResponse[*dto_wa.EmbeddedSignupResponse](createBusinessPortfolioResponse.StatusCode, createBusinessPortfolioResponse.Message)
@@ -140,7 +141,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 
 // api endpoint only for testing
 func (EmbeddedSignup) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Process WhatsApp embedded signup", "Create the organization, WhatsApp business account, phone number, and user from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/wa/v1/embedded-signup", false, true, types.APITagWA, []feature.APIError{
+	return feature.NewAPISettings("Process WhatsApp embedded signup", "Create the organization, WhatsApp business account, phone number, and user from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/v1/wa/embedded-signup", false, true, types.APITagWA, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("phone number already exists", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),

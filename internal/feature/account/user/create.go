@@ -5,8 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -77,6 +79,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		dependencies.Logger.ErrorFunction(err, create.Password)
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	// create access token and access token expiry
+	accessToken, err := helper.GenerateKey(32)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, "failed to generate access token")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
 	// create app
 	newUser := dao_account.User{
 		Name:         create.Name,
@@ -92,11 +101,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	d := dto_account.NewUser(newUser)
+	d.AccessToken = accessToken
+	d.AccessTokenExpiry = &accessTokenExpiry
 	return dto.NewSuccessResponse(&d)
 }
 
 func (Create) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Create new user", "Allow user to login using password", types.HttpRequestTypeJSON, "POST", "/account/users/v1", true, false, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Create new user", "Allow user to login using password", types.HttpRequestTypeJSON, "POST", "/v1/account/users", true, false, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not admin", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("phone number already exists", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

@@ -75,7 +75,7 @@ func (Delete) APISettings() feature.APISettings {
 		"Removes an assigned WhatsApp phone number from WhatsApp and the local account.",
 		types.HttpRequestTypeJSON,
 		http.MethodDelete,
-		"/wa/v1/phone-numbers",
+		"/v1/wa/phone-numbers",
 		true,
 		false,
 		types.APITagWA,

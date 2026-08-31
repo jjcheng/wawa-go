@@ -19,7 +19,8 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userAccessToken := ctx.GetHeader(cfg.Default().Site.HTTPHeaderUserAccessTokenKey)
 		if userAccessToken != "" {
-			user, err := dependencies.UnitOfWork.AccountUserRepository().GetByAccessTokenHash(ctx.Request.Context(), helper.HashSHA256Hex(userAccessToken))
+			// get session
+			session, err := dependencies.UnitOfWork.AccountSessionRepository().GetByAccessTokenHash(ctx.Request.Context(), helper.HashSHA256Hex(userAccessToken))
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")
@@ -30,8 +31,29 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}
-			if user.AccessTokenExpiry == nil || user.AccessTokenExpiry.Before(time.Now()) {
+			// if expired, return
+			if !session.ExpiresAt.After(time.Now()) {
 				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "session expired, please login again")
+				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+				return
+			}
+			// if revoked, return
+			if session.RevokedAt != nil {
+				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "session revoked, please login again")
+				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+				return
+			}
+			// update last used
+			dependencies.UnitOfWork.AccountSessionRepository().UpdateLastUsed(ctx, session.Id)
+			// get user
+			user, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx.Request.Context(), session.UserId)
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")
+					ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+					return
+				}
+				responseObject := dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}

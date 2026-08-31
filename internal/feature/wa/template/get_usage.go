@@ -86,7 +86,7 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 }
 
 func (GetUsage) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Get WhatsApp template usage", "Gets sent, delivered, and read analytics for WhatsApp message templates.", types.HttpRequestTypeQuery, http.MethodGet, "/wa/v1/templates/usage", true, true, types.APITagWA, []feature.APIError{
+	return feature.NewAPISettings("Get WhatsApp template usage", "Gets sent, delivered, and read analytics for WhatsApp message templates.", types.HttpRequestTypeQuery, http.MethodGet, "/v1/wa/templates/usage", true, true, types.APITagWA, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WABA", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
