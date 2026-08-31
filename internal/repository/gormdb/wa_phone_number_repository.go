@@ -28,10 +28,9 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Get(ctx context.Context, i
 	var phoneNumber *dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("id = ?", id).First(&phoneNumber)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("phone number not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			phoneNumberRepository.logger.ErrorFunction(result.Error, id)
 		}
-		phoneNumberRepository.logger.ErrorFunction(result.Error, id)
 		return nil, result.Error
 	}
 	return phoneNumber, nil
@@ -46,10 +45,9 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioByMeta
 		Where("wa.phone_numbers.meta_phone_number_id = ?", metaPhoneNmberId).
 		First(&businessPortfolio)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("business portfolio not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			phoneNumberRepository.logger.ErrorFunction(result.Error, metaPhoneNmberId)
 		}
-		phoneNumberRepository.logger.ErrorFunction(result.Error, metaPhoneNmberId)
 		return nil, result.Error
 	}
 	return businessPortfolio, nil
@@ -59,10 +57,9 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByBusinessPortfolioId(c
 	var phoneNumber *dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("id = ? AND business_portfolio_id = ?", id, businessPortfolioId).First(&phoneNumber)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("phone number not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			phoneNumberRepository.logger.ErrorFunction(result.Error, id, businessPortfolioId)
 		}
-		phoneNumberRepository.logger.ErrorFunction(result.Error, id, businessPortfolioId)
 		return nil, result.Error
 	}
 	return phoneNumber, nil

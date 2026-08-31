@@ -29,10 +29,9 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) Get(ctx contex
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	result := businessPortfolioRepository.db.WithContext(ctx).Model(&dao_wa.BusinessPortfolio{}).Where("id = ?", id).First(&businessPortfolio)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("business portfolio not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessPortfolioRepository.logger.ErrorFunction(result.Error, id)
 		}
-		businessPortfolioRepository.logger.ErrorFunction(result.Error, id)
 		return nil, result.Error
 	}
 	return businessPortfolio, nil
@@ -42,10 +41,9 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) GetByMetaBusin
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	result := businessPortfolioRepository.db.WithContext(ctx).Model(&dao_wa.BusinessPortfolio{}).Where("meta_business_portfolio_id = ?", metaBusinessPortfolioId).First(&businessPortfolio)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("business portfolio not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessPortfolioRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioId)
 		}
-		businessPortfolioRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioId)
 		return nil, result.Error
 	}
 	return businessPortfolio, nil

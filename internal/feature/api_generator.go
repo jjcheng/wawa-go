@@ -40,12 +40,12 @@ func NewAPIGenerator() *APIGenerator {
 		Components: &openapi3.Components{
 			Schemas: make(map[string]*openapi3.SchemaRef),
 			SecuritySchemes: map[string]*openapi3.SecuritySchemeRef{
-				"userAccessToken": {
+				"apiKey": {
 					Value: &openapi3.SecurityScheme{
 						Type:        "apiKey",
 						In:          "header",
 						Name:        cfg.Default().Site.HTTPHeaderUserAccessTokenKey,
-						Description: "User access token authentication",
+						Description: "API Key authentication",
 					},
 				},
 			},
@@ -87,7 +87,7 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 	if settings.Auth {
 		operation.Security = &openapi3.SecurityRequirements{
 			{
-				"userAccessToken": []string{},
+				"apiKey": []string{},
 			},
 		}
 	}
@@ -103,21 +103,30 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 		operation.Parameters = append(operation.Parameters, param)
 	}
 
-	// Generate request body schema if needed
-	// Request body should not be generated for URI, QUERY, or URI_QUERY types
-	// Note: URI_QUERY corresponds to types.HttpRequestTypeUriQuery
+	// Generate request body schema if needed.
+	// Some endpoints read raw binary data from the request body even though they also
+	// include query/form parameters, so we must allow explicit binary request bodies.
 	hasBody := settings.Type != types.HttpRequestTypeUri &&
-		settings.Type != types.HttpRequestTypeQuery &&
 		settings.Type != types.HttpRequestTypeUriQuery
+	if settings.Type == types.HttpRequestTypeQuery && settings.BodyContentType == "application/json" {
+		hasBody = false
+	}
 
 	if (settings.Method == "POST" || settings.Method == "PUT" || settings.Method == "PATCH") && hasBody {
 		requestSchema := g.generateRequestBodySchema(reflect.TypeOf(requestObj))
+		if requestSchema == nil && settings.BodyContentType == "application/octet-stream" {
+			requestSchema = &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}, Format: "binary"}}
+		}
 		if requestSchema != nil {
+			contentType := settings.BodyContentType
+			if contentType == "" {
+				contentType = "application/json"
+			}
 			operation.RequestBody = &openapi3.RequestBodyRef{
 				Value: &openapi3.RequestBody{
 					Required: true,
 					Content: map[string]*openapi3.MediaType{
-						"application/json": {
+						contentType: {
 							Schema: requestSchema,
 						},
 					},

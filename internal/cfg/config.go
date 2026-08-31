@@ -39,7 +39,6 @@ type SiteConfig struct {
 	HTTPRequestItemKey           string // to retrieve request object from context, used in bindRequest
 	HTTPRequestIdKey             string // to retrieve per-request correlation id from context, used to correlate access/error logs
 	HTTPHeaderUserAccessTokenKey string // to retrieve user access token string from context, used in authenticate
-	LocalTimezone                string
 	SessionExpirySeconds         int
 	GoogleMapAPIKey              string
 	GlobalKeys                   *helper.CryptoKeys
@@ -104,7 +103,6 @@ func Default() *Config {
 				HTTPRequestItemKey:           "HTTP_REQUEST_ITEM",
 				HTTPRequestIdKey:             "HTTP_REQUEST_ID",
 				HTTPHeaderUserAccessTokenKey: "x-wawa-user-access-token",
-				LocalTimezone:                os.Getenv("LOCAL_TIMEZONE"),
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
 				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days
 			},

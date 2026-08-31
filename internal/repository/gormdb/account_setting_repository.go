@@ -41,10 +41,9 @@ func (aiSettingRepository *AISettingRepository) GetByOrganizationId(ctx context.
 	var item *dao_account.Setting
 	result := aiSettingRepository.db.Model(&dao_account.Setting{}).Where("id = ? AND organization_id = ?", id, organizationId).First(&item)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, exception.NewCustomException("setting not found", http.StatusNotFound)
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			aiSettingRepository.logger.ErrorFunction(result.Error, id, organizationId)
 		}
-		aiSettingRepository.logger.ErrorFunction(result.Error, id, organizationId)
 		return nil, exception.NewCustomException("error getting setting", http.StatusInternalServerError)
 	}
 	return item, nil
@@ -54,10 +53,9 @@ func (aiSettingRepository *AISettingRepository) GetByNameAndOrganizationId(ctx c
 	var item *dao_account.Setting
 	result := aiSettingRepository.db.Model(&dao_account.Setting{}).Where("name = ? AND organization_id = ?", name, organizationId).First(&item)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, exception.NewCustomException("setting not found", http.StatusNotFound)
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			aiSettingRepository.logger.ErrorFunction(result.Error, name, organizationId)
 		}
-		aiSettingRepository.logger.ErrorFunction(result.Error, name, organizationId)
 		return nil, exception.NewCustomException("error getting setting", http.StatusInternalServerError)
 	}
 	return item, nil

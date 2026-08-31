@@ -50,10 +50,9 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetValidBusinessAc
 		Where("wa.user_phone_numbers.user_id = ? AND wa.business_accounts.meta_waba_id = ?", userId, metaWABAId).
 		First(&businessAccount)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, gorm.ErrRecordNotFound
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId, metaWABAId)
 		}
-		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId, metaWABAId)
 		return nil, result.Error
 	}
 	return &businessAccount, nil
@@ -71,10 +70,9 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetBusinessPortfol
 		Order("wa.business_accounts.id").
 		First(&businessAccount)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil, errors.New("business account not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId)
 		}
-		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId)
 		return nil, nil, result.Error
 	}
 	// business portfolio
@@ -84,10 +82,9 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetBusinessPortfol
 		Where("meta_business_portfolio_id = ?", businessAccount.MetaBusinessPortfolioId).
 		First(&businessPortfolio)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, nil, errors.New("business portfolio not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId, businessAccount.MetaBusinessPortfolioId)
 		}
-		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId, businessAccount.MetaBusinessPortfolioId)
 		return nil, nil, result.Error
 	}
 	return &businessPortfolio, &businessAccount, nil

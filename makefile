@@ -12,7 +12,6 @@ env:
 	sed -i '' "s|\$${DB_NAME}|$${DB_NAME//&/\\&}|g" .env; \
 	sed -i '' "s|\$${DB_SSLMODE}|$${DB_SSLMODE//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ENVIRONMENT}|$${ENVIRONMENT//&/\\&}|g" .env; \
-	sed -i '' "s|\$${PORTAL_ORIGIN}|$${PORTAL_ORIGIN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${GOOGLE_MAP_APIKEY}|$${GOOGLE_MAP_APIKEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_ID}|$${ALIYUN_OSS_ACCESS_KEY_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_SECRET}|$${ALIYUN_OSS_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
@@ -62,10 +61,10 @@ deploy-staging-fc:
 	@make env target=staging
 	@echo "Running staging deployment to Aliyun FC..."
 	@chmod +x deploy_staging_fc.sh
-	@./deploy_staging_fc.sh
+	@./scripts/deploy_staging_fc.sh
 deploy-staging-db:
 	@echo "Running staging database migration..."
 	@chmod +x deploy_staging_db.sh
-	@./deploy_staging_db.sh
+	@./scripts/deploy_staging_db.sh
 init-debugging:
 	@make env

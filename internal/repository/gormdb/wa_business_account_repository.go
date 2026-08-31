@@ -29,10 +29,9 @@ func (businessAccountRepository *WABusinessAccountRepository) Get(ctx context.Co
 	var businessAccount *dao_wa.BusinessAccount
 	result := businessAccountRepository.db.WithContext(ctx).Model(&dao_wa.BusinessAccount{}).Where("id = ?", id).First(&businessAccount)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("business account not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, id)
 		}
-		businessAccountRepository.logger.ErrorFunction(result.Error, id)
 		return nil, result.Error
 	}
 	return businessAccount, nil
@@ -42,10 +41,9 @@ func (businessAccountRepository *WABusinessAccountRepository) GetByMetaWABAId(ct
 	var businessAccount *dao_wa.BusinessAccount
 	result := businessAccountRepository.db.WithContext(ctx).Model(&dao_wa.BusinessAccount{}).Where("meta_waba_id = ?", metaWABAId).First(&businessAccount)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("business account not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
 		}
-		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
 		return nil, result.Error
 	}
 	return businessAccount, nil
@@ -60,10 +58,9 @@ func (businessAccountRepository *WABusinessAccountRepository) GetBusinessPortfol
 		Where("wa.business_accounts.meta_waba_id = ?", metaWABAId).
 		First(&businessPortfolio)
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, errors.New("business portfolio not found")
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
 		}
-		businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
 		return nil, result.Error
 	}
 	return businessPortfolio, nil

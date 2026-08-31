@@ -6,15 +6,16 @@ import (
 )
 
 type APISettings struct {
-	Summary     string
-	Description string
-	Type        types.HttpRequestType
-	Method      string
-	Path        string
-	Auth        bool // if the endpoint need authentication
-	Public      bool
-	Tag         types.APITag
-	Errors      []APIError
+	Summary         string
+	Description     string
+	Type            types.HttpRequestType
+	Method          string
+	Path            string
+	Auth            bool // if the endpoint need authentication
+	Public          bool
+	Tag             types.APITag
+	Errors          []APIError
+	BodyContentType string
 }
 
 type APIError struct {
@@ -24,16 +25,23 @@ type APIError struct {
 
 func NewAPISettings(summary string, description string, t types.HttpRequestType, method string, endpoint string, auth bool, public bool, tag types.APITag, errors []APIError) APISettings {
 	return APISettings{
-		Summary:     summary,
-		Description: description,
-		Type:        t,
-		Method:      method,
-		Path:        endpoint,
-		Auth:        auth,
-		Public:      public,
-		Tag:         tag, // Initialize empty tag - can be set manually later
-		Errors:      errors,
+		Summary:         summary,
+		Description:     description,
+		Type:            t,
+		Method:          method,
+		Path:            endpoint,
+		Auth:            auth,
+		Public:          public,
+		Tag:             tag, // Initialize empty tag - can be set manually later
+		Errors:          errors,
+		BodyContentType: "application/json",
 	}
+}
+
+func NewBinaryAPISettings(summary string, description string, t types.HttpRequestType, method string, endpoint string, auth bool, public bool, tag types.APITag, errors []APIError) APISettings {
+	settings := NewAPISettings(summary, description, t, method, endpoint, auth, public, tag, errors)
+	settings.BodyContentType = "application/octet-stream"
+	return settings
 }
 
 func NewAPIError(ex exception.Exception) APIError {
