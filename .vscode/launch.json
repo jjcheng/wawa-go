@@ -53,7 +53,7 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "make migrate files",
+      "name": "make migratration files",
       "type": "go",
       "request": "launch",
       "mode": "auto",
@@ -62,18 +62,6 @@
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "make env",
       "args": ["migrate"],
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "make migrate staging files",
-      "type": "go",
-      "request": "launch",
-      "mode": "auto",
-      "program": "${workspaceFolder}/cmd/cli",
-      "env": {},
-      "cwd": "${workspaceFolder}",
-      "preLaunchTask": "make env",
-      "args": ["migrate-staging"],
       "console": "integratedTerminal"
     },
     {

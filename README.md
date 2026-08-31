@@ -8,16 +8,6 @@ lsof -iTCP:9000 -sTCP:LISTEN
 
 kill [process id]
 
-## generate AZURE_CREDENTIALS
-
-az login
-az account show --query id --output tsv
-az ad sp create-for-rbac \
- --name "github-actions-ai-go-staging" \
- --role contributor \
- --scopes /subscriptions/YOUR_SUBSCRIPTION_ID \
- --sdk-auth
-
 ## before committing to develop branch
 
 `make migration-files`
@@ -27,20 +17,20 @@ This generates migration SQL files in `migration/`; it does not update a remote 
 Staging uses the same committed `migration/` history. `deploy_staging_db.sh` obtains its remote connection settings from `DB_HOST_EXTERNAL`, `DB_USER_EXTERNAL`, `DB_PASSWORD_EXTERNAL`, `DB_NAME`, `DB_PORT`, and `DB_SSLMODE` in `.env.staging` or `.env`; it never contains database credentials in source.
 
 
-## grant permissions to the web user paix_web
+## grant permissions to the web user wawa_web
 
 -- Grant usage on the schema
-GRANT USAGE ON SCHEMA public TO paix_web;
+GRANT USAGE ON SCHEMA public TO wawa_web;
 
 -- Grant select, insert, update, delete on all existing tables
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO paix_web;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO wawa_web;
 
 -- Grant usage/select on all sequences (needed for serial/identity columns)
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO paix_web;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO wawa_web;
 
 -- Ensure future tables also have these permissions
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO paix_web;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO paix_web;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO wawa_web;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO wawa_web;
 
 ## deploy fc
 if there is a change of fc_user in RAM, call 
@@ -49,5 +39,5 @@ use `aliyun configure list` to get list of users used
 
 ## https for localhost
 brew install ngrok
-ngrok config add-authtoken 3IOt9OL9Yep2k9AeK4oMseHiHHm_3hhgur73nfUDX4aHvknh2
+ngrok config add-authtoken xxx (in .env.staging NGROK_AUTH_TOKEN)
 ngrok http 9000

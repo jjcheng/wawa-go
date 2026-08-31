@@ -28,6 +28,7 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 	// router groups
 	routerGroup := router.Group("")
 	routerGroup.Use(middleware.Authenticate(dependencies))
+	// register routes
 	registerAuthController(routerGroup, dependencies, apiGenerator)
 	registerAccountController(routerGroup, dependencies, apiGenerator)
 	registerWAController(routerGroup, dependencies, apiGenerator)
@@ -59,7 +60,7 @@ func registerCommonRoutes(router *gin.Engine) {
 	}
 }
 
-func registerRoute[R any, T feature.RequestObject[R]](server *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
+func registerRoute[R any, T feature.Request[R]](server *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
 	var requestType T
 	if requestType.APISettings().Public {
 		responseType := reflect.TypeFor[R]()
@@ -68,15 +69,11 @@ func registerRoute[R any, T feature.RequestObject[R]](server *gin.RouterGroup, d
 	server.Handle(requestType.APISettings().Method, requestType.APISettings().Path, middleware.BindRequest[R, T](), func(ctx *gin.Context) {
 		startAt := time.Now()
 		requestObject := ctx.MustGet(cfg.Default().Site.HTTPRequestItemKey).(T)
+		// try to get user
 		var user *dto_account.User
 		v, exist := ctx.Get(cfg.Default().Site.HTTPRequestUserKey)
 		if exist {
 			user = v.(*dto_account.User)
-		}
-		if requestType.APISettings().Auth && user == nil {
-			responseObject := dto.NewFailedResponse[R](http.StatusUnauthorized, "authentication required")
-			ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
-			return
 		}
 		// Put gin context in request context for features that need it
 		reqCtx := context.WithValue(ctx.Request.Context(), "gin", ctx)

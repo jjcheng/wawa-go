@@ -47,3 +47,4 @@ google_service_account_json.json
 *service_account*.json
 exports
 s.yaml
+bootstrap

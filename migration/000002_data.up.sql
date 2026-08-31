@@ -1,6 +1,6 @@
 BEGIN;
 ALTER TABLE account.users DISABLE TRIGGER USER;
-INSERT INTO "account"."users" ("entry_date","last_update","name","phone_number","email","password_hash","description","type","status","id") VALUES ('2026-08-26 09:26:38.266','2026-08-26 09:39:17.531','jjcheng','6590073708','jj@coreconcept.tech','$2a$10$DK5va.yiZw4CscOW/iMZvuYi6gSTCVVCNz1n.5DlhV2KKQhlD0nee','Test admin user','ADMIN','ACTIVE',1) RETURNING "id";
+INSERT INTO "account"."users" ("entry_date","last_update","name","phone_number","email","password_hash","access_token_hash","access_token_expiry","description","type","status","id") VALUES ('2026-08-26 09:26:38.266','2026-08-26 09:39:17.531','jjcheng','6590073708','jj@coreconcept.tech','$2a$10$DK5va.yiZw4CscOW/iMZvuYi6gSTCVVCNz1n.5DlhV2KKQhlD0nee',NULL,NULL,'Test admin user','ADMIN','ACTIVE',1) RETURNING "id";
 ALTER TABLE account.users ENABLE TRIGGER USER;
 ALTER TABLE wa.business_portfolios DISABLE TRIGGER USER;
 INSERT INTO "wa"."business_portfolios" ("entry_date","last_update","meta_business_portfolio_id","name","access_token","access_token_expires_in","id") VALUES ('2026-08-26 10:51:12.054','2026-08-27 01:14:40.456','849324861267321','CoreConcept','EAAWM5ByCKEABR53NxTcoFzNrnS4VvCZC3rsomeNM7qb8ZCGDEQ8xZBLXLIPU75nQHpzbn7FgQjSE2ptXENZCvBBZAqZCKcA9Wc4VbYcffDC4sNBGx3TUChyJCoV0jlzEZAQSjZBoAA6YI7RofRiuXZBUtWE92zNWM24aYczkDYVyM2oM1LHLHPyqEWjYgHIJqnAZDZD',99999999,1) RETURNING "id";

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net/http/httputil"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -12,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Log returns a gin.HandlerFunc (middleware) that logs requests into Azure appInsights
+// Log returns a gin.HandlerFunc (middleware) that logs a summary line for each request
 func Log(logger *service.Logger) gin.HandlerFunc {
 	skipPaths := []string{"/favicon.ico"}
 	return func(c *gin.Context) {
@@ -25,12 +24,14 @@ func Log(logger *service.Logger) gin.HandlerFunc {
 		}) {
 			return
 		}
+		// get user id
 		requestUser, exist := c.Get(cfg.Default().Site.HTTPRequestUserKey)
-		var appId int32
+		var userId int32
 		if exist {
-			app := requestUser.(*dto_account.User)
-			appId = app.Id
+			user := requestUser.(*dto_account.User)
+			userId = user.Id
 		}
+		// get request item
 		requestItem, exist := c.Get(cfg.Default().Site.HTTPRequestItemKey)
 		var requestJSON string
 		if exist {
@@ -44,28 +45,19 @@ func Log(logger *service.Logger) gin.HandlerFunc {
 				}
 			}
 		}
-		requestBody, _ := httputil.DumpRequest(c.Request, false)
-		logRaw(c, start, appId, string(requestBody), requestJSON, logger)
+		logRaw(c, start, userId, requestJSON, logger)
 	}
 }
 
-func logRaw(c *gin.Context, startAt time.Time, appId int32, requestBody string, requestJSON string, logger *service.Logger) {
-	if telemetryService := logger.TelemetryService(); telemetryService != nil {
-		go func() {
-			telemetryService.TrackHTTPRequest(
-				c.Request.Method,
-				c.Request.URL.Path,
-				c.Request.URL.RawQuery,
-				requestJSON,
-				c.Request.UserAgent(),
-				c.ClientIP(),
-				requestBody,
-				appId,
-				c.Writer.Size(),
-				time.Since(startAt),
-				c.Writer.Status(),
-				GetRequestID(c),
-			)
-		}()
-	}
+func logRaw(c *gin.Context, startAt time.Time, userId int32, requestJSON string, logger *service.Logger) {
+	logger.Access(
+		c.Request.Method,
+		c.Request.URL.Path,
+		c.Writer.Status(),
+		time.Since(startAt),
+		userId,
+		c.ClientIP(),
+		GetRequestID(c),
+		requestJSON,
+	)
 }

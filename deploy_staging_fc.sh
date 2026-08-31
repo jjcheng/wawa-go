@@ -8,7 +8,7 @@ set -e
 set -o pipefail
 
 # Configuration
-FUNC_NAME="paix-go"
+FUNC_NAME="wawa-go"
 FC_REGION="ap-southeast-1"
 # Colors
 RED='\033[0;31m'
@@ -117,10 +117,10 @@ deploy() {
     fi
 
     print_step "Building Go binary..."
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o main cmd/api/main.go
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o main cmd/api/main.go
 
-    print_step "Zipping assets (binary, workflows, www)..."
-    zip -q -r main.zip main workflows/ www/
+    print_step "Zipping assets (binary, www)..."
+    zip -q -r main.zip main www/
 
     OSS_OBJECT="fc-deploy/${FUNC_NAME}/${CURRENT_VERSION}/main.zip"
     print_step "Uploading to OSS (${OSS_BUCKET}/${OSS_OBJECT})..."
@@ -143,6 +143,8 @@ deploy() {
     ALIBABA_CLOUD_ACCESS_KEY_ID="$AK" \
     ALIBABA_CLOUD_ACCESS_KEY_SECRET="$SK" \
     aliyun fc UpdateFunction --region "$FC_REGION" --functionName "$FUNC_NAME" --body "$UPDATE_BODY" >/dev/null
+
+    rm -f main main.zip
 
     print_success "Function code and environment variables updated for ${FUNC_NAME}. Version: ${CURRENT_VERSION}"
 }

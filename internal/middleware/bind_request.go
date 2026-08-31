@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func BindRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+func BindRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	var requestObject T
 	if requestObject.APISettings().Type == types.HttpRequestTypeNone {
 		return bindNoneRequest[R, T]()
@@ -28,7 +28,7 @@ func BindRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
 	}
 }
 
-func bindNoneRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+func bindNoneRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var requestObject T
 		context.Set(cfg.Default().Site.HTTPRequestItemKey, requestObject)
@@ -37,7 +37,7 @@ func bindNoneRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
 }
 
 // handles /intent/2
-func bindURIRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+func bindURIRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var requestObject T
 		if err := context.ShouldBindUri(&requestObject); err != nil {
@@ -52,7 +52,7 @@ func bindURIRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
 }
 
 // handles /intent?id=2
-func bindQueryRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+func bindQueryRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var requestObject T
 		if err := context.ShouldBindQuery(&requestObject); err != nil {
@@ -67,7 +67,7 @@ func bindQueryRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
 }
 
 // handles /intent {"label": "xxx"}
-func bindJSONRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+func bindJSONRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var requestObject T
 		contentEncodingHeader := context.GetHeader("Content-Encoding")
@@ -92,7 +92,7 @@ func bindJSONRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
 }
 
 // handles /intents/2 {"label": "xxx"} which contains both uri and json
-func bindURIAndJSONRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+func bindURIAndJSONRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var requestObject T
 		if err := context.ShouldBindUri(&requestObject); err != nil {
@@ -112,7 +112,7 @@ func bindURIAndJSONRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc 
 }
 
 // handles /intents/1?parent=2 which contains both uri and jquery
-func bindURIAndQueryRequest[R any, T feature.RequestObject[R]]() gin.HandlerFunc {
+func bindURIAndQueryRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var requestObject T
 		if err := context.ShouldBindUri(&requestObject); err != nil {

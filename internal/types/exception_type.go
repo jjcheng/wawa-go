@@ -21,6 +21,6 @@ const (
 )
 
 const (
-	ExceptionMessageInternalServerError string = "Woops, something wrong with our server."
+	ExceptionMessageInternalServerError string = "Sorry, something is wrong with our server."
 	ExceptionMessageBadGateway          string = "Sorry, an error occured at the vendor."
 )

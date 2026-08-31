@@ -2,102 +2,59 @@ package service
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"runtime"
-	"runtime/debug"
+	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
 type Logger struct {
-	debugLogger      *log.Logger
-	infoLogger       *log.Logger
-	errorLogger      *log.Logger
-	warnLogger       *log.Logger
-	fatalLogger      *log.Logger
-	telemetryService *Telemetry
+	out *slog.Logger // stdout: debug/info, JSON encoded for log-service field indexing
+	err *slog.Logger // stderr: warn/error/fatal
 }
 
 func NewLogger() *Logger {
-	return &Logger{
-		telemetryService: NewTelemetry(),
-		debugLogger:      log.New(os.Stdout, "[DEBUG] ", log.LstdFlags),
-		infoLogger:       log.New(os.Stdout, "[INFO] ", log.LstdFlags),
-		errorLogger:      log.New(os.Stderr, "[ERROR] ", log.LstdFlags),
-		warnLogger:       log.New(os.Stderr, "[WARNING] ", log.LstdFlags),
-		fatalLogger:      log.New(os.Stderr, "[FATAL] ", log.LstdFlags),
+	outLevel := slog.LevelInfo
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		outLevel = slog.LevelDebug
 	}
-}
-
-func (logger *Logger) TelemetryService() *Telemetry {
-	return logger.telemetryService
+	return &Logger{
+		out: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: outLevel})),
+		err: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})),
+	}
 }
 
 // = log.Println()
 func (logger *Logger) Infoln(message string) {
-	//logger.infoLogger.Println(message)
-	log.Println(message)
-	if logger.telemetryService != nil {
-		dic := logger.newPropertiesDic(message)
-		logger.telemetryService.TrackEvent("INFO", dic, nil)
-	}
+	logger.out.Info(message)
 }
 
 // = log.Printf()
 func (logger *Logger) Infof(message string, v ...any) {
-	//logger.infoLogger.Printf(message, v...)
-	log.Printf(message, v...)
-	if logger.telemetryService != nil {
-		dic := logger.newPropertiesDic(fmt.Sprintf(message, v...))
-		logger.telemetryService.TrackEvent("INFO", dic, nil)
-	}
+	logger.out.Info(fmt.Sprintf(message, v...))
 }
 
 // only work in develop environment
-// = log.Println("[DEBUG] ")
 func (logger *Logger) Debugln(message string) {
-	if cfg.Default().Site.Environment != types.EnvironmentDevelop {
-		return
-	}
-	logger.debugLogger.Println(message)
+	logger.out.Debug(message)
 }
 
 // only work in develop environment
-// = log.Printf("[DEBUG] ")
 func (logger *Logger) Debugf(message string, v ...any) {
-	if cfg.Default().Site.Environment != types.EnvironmentDevelop {
-		return
-	}
-	logger.debugLogger.Printf(message, v...)
+	logger.out.Debug(fmt.Sprintf(message, v...))
 }
 
 func (logger *Logger) Error(err error) {
-	logger.errorLogger.Println(err.Error())
-	if logger.telemetryService != nil {
-		dic := logger.newPropertiesDic(err.Error())
-		logger.telemetryService.TrackError(err, dic)
-	}
+	logger.err.Error(err.Error())
 }
 
 // function name is auto captured
 func (logger *Logger) ErrorFunction(err error, values ...any) {
 	funcName := getFunctionName(2)
-	var message string
-	if len(values) > 0 {
-		message = fmt.Sprintf("%s(%v)", funcName, values)
-	} else {
-		message = funcName
-	}
-	logger.errorLogger.Printf("\nERROR: %s\nFUNC: %s\n", err.Error(), message)
-	if logger.telemetryService != nil {
-		dic := logger.newPropertiesDic(message)
-		dic["function"] = funcName
-		dic["args"] = fmt.Sprintf("%v", values)
-		dic["stack"] = string(debug.Stack())
-		logger.telemetryService.TrackError(err, dic)
-	}
+	logger.err.Error(err.Error(), "func", funcName, "args", values)
 }
 
 func getFunctionName(skip int) string {
@@ -112,48 +69,43 @@ func getFunctionName(skip int) string {
 	return fn.Name() // returns full path, e.g. "mypkg.(*AppRepository).GetByAPIKey"
 }
 
-// = log.Println("[WARNING] ")
 func (logger *Logger) Warnln(message string) {
-	logger.warnLogger.Println(message)
-	if logger.telemetryService != nil {
-		dic := logger.newPropertiesDic(message)
-		logger.telemetryService.TrackEvent("WARNING", dic, nil)
-	}
+	logger.err.Warn(message)
 }
 
-// = log.Printf("[WARNING] ")
 func (logger *Logger) Warnf(message string, v ...any) {
-	logger.warnLogger.Printf(message, v...)
-	if logger.telemetryService != nil {
-		dic := logger.newPropertiesDic(fmt.Sprintf(message, v...))
-		logger.telemetryService.TrackEvent("WARNING", dic, nil)
-	}
+	logger.err.Warn(fmt.Sprintf(message, v...))
 }
 
-// = log.Println("[FATAL] ")
-func (logger *Logger) Fatal(err error, path string, query string, method string, userAgent string, remoteAddress string, requestBody string, stack string, appId int32, requestJSON string, statusCode int, requestID string) {
-	if logger.telemetryService != nil {
-		dic := logger.newPropertiesDic(err.Error())
-		dic["appId"] = fmt.Sprint(appId)
-		dic["method"] = method
-		dic["path"] = path
-		dic["query"] = query
-		dic["userAgent"] = userAgent
-		dic["remoteAddress"] = remoteAddress
-		dic["requestBody"] = requestBody
-		dic["requestJSON"] = requestJSON
-		dic["stack"] = stack
-		dic["status"] = fmt.Sprint(statusCode)
-		dic["requestId"] = requestID
-		logger.telemetryService.TrackError(err, dic)
+// Access logs a one-line structured summary for a completed HTTP request.
+// requestJSON is only attached in the develop environment to avoid logging request payloads in prod.
+func (logger *Logger) Access(method string, path string, statusCode int, duration time.Duration, userId int32, remoteAddress string, requestId string, requestJSON string) {
+	attrs := []any{
+		"method", method,
+		"path", path,
+		"status", statusCode,
+		"duration", duration.String(),
+		"user_id", userId,
+		"ip", remoteAddress,
+		"request_id", requestId,
 	}
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		attrs = append(attrs, "request_json", requestJSON)
+	}
+	logger.out.Info("request", attrs...)
 }
 
-// will be sent to appInsights
-func (logger *Logger) newPropertiesDic(message string) map[string]string {
-	dic := map[string]string{
-		"environment": string(cfg.Default().Site.Environment),
-		"message":     message,
-	}
-	return dic
+// Fatal logs an unrecovered panic with the request context needed to correlate it via requestId.
+func (logger *Logger) Fatal(err error, path string, query string, method string, userAgent string, remoteAddress string, requestBody string, stack string, userId int32, requestJSON string, statusCode int, requestId string) {
+	logger.err.Error(err.Error(),
+		"method", method,
+		"path", path,
+		"query", query,
+		"status", statusCode,
+		"user_id", userId,
+		"ip", remoteAddress,
+		"user_agent", userAgent,
+		"request_id", requestId,
+		"stack", stack,
+	)
 }

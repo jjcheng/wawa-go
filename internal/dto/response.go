@@ -16,10 +16,10 @@ type ResponseBase struct {
 	Success     bool                       `json:"success" val:"required" description:"is request is success" example:"true"`
 	StatusCode  int                        `json:"status_code" val:"required" description:"http status code" example:"200"`
 	Message     string                     `json:"message,omitempty" description:"error message if not success" example:"owner not found"`
+	RequestId   string                     `json:"request_id,omitempty" description:"request correlation id"`
 	StartAt     time.Time                  `json:"-"`
 	EndAt       time.Time                  `json:"-"`
 	TimeTaken   int64                      `json:"time_taken" val:"required" description:"time taken in miliseconds" example:"100"`
-	RequestId   string                     `json:"request_id,omitempty" description:"request correlation id"`
 	InputErrors []exception.InputException `json:"input_errors,omitempty" description:"list of input violations with details if any"`
 }
 

@@ -11,12 +11,6 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	feature_cli "github.com/jjcheng/wawa-go/internal/feature/cli"
-	"github.com/jjcheng/wawa-go/internal/service"
-	"github.com/jjcheng/wawa-go/internal/setup"
-)
-
-var (
-	_dependencies *service.Dependencies
 )
 
 func main() {
@@ -26,14 +20,6 @@ func main() {
 	log.SetOutput(os.Stdout)
 	log.Println("starting cli")
 	log.Printf("environment: %s\n", cfg.Default().Site.Environment)
-	// setup database
-	logger := service.NewLogger()
-	unitOfWork, err := setup.SetupDatabase(cfg.Default().Database.DSN(), logger)
-	if err != nil {
-		panic(fmt.Sprintf("FAILED to setup database: %v", err.Error()))
-	}
-	// setup services
-	_dependencies = setup.SetupServices(unitOfWork, logger)
 	fmt.Println()
 	// AD-HOC: put any ad-hoc tasks here
 	// crawl("https://www.gofit-gym.com/sg/")
@@ -73,19 +59,6 @@ func main() {
 	case <-quit:
 		fmt.Println()
 		log.Println("received interruption signal")
-	}
-	shutdown(logger)
-}
-
-func shutdown(loggerService *service.Logger) {
-	// shutdown telemetry service first to flush remaining telemetry
-	log.Println("shutting down telemetry service")
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
-	if telemetryService := loggerService.TelemetryService(); telemetryService != nil {
-		if err := telemetryService.Shutdown(shutdownCtx); err != nil {
-			loggerService.ErrorFunction(err, "telemetry service failed to shutdown")
-		}
 	}
 	log.Println("server exiting")
 }

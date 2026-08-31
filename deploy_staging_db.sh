@@ -49,13 +49,15 @@ run() {
 
     encoded_user=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$MIGRATION_DB_USER")
     encoded_password=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$MIGRATION_DB_PASSWORD")
-    DSN="postgres://${encoded_user}:${encoded_password}@${MIGRATION_DB_HOST}:${MIGRATION_DB_PORT}/${MIGRATION_DB_NAME}?sslmode=${MIGRATION_DB_SSLMODE}&connect_timeout=10&options=-c%20lock_timeout%3D2s"
 
+    DSN="postgres://${encoded_user}:${encoded_password}@${MIGRATION_DB_HOST}:${MIGRATION_DB_PORT}/${MIGRATION_DB_NAME}?sslmode=${MIGRATION_DB_SSLMODE}&connect_timeout=10&options=-c%20lock_timeout%3D2s"
+    
     print_warning "Source: file://migration"
     print_warning "Target: ${MIGRATION_DB_HOST} / ${MIGRATION_DB_NAME}"
-
+    
+    # Run migration
     migrate -source file://migration -database "$DSN" up
-
+    
     print_success "Cloud Database Successfully Migrated!"
 }
 

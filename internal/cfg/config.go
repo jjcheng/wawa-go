@@ -2,6 +2,8 @@ package cfg
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"sync"
 
@@ -33,11 +35,10 @@ type SiteConfig struct {
 	Port                         string
 	Version                      string
 	Environment                  types.Environment
-	HTTPRequestOwnerKey          string
-	HTTPRequestUserKey           string
-	HTTPRequestItemKey           string
-	HTTPRequestIdKey             string
-	HTTPHeaderUserAccessTokenKey string
+	HTTPRequestUserKey           string // to retrieve user object from context, used in controller.registerRoute
+	HTTPRequestItemKey           string // to retrieve request object from context, used in bindRequest
+	HTTPRequestIdKey             string // to retrieve per-request correlation id from context, used to correlate access/error logs
+	HTTPHeaderUserAccessTokenKey string // to retrieve user access token string from context, used in authenticate
 	LocalTimezone                string
 	SessionExpirySeconds         int
 	GoogleMapAPIKey              string
@@ -99,14 +100,13 @@ func Default() *Config {
 				Port:                         port,
 				Version:                      os.Getenv("VERSION"),
 				Environment:                  types.Environment(os.Getenv("ENVIRONMENT")),
-				HTTPRequestOwnerKey:          "HTTP_REQUEST_OWNER",
 				HTTPRequestUserKey:           "HTTP_REQUEST_USER",
 				HTTPRequestItemKey:           "HTTP_REQUEST_ITEM",
 				HTTPRequestIdKey:             "HTTP_REQUEST_ID",
 				HTTPHeaderUserAccessTokenKey: "x-wawa-user-access-token",
 				LocalTimezone:                os.Getenv("LOCAL_TIMEZONE"),
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
-				SessionExpirySeconds:         7 * 24 * 60 * 60,
+				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days
 			},
 			AliyunOSS: AliyunOSSConfig{
 				Endpoint:        os.Getenv("ALIYUN_OSS_ENDPOINT"),
@@ -139,12 +139,27 @@ func (config *DatabaseConfig) DSN() string {
 		config.Host, config.Port, config.User, config.Password, config.Name, config.SSLMode)
 }
 
+func (config *DatabaseConfig) URL() string {
+	return config.databaseURL(config.Name)
+}
+
 func (config *DatabaseConfig) MigrateDSN() string {
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s TimeZone=UTC",
 		config.Host, config.Port, config.User, config.Password, config.MigrationName, config.SSLMode)
 }
 
 func (config *DatabaseConfig) MigrateURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		config.User, config.Password, config.Host, config.Port, config.MigrationName, config.SSLMode)
+	return config.databaseURL(config.MigrationName)
+}
+
+func (config *DatabaseConfig) databaseURL(databaseName string) string {
+	query := url.Values{}
+	query.Set("sslmode", config.SSLMode)
+	return (&url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(config.User, config.Password),
+		Host:     net.JoinHostPort(config.Host, config.Port),
+		Path:     "/" + databaseName,
+		RawQuery: query.Encode(),
+	}).String()
 }

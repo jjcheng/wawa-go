@@ -48,46 +48,60 @@ func SetupDatabase(dsn string, loggerService *service.Logger) (repository.UnitOf
 }
 
 func CreateMigrationDB(config cfg.DatabaseConfig) {
-	log.Printf("migration db name: %s\n", config.MigrationName)
+	log.Printf("test db name: %s\n", config.MigrationName)
 	db, err := gorm.Open(postgres.Open(emptyDSN(config)), &gorm.Config{
 		SkipDefaultTransaction: true,
 	})
 	if err != nil {
 		panic(err.Error())
 	}
-	if err := db.Exec(fmt.Sprintf(`
+	// Terminate all connections to the database before dropping
+	err = db.Exec(fmt.Sprintf(`
 		SELECT pg_terminate_backend(pid)
 		FROM pg_stat_activity
 		WHERE datname = '%s' AND pid <> pg_backend_pid()
-	`, config.MigrationName)).Error; err != nil {
+	`, config.MigrationName)).Error
+	if err != nil {
+		// It's okay if this fails (database might not exist)
 		log.Printf("Warning: Could not terminate connections to %s: %v\n", config.MigrationName, err)
 	}
-	if err := db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", config.MigrationName)).Error; err != nil {
+	//drop database first
+	err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", config.MigrationName)).Error
+	if err != nil {
 		panic(err.Error())
 	}
-	if err := db.Exec(fmt.Sprintf("CREATE DATABASE %s", config.MigrationName)).Error; err != nil {
+	//create database
+	err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", config.MigrationName)).Error
+	if err != nil {
 		panic(err.Error())
 	}
-	if err := db.Exec(fmt.Sprintf("ALTER DATABASE %s SET TIMEZONE TO 'UTC'", config.MigrationName)).Error; err != nil {
+	err = db.Exec(fmt.Sprintf("ALTER DATABASE %s SET TIMEZONE TO 'UTC'", config.MigrationName)).Error
+	if err != nil {
 		panic(err.Error())
 	}
 }
 
 func DropMigrationDB(config cfg.DatabaseConfig) {
+	// Connect to the main database instead of the migration database to drop it
 	db, err := gorm.Open(postgres.Open(emptyDSN(config)), &gorm.Config{
 		SkipDefaultTransaction: true,
 	})
 	if err != nil {
 		panic(err.Error())
 	}
-	if err := db.Exec(fmt.Sprintf(`
+	// Terminate all connections to the migration database before dropping
+	err = db.Exec(fmt.Sprintf(`
 		SELECT pg_terminate_backend(pid)
 		FROM pg_stat_activity
 		WHERE datname = '%s' AND pid <> pg_backend_pid()
-	`, config.MigrationName)).Error; err != nil {
+	`, config.MigrationName)).Error
+	if err != nil {
+		// It's okay if this fails (database might not exist)
 		log.Printf("Warning: Could not terminate connections to %s: %v\n", config.MigrationName, err)
 	}
-	if err := db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", config.MigrationName)).Error; err != nil {
+	//drop the migration database
+	err = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s", config.MigrationName)).Error
+	if err != nil {
 		panic(err.Error())
 	}
 }

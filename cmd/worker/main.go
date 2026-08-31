@@ -32,13 +32,5 @@ func main() {
 	log.Println("worker started")
 	setup.StartQueueListener(ctx, dependencies)
 	log.Println("worker stopped")
-	log.Println("shutting down telemetry service")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if telemetryService := logger.TelemetryService(); telemetryService != nil {
-		if err := telemetryService.Shutdown(shutdownCtx); err != nil {
-			logger.ErrorFunction(err, "worker telemetry failed to shutdown")
-		}
-	}
 	log.Println("server exiting")
 }
