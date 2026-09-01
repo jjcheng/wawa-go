@@ -48,6 +48,17 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 		}
 		return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	// check exist
+	existing, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetByUserIdPhoneNumberId(ctx, create.UserId, create.PhoneNumberId)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.UserPhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+	}
+	if existing != nil {
+		d := dto_wa.NewUserPhoneNumber(*existing)
+		return dto.NewSuccessResponse(&d)
+	}
 	userPhoneNumber := dao_wa.UserPhoneNumber{
 		UserId:        create.UserId,
 		PhoneNumberId: create.PhoneNumberId,

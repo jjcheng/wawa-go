@@ -16,11 +16,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type UpdateName struct {
-	MetaWABAId string `json:"meta_waba_id" val:"required" description:"Meta WABA id"`
+type Update struct {
+	MetaWABAId string `uri:"meta_waba_id" val:"required" description:"Meta WABA id"`
 }
 
-func (update *UpdateName) Validate() []exception.InputException {
+func (update *Update) Validate() []exception.InputException {
 	var errors []exception.InputException
 	update.MetaWABAId = strings.TrimSpace(update.MetaWABAId)
 	if update.MetaWABAId == "" {
@@ -29,7 +29,7 @@ func (update *UpdateName) Validate() []exception.InputException {
 	return errors
 }
 
-func (update UpdateName) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
+func (update Update) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
@@ -59,13 +59,13 @@ func (update UpdateName) Handle(ctx context.Context, _ *dto_account.User, depend
 	return dto.NewSuccessResponse(&result)
 }
 
-func (UpdateName) APISettings() feature.APISettings {
+func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Update WhatsApp business account name",
+		"Update WhatsApp business account",
 		"Refreshes and stores the WABA name from the WhatsApp API.",
-		types.HttpRequestTypeJSON,
+		types.HttpRequestTypeUri,
 		http.MethodPatch,
-		"/v1/wa/business-accounts/name",
+		"/v1/wa/business-accounts/:meta_waba_id",
 		true,
 		false,
 		types.APITagAccount,

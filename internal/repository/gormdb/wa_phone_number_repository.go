@@ -65,6 +65,18 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByBusinessPortfolioId(c
 	return phoneNumber, nil
 }
 
+func (phoneNumberRepository *WAPhoneNumberRepository) GetByPhoneNumberId(ctx context.Context, phoneNumberId string) (*dao_wa.PhoneNumber, error) {
+	var phoneNumber *dao_wa.PhoneNumber
+	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", phoneNumberId).First(&phoneNumber)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			phoneNumberRepository.logger.ErrorFunction(result.Error, phoneNumberId)
+		}
+		return nil, result.Error
+	}
+	return phoneNumber, nil
+}
+
 func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessPortfolioId(ctx context.Context, businessPortfolioId int32) (*[]dao_wa.PhoneNumber, error) {
 	var phoneNumbers []dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("business_portfolio_id = ?", businessPortfolioId).Order("id").Find(&phoneNumbers)

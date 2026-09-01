@@ -16,11 +16,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type UpdateName struct {
-	MetaBusinessPortfolioId string `json:"meta_business_portfolio_id" val:"required" description:"Meta business portfolio id"`
+type Update struct {
+	MetaBusinessPortfolioId string `uri:"meta_business_portfolio_id" val:"required" description:"Meta business portfolio id"`
 }
 
-func (update *UpdateName) Validate() []exception.InputException {
+func (update *Update) Validate() []exception.InputException {
 	var errors []exception.InputException
 	update.MetaBusinessPortfolioId = strings.TrimSpace(update.MetaBusinessPortfolioId)
 	if update.MetaBusinessPortfolioId == "" {
@@ -29,7 +29,7 @@ func (update *UpdateName) Validate() []exception.InputException {
 	return errors
 }
 
-func (update UpdateName) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessPortfolio] {
+func (update Update) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessPortfolio] {
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessPortfolio](errors)
 	}
@@ -44,21 +44,23 @@ func (update UpdateName) Handle(ctx context.Context, _ *dto_account.User, depend
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
-	existing.Name = businessName
-	if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, existing); err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if existing.Name != businessName {
+		existing.Name = businessName
+		if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, existing); err != nil {
+			return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
 	}
 	result := dto_wa.NewBusinessPortfolio(*existing, false)
 	return dto.NewSuccessResponse(&result)
 }
 
-func (UpdateName) APISettings() feature.APISettings {
+func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Update WhatsApp business portfolio name",
-		"Refreshes and stores the business portfolio name from the WhatsApp API.",
-		types.HttpRequestTypeJSON,
+		"Update WhatsApp business portfolio",
+		"Refreshes and stores the business portfolio name and logo from the WhatsApp API.",
+		types.HttpRequestTypeUri,
 		http.MethodPatch,
-		"/v1/wa/business-portfolios/name",
+		"/v1/wa/business-portfolios/:meta_business_portfolio_id",
 		true,
 		false,
 		types.APITagAccount,

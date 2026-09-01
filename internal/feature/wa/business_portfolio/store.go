@@ -16,45 +16,41 @@ import (
 	"gorm.io/gorm"
 )
 
-type Create struct {
+type Store struct {
 	MetaBusinessPortfolioId string `json:"meta_business_portfolio_id" val:"required" description:"return in embedded signup"`
-	TemporaryCode           string `json:"temporary_code" val:"required" description:"temporary code returned in embedded signup"`
+	AccessToken             string `json:"access_token" val:"required" description:"access token exchanged from authorization code during embedded signup"`
 }
 
-func (create *Create) Validate() []exception.InputException {
+func (store *Store) Validate() []exception.InputException {
 	var errors []exception.InputException
-	create.MetaBusinessPortfolioId = strings.TrimSpace(create.MetaBusinessPortfolioId)
-	create.TemporaryCode = strings.TrimSpace(create.TemporaryCode)
-	if create.MetaBusinessPortfolioId == "" {
+	store.MetaBusinessPortfolioId = strings.TrimSpace(store.MetaBusinessPortfolioId)
+	store.AccessToken = strings.TrimSpace(store.AccessToken)
+	if store.MetaBusinessPortfolioId == "" {
 		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing Meta business portfolio id"))
 	}
-	if create.TemporaryCode == "" {
-		errors = append(errors, exception.NewInputException("temporary_token", "missing temporary code"))
+	if store.AccessToken == "" {
+		errors = append(errors, exception.NewInputException("access_token", "missing access token"))
 	}
 	return errors
 }
 
-func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessPortfolio] {
-	if errors := create.Validate(); len(errors) > 0 {
+func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessPortfolio] {
+	if errors := store.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessPortfolio](errors)
 	}
-	existing, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, create.MetaBusinessPortfolioId)
+	existing, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, store.MetaBusinessPortfolioId)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	businessTokenResponse, err := dependencies.Whatsapp.GetBusinessAccessToken(ctx, create.TemporaryCode)
+	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, store.MetaBusinessPortfolioId, store.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, types.ExceptionMessageBadGateway)
-	}
-	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, create.MetaBusinessPortfolioId, businessTokenResponse.AccessToken)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, err.Error())
 	}
 	if existing != nil {
 		if existing.Name != businessName {
 			existing.Name = businessName
-			existing.AccessToken = businessTokenResponse.AccessToken
-			existing.AccessTokenExpiresIn = int32(businessTokenResponse.ExpiresIn)
+			existing.AccessToken = store.AccessToken
+			// need to return error here becuase if access token is not stored, everything does not work
 			if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, existing); err != nil {
 				return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 			}
@@ -63,10 +59,9 @@ func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependenci
 		return dto.NewSuccessResponse(&d)
 	}
 	businessPortfolio := dao_wa.BusinessPortfolio{
-		MetaBusinessPortfolioId: create.MetaBusinessPortfolioId,
+		MetaBusinessPortfolioId: store.MetaBusinessPortfolioId,
 		Name:                    businessName,
-		AccessToken:             businessTokenResponse.AccessToken,
-		AccessTokenExpiresIn:    int32(businessTokenResponse.ExpiresIn),
+		AccessToken:             store.AccessToken,
 	}
 	if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Insert(ctx, &businessPortfolio); err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

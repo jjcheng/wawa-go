@@ -3,13 +3,11 @@ package service
 import (
 	"bytes"
 	"context"
-	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -327,35 +325,25 @@ type WhatsAppMediaUploadResponse struct {
 type WhatsAppBusinessTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type,omitempty"`
-	ExpiresIn   int64  `json:"expires_in,omitempty"`
 }
 
-// use code returned in embedded signup for a business access token
-func (whatsapp *Whatsapp) GetBusinessAccessToken(ctx context.Context, code string) (*WhatsAppBusinessTokenResponse, error) {
-	code = strings.TrimSpace(code)
-	if code == "" {
-		return nil, fmt.Errorf("code is required")
+func (whatsapp *Whatsapp) ExchangeAccessToken(ctx context.Context, authorizationCode string) (string, error) {
+	payload := map[string]string{
+		"client_id":     whatsapp.appID,
+		"client_secret": whatsapp.appSecret,
+		"code":          authorizationCode,
+		"grant_type":    "authorization_code",
 	}
-	if whatsapp.appID == "" {
-		return nil, fmt.Errorf("Meta app ID is not configured")
-	}
-	if whatsapp.appSecret == "" {
-		return nil, fmt.Errorf("Meta app secret is not configured")
-	}
-	query := url.Values{}
-	query.Set("client_id", whatsapp.appID)
-	query.Set("client_secret", whatsapp.appSecret)
-	query.Set("code", code)
-	endpoint := fmt.Sprintf("%s/%s/oauth/access_token?%s", whatsapp.baseURL, whatsapp.apiVersion, query.Encode())
+	endpoint := fmt.Sprintf("%s/%s/oauth/access_token", whatsapp.baseURL, whatsapp.apiVersion)
 	var tokenResponse WhatsAppBusinessTokenResponse
-	if err := whatsapp.doJSONRequest(ctx, "get_business_access_token", http.MethodGet, endpoint, nil, &tokenResponse, ""); err != nil {
-		whatsapp.logger.ErrorFunction(err, code)
-		return nil, err
+	if err := whatsapp.doJSONRequest(ctx, "exchange_access_token", http.MethodPost, endpoint, payload, &tokenResponse, ""); err != nil {
+		whatsapp.logger.ErrorFunction(err)
+		return "", err
 	}
 	if strings.TrimSpace(tokenResponse.AccessToken) == "" {
-		return nil, fmt.Errorf("business access token is missing from Meta response")
+		return "", fmt.Errorf("business access token is missing from Meta response")
 	}
-	return &tokenResponse, nil
+	return tokenResponse.AccessToken, nil
 }
 
 func (whatsapp *Whatsapp) DownloadMedia(ctx context.Context, mediaID string, businessAccessToken string) ([]byte, string, error) {
@@ -460,26 +448,26 @@ func (whatsapp *Whatsapp) UploadMedia(ctx context.Context, phoneNumberID string,
 	return uploadResponse.ID, nil
 }
 
-func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
-	phoneNumberID = strings.TrimSpace(phoneNumberID)
-	if phoneNumberID == "" {
-		return fmt.Errorf("phone number ID is required")
-	}
-	pinNumber, err := cryptorand.Int(cryptorand.Reader, big.NewInt(1000000))
-	if err != nil {
-		return fmt.Errorf("failed to generate registration PIN: %w", err)
-	}
-	payload := map[string]any{
-		"messaging_product": WhatsAppMessagingProduct,
-		"pin":               fmt.Sprintf("%06d", pinNumber.Int64()),
-	}
-	endpoint := whatsapp.buildEndpoint(phoneNumberID, "register")
-	if err := whatsapp.doJSONRequest(ctx, "register_phone_number", http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
-		whatsapp.logger.ErrorFunction(err, phoneNumberID)
-		return err
-	}
-	return nil
-}
+// func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
+// 	phoneNumberID = strings.TrimSpace(phoneNumberID)
+// 	if phoneNumberID == "" {
+// 		return fmt.Errorf("phone number ID is required")
+// 	}
+// 	pinNumber, err := cryptorand.Int(cryptorand.Reader, big.NewInt(1000000))
+// 	if err != nil {
+// 		return fmt.Errorf("failed to generate registration PIN: %w", err)
+// 	}
+// 	payload := map[string]any{
+// 		"messaging_product": WhatsAppMessagingProduct,
+// 		"pin":               fmt.Sprintf("%06d", pinNumber.Int64()),
+// 	}
+// 	endpoint := whatsapp.buildEndpoint(phoneNumberID, "register")
+// 	if err := whatsapp.doJSONRequest(ctx, "register_phone_number", http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
+// 		whatsapp.logger.ErrorFunction(err, phoneNumberID)
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
 	phoneNumberID = strings.TrimSpace(phoneNumberID)
@@ -502,15 +490,12 @@ func (whatsapp *Whatsapp) GetBusinessName(ctx context.Context, metaBusinessPortf
 	if metaBusinessPortfolioId == "" {
 		return "", fmt.Errorf("metaBusinessPortfolioId is required")
 	}
-	if _, err := strconv.ParseUint(metaBusinessPortfolioId, 10, 64); err != nil {
-		return "", fmt.Errorf("invalid metaBusinessPortfolioId: must be a numeric Meta ID")
-	}
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaBusinessPortfolioId))
 	query := url.Values{}
 	query.Set("fields", "name")
 	endpoint += "?" + query.Encode()
 	var response WhatsAppBusinessResponse
-	if err := whatsapp.doJSONRequest(ctx, "get_business_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "get_business_name_and_logo", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, metaBusinessPortfolioId)
 		return "", err
 	}
@@ -524,6 +509,9 @@ func (whatsapp *Whatsapp) GetWABAName(ctx context.Context, wabaId string, busine
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
 		return "", fmt.Errorf("wabaId is required")
+	}
+	if _, err := strconv.ParseUint(wabaId, 10, 64); err != nil {
+		return "", fmt.Errorf("invalid wabaId: must be a numeric Meta ID")
 	}
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
 	query := url.Values{}

@@ -37,8 +37,8 @@ func (updateStatus *UpdateStatus) Validate() []exception.InputException {
 }
 
 func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
-	if user.Type != types.UserTypeAdmin {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not admin")
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
 	}
 	if errors := updateStatus.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
@@ -80,7 +80,7 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 
 func (UpdateStatus) APISettings() feature.APISettings {
 	return feature.NewAPISettings("Admin update user status", "Enable or disable a user. Only admin can update user status.", types.HttpRequestTypeJSON, "PATCH", "/v1/account/admin/user-status", true, false, types.APITagAccount, []feature.APIError{
-		feature.NewAPIError(*exception.NewCustomException("you are not admin", http.StatusUnauthorized)),
+		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("you cannot update status of yourself", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException("you are not authorized to update this user", http.StatusUnauthorized)),

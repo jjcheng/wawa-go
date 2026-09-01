@@ -26,8 +26,8 @@ func (delete *Delete) Validate() []exception.InputException {
 }
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
-	if user.Type != types.UserTypeAdmin {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to remove this phone number")
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
 	}
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
@@ -81,7 +81,7 @@ func (Delete) APISettings() feature.APISettings {
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized to remove this phone number", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("Meta business portfolio not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

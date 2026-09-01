@@ -5,8 +5,10 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa_account "github.com/jjcheng/wawa-go/internal/feature/wa/account"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
@@ -46,13 +48,13 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 		ctx.JSON(responseObject.StatusCode, responseObject)
 	})
 	// embedded signup
-	registerRoute[*dto_wa.EmbeddedSignupResponse, feature_wa_webhook.EmbeddedSignup](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_account.User, feature_wa_account.EmbeddedSignup](routerGroup, dependencies, apiGenerator)
 	// business portfolio
 	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.Get](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.UpdateName](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.Update](routerGroup, dependencies, apiGenerator)
 	// business account
 	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Get](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.UpdateName](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Update](routerGroup, dependencies, apiGenerator)
 	// phone number
 	registerRoute[[]dto_wa.PhoneNumber, feature_wa_user_phone_number.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.UserPhoneNumber, feature_wa_user_phone_number.Create](routerGroup, dependencies, apiGenerator)
