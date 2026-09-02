@@ -7,27 +7,6 @@ type MessageAnalytics struct {
 	DataPoints   []MessageAnalyticsDataPoint `json:"data_points"`
 }
 
-type PricingAnalytics struct {
-	Data []PricingAnalyticsData `json:"data"`
-}
-
-type PricingAnalyticsData struct {
-	DataPoints  []PricingAnalyticsDataPoint `json:"data_points"`
-	Granularity string                      `json:"granularity,omitempty"`
-}
-
-type PricingAnalyticsDataPoint struct {
-	Start           int64   `json:"start"`
-	End             int64   `json:"end"`
-	PhoneNumber     string  `json:"phone_number,omitempty"`
-	Country         string  `json:"country,omitempty"`
-	Tier            string  `json:"tier,omitempty"`
-	PricingType     string  `json:"pricing_type,omitempty"`
-	PricingCategory string  `json:"pricing_category,omitempty"`
-	Volume          int64   `json:"volume,omitempty"`
-	Cost            float64 `json:"cost,omitempty"`
-}
-
 type MessageAnalyticsDataPoint struct {
 	Start       int64  `json:"start"`
 	End         int64  `json:"end"`

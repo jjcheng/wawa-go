@@ -65,9 +65,6 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[any, feature_wa_template.Delete](routerGroup, dependencies, apiGenerator)
 	// analytics
 	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.PricingAnalytics, feature_wa_business_account.GetCosts](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.PhoneNumberMessageAnalytics, feature_wa_phone_number.GetUsage](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.PricingAnalytics, feature_wa_phone_number.GetCosts](routerGroup, dependencies, apiGenerator)
-	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetCosts](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetUsage](routerGroup, dependencies, apiGenerator)
 }

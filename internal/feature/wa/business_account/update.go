@@ -47,11 +47,11 @@ func (update Update) Handle(ctx context.Context, _ *dto_account.User, dependenci
 		}
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	wabaName, err := dependencies.Whatsapp.GetWABAName(ctx, update.MetaWABAId, businessPortfolio.AccessToken)
+	waba, err := dependencies.Whatsapp.GetWABA(ctx, update.MetaWABAId, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
-	existing.Name = wabaName
+	existing.Name = waba.Name
 	if err := dependencies.UnitOfWork.WABusinessAccountRepository().Update(ctx, existing); err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

@@ -511,9 +511,6 @@ func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID s
 	if phoneNumberID == "" {
 		return fmt.Errorf("phone number ID is required")
 	}
-	if _, err := strconv.ParseUint(phoneNumberID, 10, 64); err != nil {
-		return fmt.Errorf("invalid phone number ID: must be a numeric Meta ID")
-	}
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
 	if err := whatsapp.doJSONRequest(ctx, "remove_phone_number", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, phoneNumberID)
@@ -532,35 +529,12 @@ func (whatsapp *Whatsapp) GetBusinessName(ctx context.Context, metaBusinessPortf
 	query.Set("fields", "name")
 	endpoint += "?" + query.Encode()
 	var response WhatsAppBusinessResponse
-	if err := whatsapp.doJSONRequest(ctx, "get_business_name_and_logo", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "get_business_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, metaBusinessPortfolioId)
 		return "", err
 	}
 	if strings.TrimSpace(response.Name) == "" {
 		return "", fmt.Errorf("business name is missing from the WhatsApp API response")
-	}
-	return response.Name, nil
-}
-
-func (whatsapp *Whatsapp) GetWABAName(ctx context.Context, wabaId string, businessAccessToken string) (string, error) {
-	wabaId = strings.TrimSpace(wabaId)
-	if wabaId == "" {
-		return "", fmt.Errorf("wabaId is required")
-	}
-	if _, err := strconv.ParseUint(wabaId, 10, 64); err != nil {
-		return "", fmt.Errorf("invalid wabaId: must be a numeric Meta ID")
-	}
-	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
-	query := url.Values{}
-	query.Set("fields", "name,currency,timezone_id")
-	endpoint += "?" + query.Encode()
-	var response WhatsAppWABAResponse
-	if err := whatsapp.doJSONRequest(ctx, "get_waba_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-		whatsapp.logger.ErrorFunction(err, wabaId)
-		return "", err
-	}
-	if strings.TrimSpace(response.Name) == "" {
-		return "", fmt.Errorf("WABA name is missing from the WhatsApp API response")
 	}
 	return response.Name, nil
 }
@@ -598,39 +572,6 @@ func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start
 		Analytics dto_wa.MessageAnalytics `json:"analytics"`
 	}
 	if err := whatsapp.doJSONRequest(ctx, "get_waba_usage", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-		whatsapp.logger.ErrorFunction(err, wabaId)
-		return nil, err
-	}
-	return &response.Analytics, nil
-}
-
-func (whatsapp *Whatsapp) GetWABAPricingCosts(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.PricingAnalytics, error) {
-	wabaId = strings.TrimSpace(wabaId)
-	if wabaId == "" {
-		return nil, fmt.Errorf("wabaId is required")
-	}
-	query := url.Values{}
-	query.Set("fields", fmt.Sprintf("pricing_analytics.start(%d).end(%d).granularity(%s).metric_types([%s])", start, end, granularity, strconv.Quote("COST")))
-	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
-	var response struct {
-		Analytics dto_wa.PricingAnalytics `json:"pricing_analytics"`
-	}
-	if err := whatsapp.doJSONRequest(ctx, "get_waba_pricing_costs", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-		whatsapp.logger.ErrorFunction(err, wabaId)
-		return nil, err
-	}
-	return &response.Analytics, nil
-}
-
-func (whatsapp *Whatsapp) GetPhoneNumberPricingCosts(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.PricingAnalytics, error) {
-	wabaId = strings.TrimSpace(wabaId)
-	query := url.Values{}
-	query.Set("fields", fmt.Sprintf("pricing_analytics.start(%d).end(%d).granularity(%s).metric_types([%s]).dimensions([%s])", start, end, granularity, strconv.Quote("COST"), strconv.Quote("PHONE")))
-	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
-	var response struct {
-		Analytics dto_wa.PricingAnalytics `json:"pricing_analytics"`
-	}
-	if err := whatsapp.doJSONRequest(ctx, "get_phone_number_pricing_costs", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
 		return nil, err
 	}
@@ -753,10 +694,6 @@ func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, 
 	return response.Data, response.Paging, nil
 }
 
-func (whatsapp *Whatsapp) GetTemplateCosts(ctx context.Context, wabaId string, start string, end string, templateIds []string, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
-	return whatsapp.getTemplateAnalytics(ctx, "get_template_costs", wabaId, start, end, templateIds, "cost", businessAccessToken)
-}
-
 func (whatsapp *Whatsapp) EnableTemplateInsights(ctx context.Context, wabaId string, businessAccessToken string) error {
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
@@ -845,6 +782,7 @@ func (whatsapp *Whatsapp) DeleteTemplate(ctx context.Context, wabaId string, nam
 	return nil
 }
 
+// GetPhoneNumberStatus returns the connection status and code verification status, e.g. CONNECTED and VERIFIED once registration succeeded.
 func (whatsapp *Whatsapp) GetPhoneNumber(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) (*WhatsAppPhoneNumberDetailsResponse, error) {
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaPhoneNumberId))
 	query := url.Values{}
@@ -859,15 +797,6 @@ func (whatsapp *Whatsapp) GetPhoneNumber(ctx context.Context, metaPhoneNumberId 
 		return nil, fmt.Errorf("display phone number or verified name is missing from the WhatsApp API response")
 	}
 	return &response, nil
-}
-
-// GetPhoneNumberStatus returns the connection status and code verification status, e.g. CONNECTED and VERIFIED once registration succeeded.
-func (whatsapp *Whatsapp) GetPhoneNumberStatus(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) (string, string, error) {
-	response, err := whatsapp.GetPhoneNumber(ctx, metaPhoneNumberId, businessAccessToken)
-	if err != nil {
-		return "", "", err
-	}
-	return response.Status, response.CodeVerificationStatus, nil
 }
 
 func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, message *MessageQueueMessage, handler func(incomingMessage dto_wa.IncomingMessage) error, historyHandler func(wabaID string, incomingMessage dto_wa.IncomingMessage) error) {

@@ -51,15 +51,15 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 		}
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	wabaName, err := dependencies.Whatsapp.GetWABAName(ctx, store.MetaWABAId, businessPortfolio.AccessToken)
+	waba, err := dependencies.Whatsapp.GetWABA(ctx, store.MetaWABAId, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	var businessAccount dao_wa.BusinessAccount
 	if existing != nil {
 		businessAccount = *existing
-		if businessAccount.Name != wabaName {
-			businessAccount.Name = wabaName
+		if businessAccount.Name != waba.Name {
+			businessAccount.Name = waba.Name
 			// ignore error if any
 			_ = dependencies.UnitOfWork.WABusinessAccountRepository().Update(ctx, &businessAccount)
 		}
@@ -67,7 +67,7 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 		businessAccount = dao_wa.BusinessAccount{
 			MetaBusinessPortfolioId: store.MetaBusinessProtfolioId,
 			MetaWABAId:              store.MetaWABAId,
-			Name:                    wabaName,
+			Name:                    waba.Name,
 		}
 		if err := dependencies.UnitOfWork.WABusinessAccountRepository().Insert(ctx, &businessAccount); err != nil {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
