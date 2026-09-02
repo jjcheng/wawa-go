@@ -20,8 +20,14 @@ type TemplateListResponse struct {
 }
 
 type TemplatePaging struct {
-	Previous string `json:"previous,omitempty"`
-	Next     string `json:"next,omitempty"`
+	Previous string                 `json:"previous"`
+	Next     string                 `json:"next"`
+	Cursors  *TemplatePagingCursors `json:"cursors,omitempty"`
+}
+
+type TemplatePagingCursors struct {
+	Before string `json:"before,omitempty"`
+	After  string `json:"after,omitempty"`
 }
 
 type TemplateAnalytics struct {

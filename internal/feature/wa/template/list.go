@@ -18,8 +18,8 @@ import (
 
 type List struct {
 	MetaWABAId string `form:"meta_waba_id" val:"required" description:"Meta WABA id"`
-	Before     string `form:"before" description:"optional Meta pagination cursor"`
-	After      string `form:"after" description:"optional Meta pagination cursor"`
+	Before     string `form:"before" description:"optional Meta pagination cursor for the previous page"`
+	After      string `form:"after" description:"optional Meta pagination cursor for the next page"`
 	Limit      int    `form:"limit" description:"optional number of templates per page"`
 }
 
@@ -33,6 +33,9 @@ func (list *List) Validate() []exception.InputException {
 	inputErrors := []exception.InputException{}
 	if list.MetaWABAId == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("meta_waba_id", "missing Meta WABA id"))
+	}
+	if list.Before != "" && list.After != "" {
+		inputErrors = append(inputErrors, exception.NewInputException("before", "before and after cannot both be provided"))
 	}
 	if list.Limit < 0 || list.Limit > 100 {
 		inputErrors = append(inputErrors, exception.NewInputException("limit", "limit must be between 1 and 100"))
@@ -69,6 +72,10 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	templates = append(templates, wabaTemplates...)
 	additionalData := map[string]any{}
 	if paging != nil {
+		if paging.Cursors != nil {
+			additionalData["before"] = paging.Cursors.Before
+			additionalData["after"] = paging.Cursors.After
+		}
 		additionalData["previous"] = paging.Previous
 		additionalData["next"] = paging.Next
 	}

@@ -651,23 +651,23 @@ func (whatsapp *Whatsapp) getMessageAnalyticsForPhoneNumber(ctx context.Context,
 	return &response.Analytics, nil
 }
 
-func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, businessAccessToken string) ([]dto_wa.Template, error) {
-	endpoint := fmt.Sprintf("%s/%s/%s/message_templates", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
+func (whatsapp *Whatsapp) ListAllTemplates(ctx context.Context, wabaId string, businessAccessToken string) ([]dto_wa.Template, error) {
+	baseEndpoint := fmt.Sprintf("%s/%s/%s/message_templates", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
 	query := url.Values{}
 	query.Set("fields", "id,name,status,category,language,parameter_format,components,quality_score,rejected_reason,previous_category")
-	endpoint += "?" + query.Encode()
 	templates := []dto_wa.Template{}
-	for endpoint != "" {
+	for {
+		endpoint := fmt.Sprintf("%s?%s", baseEndpoint, query.Encode())
 		var response dto_wa.TemplateListResponse
 		if err := whatsapp.doJSONRequest(ctx, "list_templates", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 			whatsapp.logger.ErrorFunction(err, wabaId)
 			return nil, err
 		}
 		templates = append(templates, response.Data...)
-		if response.Paging == nil {
+		if response.Paging == nil || strings.TrimSpace(response.Paging.Next) == "" {
 			break
 		}
-		endpoint = strings.TrimSpace(response.Paging.Next)
+		query.Set("after", strings.TrimSpace(response.Paging.Next))
 	}
 	return templates, nil
 }

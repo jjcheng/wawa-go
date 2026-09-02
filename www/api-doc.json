@@ -2388,7 +2388,7 @@
             }
           },
           {
-            "description": "optional Meta pagination cursor",
+            "description": "optional Meta pagination cursor for the previous page",
             "example": "",
             "in": "query",
             "name": "before",
@@ -2397,7 +2397,7 @@
             }
           },
           {
-            "description": "optional Meta pagination cursor",
+            "description": "optional Meta pagination cursor for the next page",
             "example": "",
             "in": "query",
             "name": "after",
