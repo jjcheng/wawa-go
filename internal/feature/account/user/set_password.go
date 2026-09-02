@@ -16,36 +16,29 @@ import (
 	"gorm.io/gorm"
 )
 
-type ChangePassword struct {
-	OldPassword        string `json:"old_password" val:"required" description:"current password"`
+// SetPassword lets a user created by embedded signup choose their first password. The temporary password
+// generated during signup is random and never disclosed, so the session issued at signup is the only proof of identity.
+type SetPassword struct {
 	NewPassword        string `json:"new_password" val:"required" description:"new password"`
 	ConfirmNewPassword string `json:"confirm_new_password" val:"required" description:"confirm new password"`
 }
 
-func (changePassword *ChangePassword) Validate() []exception.InputException {
-	changePassword.OldPassword = strings.TrimSpace(changePassword.OldPassword)
-	changePassword.NewPassword = strings.TrimSpace(changePassword.NewPassword)
-	changePassword.ConfirmNewPassword = strings.TrimSpace(changePassword.ConfirmNewPassword)
+func (setPassword *SetPassword) Validate() []exception.InputException {
+	setPassword.NewPassword = strings.TrimSpace(setPassword.NewPassword)
+	setPassword.ConfirmNewPassword = strings.TrimSpace(setPassword.ConfirmNewPassword)
 	errors := []exception.InputException{}
-	if changePassword.OldPassword == "" {
-		errors = append(errors, exception.NewInputException("old_password", "missing old password"))
-	} else if passwordError := helper.ValidatePassword(changePassword.OldPassword); passwordError != nil {
-		errors = append(errors, exception.NewInputException("old_password", passwordError.Error()))
-	}
-	if changePassword.NewPassword == "" {
+	if setPassword.NewPassword == "" {
 		errors = append(errors, exception.NewInputException("new_password", "missing new password"))
-	} else if passwordError := helper.ValidatePassword(changePassword.NewPassword); passwordError != nil {
+	} else if passwordError := helper.ValidatePassword(setPassword.NewPassword); passwordError != nil {
 		errors = append(errors, exception.NewInputException("new_password", passwordError.Error()))
-	} else if changePassword.NewPassword == changePassword.OldPassword {
-		errors = append(errors, exception.NewInputException("new_password", "new password cannot be the same as old password"))
-	} else if changePassword.NewPassword != changePassword.ConfirmNewPassword {
+	} else if setPassword.NewPassword != setPassword.ConfirmNewPassword {
 		errors = append(errors, exception.NewInputException("confirm_new_password", "new password and confirm new password must be exactly the same"))
 	}
 	return errors
 }
 
-func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
-	if errors := changePassword.Validate(); len(errors) > 0 {
+func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
+	if errors := setPassword.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
 	existing, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
@@ -55,15 +48,17 @@ func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_accou
 		}
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if !helper.VerifyPassword(changePassword.OldPassword, existing.PasswordHash) {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid old password")
+	// once a password is set this path must not be reusable, otherwise a stolen session could reset it without the current password
+	if existing.Status != types.UserStatusPendingPassword {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "password is already set, use change password instead")
 	}
-	passwordHash, err := helper.HashPassword(changePassword.NewPassword)
+	passwordHash, err := helper.HashPassword(setPassword.NewPassword)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, user.Id)
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	existing.PasswordHash = passwordHash
+	existing.Status = types.UserStatusActive
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -71,9 +66,9 @@ func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_accou
 	return dto.NewSuccessResponse(&d)
 }
 
-func (ChangePassword) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Change password", "Change the logged in user's password", types.HttpRequestTypeJSON, http.MethodPatch, "/v1/account/users/me/password", true, true, types.APITagAccount, []feature.APIError{
-		feature.NewAPIError(*exception.NewCustomException("invalid old password", http.StatusUnauthorized)),
+func (SetPassword) APISettings() feature.APISettings {
+	return feature.NewAPISettings("Set initial password", "Set the first password for a user created by WhatsApp embedded signup", types.HttpRequestTypeJSON, http.MethodPost, "/v1/account/users/me/initial-password", true, true, types.APITagAccount, []feature.APIError{
+		feature.NewAPIError(*exception.NewCustomException("password is already set, use change password instead", http.StatusConflict)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})

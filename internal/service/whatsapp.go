@@ -309,6 +309,19 @@ type WhatsAppWABAResponse struct {
 	TimezoneID string `json:"timezone_id"`
 }
 
+type WhatsAppWABAOwnerBusinessInfo struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type WhatsAppWABADetailsResponse struct {
+	ID                  string                         `json:"id"`
+	Name                string                         `json:"name"`
+	Status              string                         `json:"status"`
+	AccountReviewStatus string                         `json:"account_review_status"`
+	OwnerBusinessInfo   *WhatsAppWABAOwnerBusinessInfo `json:"owner_business_info,omitempty"`
+}
+
 type WhatsAppPhoneNumberDetailsResponse struct {
 	DisplayPhoneNumber     string `json:"display_phone_number"`
 	VerifiedName           string `json:"verified_name"`
@@ -479,6 +492,20 @@ func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID
 	return pin, nil
 }
 
+// SubscribeApp subscribes this app to the WABA's webhooks; without it no inbound message or status callbacks are delivered.
+func (whatsapp *Whatsapp) SubscribeApp(ctx context.Context, wabaId string, businessAccessToken string) error {
+	wabaId = strings.TrimSpace(wabaId)
+	if wabaId == "" {
+		return fmt.Errorf("wabaId is required")
+	}
+	endpoint := whatsapp.buildEndpoint(wabaId, "subscribed_apps")
+	if err := whatsapp.doJSONRequest(ctx, "subscribe_app", http.MethodPost, endpoint, nil, nil, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId)
+		return err
+	}
+	return nil
+}
+
 func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
 	phoneNumberID = strings.TrimSpace(phoneNumberID)
 	if phoneNumberID == "" {
@@ -538,27 +565,25 @@ func (whatsapp *Whatsapp) GetWABAName(ctx context.Context, wabaId string, busine
 	return response.Name, nil
 }
 
-func (whatsapp *Whatsapp) GetWABAsByBusinessPortfolioId(ctx context.Context, businessPortfolioId string, businessAccessToken string) ([]WhatsAppWABAResponse, error) {
-	query := url.Values{}
-	query.Set("fields", "id,name,currency,timezone_id")
-	endpoint := fmt.Sprintf("%s/%s/%s/owned_whatsapp_business_accounts?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(businessPortfolioId), query.Encode())
-	wabas := make([]WhatsAppWABAResponse, 0)
-	for endpoint != "" {
-		var response struct {
-			Data   []WhatsAppWABAResponse `json:"data"`
-			Paging *WhatsAppPaging        `json:"paging,omitempty"`
-		}
-		if err := whatsapp.doJSONRequest(ctx, "get_all_wabas_by_business_portfolio_id", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-			whatsapp.logger.ErrorFunction(err, businessPortfolioId)
-			return nil, err
-		}
-		wabas = append(wabas, response.Data...)
-		if response.Paging == nil {
-			break
-		}
-		endpoint = strings.TrimSpace(response.Paging.Next)
+// GetWABA reads the WABA together with its owning business portfolio. Unlike the business portfolio
+// edges this only needs whatsapp_business_management, not business_management.
+func (whatsapp *Whatsapp) GetWABA(ctx context.Context, wabaId string, businessAccessToken string) (*WhatsAppWABADetailsResponse, error) {
+	wabaId = strings.TrimSpace(wabaId)
+	if wabaId == "" {
+		return nil, fmt.Errorf("wabaId is required")
 	}
-	return wabas, nil
+	query := url.Values{}
+	query.Set("fields", "id,name,status,account_review_status,owner_business_info")
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	var response WhatsAppWABADetailsResponse
+	if err := whatsapp.doJSONRequest(ctx, "get_waba", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId)
+		return nil, err
+	}
+	if response.OwnerBusinessInfo == nil || strings.TrimSpace(response.OwnerBusinessInfo.ID) == "" {
+		return nil, fmt.Errorf("owner business info is missing from the WhatsApp API response")
+	}
+	return &response, nil
 }
 
 func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {

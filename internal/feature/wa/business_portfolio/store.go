@@ -18,15 +18,20 @@ import (
 
 type Store struct {
 	MetaBusinessPortfolioId string `json:"meta_business_portfolio_id" val:"required" description:"return in embedded signup"`
+	Name                    string `json:"name" val:"required" description:"portfolio name taken from the WABA owner_business_info"`
 	AccessToken             string `json:"access_token" val:"required" description:"access token exchanged from authorization code during embedded signup"`
 }
 
 func (store *Store) Validate() []exception.InputException {
 	var errors []exception.InputException
 	store.MetaBusinessPortfolioId = strings.TrimSpace(store.MetaBusinessPortfolioId)
+	store.Name = strings.TrimSpace(store.Name)
 	store.AccessToken = strings.TrimSpace(store.AccessToken)
 	if store.MetaBusinessPortfolioId == "" {
 		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing Meta business portfolio id"))
+	}
+	if store.Name == "" {
+		errors = append(errors, exception.NewInputException("name", "missing business portfolio name"))
 	}
 	if store.AccessToken == "" {
 		errors = append(errors, exception.NewInputException("access_token", "missing access token"))
@@ -42,10 +47,7 @@ func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, store.MetaBusinessPortfolioId, store.AccessToken)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, err.Error())
-	}
+	businessName := store.Name
 	if existing != nil {
 		if existing.Name != businessName {
 			existing.Name = businessName

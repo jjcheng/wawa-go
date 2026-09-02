@@ -28,12 +28,18 @@ type Store struct {
 	Password        string           `json:"password" val:"required" description:"password of the user"`
 	ConfirmPassword string           `json:"confirm_password" val:"required" description:"confirm password of the user"`
 	Status          types.UserStatus `json:"status" val:"required" description:"status of the user"`
+	// set only by embedded signup, where Meta has already proven the caller owns the phone number
+	ResumePendingPassword bool `json:"-"`
 }
 
 func (store *Store) Validate() []exception.InputException {
 	store.Name = strings.TrimSpace(store.Name)
 	store.Description = strings.TrimSpace(store.Description)
 	store.PhoneNumber = strings.TrimSpace(store.PhoneNumber)
+	// remove any space or + or - from phone number
+	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, "+", "")
+	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, " ", "")
+	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, "-", "")
 	store.Password = strings.TrimSpace(store.Password)
 	store.ConfirmPassword = strings.TrimSpace(store.ConfirmPassword)
 	errors := []exception.InputException{}
@@ -77,22 +83,20 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
-	// create or update user
 	var u dto_account.User
 	if existing != nil {
-		existing.Status = types.UserStatusActive
-		if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		// a user who never set a password has no credential to bypass, so signup may hand back a session to finish onboarding
+		if !store.ResumePendingPassword || existing.Status != types.UserStatusPendingPassword {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "phone number already exists")
 		}
 		u = dto_account.NewUser(*existing)
 	} else {
 		// generate password hash
 		passwordHash, err := helper.HashPassword(store.Password)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, store.Password)
+			dependencies.Logger.ErrorFunction(err, store.PhoneNumber)
 			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
-		// create app
 		newUser := dao_account.User{
 			Name:         store.Name,
 			Email:        strings.ReplaceAll(uuid.NewString(), "-", "") + "@coreconcept.tech",
@@ -102,8 +106,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 			PasswordHash: passwordHash,
 			Status:       store.Status,
 		}
-		err = dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser)
-		if err != nil {
+		if err := dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser); err != nil {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 		u = dto_account.NewUser(newUser)
@@ -132,6 +135,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 func (Store) APISettings() feature.APISettings {
 	return feature.NewAPISettings("Create or update a user", "Allow user to login using password", types.HttpRequestTypeJSON, "POST", "/v1/account/users", true, false, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusBadRequest)),
+		feature.NewAPIError(*exception.NewCustomException("phone number already exists", http.StatusConflict)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})
 }

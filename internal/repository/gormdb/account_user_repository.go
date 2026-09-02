@@ -7,6 +7,7 @@ import (
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
 
 	"gorm.io/gorm"
 )
@@ -36,6 +37,21 @@ func (accountUserRepository *AccountUserRepository) Get(ctx context.Context, id 
 		return nil, result.Error
 	}
 	return item, nil
+}
+
+func (accountUserRepository *AccountUserRepository) HasMasterUser(ctx context.Context, metaBusinessPortfolioId string) (bool, error) {
+	var count int64
+	result := accountUserRepository.db.WithContext(ctx).
+		Table("account.users").
+		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.user_id = account.users.id").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.id = wa.user_phone_numbers.phone_number_id").
+		Where("wa.phone_numbers.meta_business_portfolio_id = ? AND account.users.type = ?", metaBusinessPortfolioId, types.UserTypeMaster).
+		Count(&count)
+	if result.Error != nil {
+		accountUserRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioId)
+		return false, result.Error
+	}
+	return count > 0, nil
 }
 
 func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context.Context, phoneNumber string) (*dao_account.User, error) {

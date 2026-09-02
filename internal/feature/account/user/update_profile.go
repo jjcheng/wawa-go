@@ -51,7 +51,7 @@ func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, 
 }
 
 func (UpdateProfile) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Update user profile", "Update logged in user's profile such as email and description", types.HttpRequestTypeJSON, "PATCH", "/v1/account/users/profile", true, true, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Update user profile", "Update logged in user's profile such as email and description", types.HttpRequestTypeJSON, "PATCH", "/v1/account/users/me/profile", true, true, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})

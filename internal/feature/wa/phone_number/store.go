@@ -8,6 +8,7 @@ import (
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -15,10 +16,14 @@ import (
 	"gorm.io/gorm"
 )
 
+// Store only persists the phone number. Registering it on Meta is a non-transactional
+// side effect and is performed by the caller after the database transaction commits.
 type Store struct {
 	MetaBusinessPortfolioId string `json:"meta_business_portfolio_id" val:"required" description:"returned in embeded signup"`
 	MetaWABAId              string `json:"meta_waba_id" val:"required" description:"returned in embedded signup"`
 	MetaPhoneNumberId       string `json:"meta_phone_number_id" val:"required" description:"returned in embeded signup"`
+	PhoneNumber             string `json:"phone_number" val:"required" description:"display phone number returned by Meta"`
+	Name                    string `json:"name" val:"required" description:"verified name returned by Meta"`
 }
 
 func (store *Store) Validate() []exception.InputException {
@@ -26,6 +31,8 @@ func (store *Store) Validate() []exception.InputException {
 	store.MetaBusinessPortfolioId = strings.TrimSpace(store.MetaBusinessPortfolioId)
 	store.MetaPhoneNumberId = strings.TrimSpace(store.MetaPhoneNumberId)
 	store.MetaWABAId = strings.TrimSpace(store.MetaWABAId)
+	store.PhoneNumber = strings.TrimSpace(store.PhoneNumber)
+	store.Name = strings.TrimSpace(store.Name)
 	if store.MetaBusinessPortfolioId == "" {
 		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing meta business portfolio id"))
 	}
@@ -35,10 +42,16 @@ func (store *Store) Validate() []exception.InputException {
 	if store.MetaWABAId == "" {
 		errors = append(errors, exception.NewInputException("meta_waba_id", "missing meta WABA id"))
 	}
+	if store.PhoneNumber == "" {
+		errors = append(errors, exception.NewInputException("phone_number", "missing display phone number"))
+	}
+	if store.Name == "" {
+		errors = append(errors, exception.NewInputException("name", "missing verified name"))
+	}
 	return errors
 }
 
-func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependencies) dto.Response[*dto_wa.PhoneNumber] {
+func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.PhoneNumber] {
 	if errors := store.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.PhoneNumber](errors)
 	}
@@ -48,19 +61,7 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 	}
-	// get display phone number and name by whatsapp service
-	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, store.MetaBusinessPortfolioId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusNotFound, "business portfolio not found")
-		}
-		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	phoneNumberDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, store.MetaPhoneNumberId, businessPortfolio.AccessToken)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadGateway, types.ExceptionMessageBadGateway)
-	}
-	// validate ownership before registering, otherwise a rejected request still mutates Meta state
+	// update existing
 	if existing != nil {
 		if existing.MetaBusinessPortfolioId != store.MetaBusinessPortfolioId {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "existing phone number does not match the Meta business portfolio id")
@@ -68,40 +69,24 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 		if existing.MetaWABAId != store.MetaWABAId {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "existing phone number does not match the Meta WABA id")
 		}
-	}
-	var pin string
-	if phoneNumberDetails.Status != service.WhatsAppPhoneNumberStatusConnected {
-		registrationPin, err := dependencies.Whatsapp.RegisterPhoneNumber(ctx, store.MetaPhoneNumberId, businessPortfolio.AccessToken)
-		if err != nil {
-			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadGateway, err.Error())
-		}
-		pin = registrationPin
-	}
-	// update existing
-	if existing != nil {
-		existing.PhoneNumber = phoneNumberDetails.DisplayPhoneNumber
-		existing.Name = phoneNumberDetails.VerifiedName
-		if pin != "" {
-			existing.RegistrationPin = pin
-		}
+		existing.PhoneNumber = store.PhoneNumber
+		existing.Name = store.Name
 		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, existing); err != nil {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 		d := dto_wa.NewPhoneNumber(*existing)
 		return dto.NewSuccessResponse(&d)
-	} else {
-		phoneNumber := dao_wa.PhoneNumber{
-			MetaBusinessPortfolioId: store.MetaBusinessPortfolioId,
-			MetaWABAId:              store.MetaWABAId,
-			MetaPhoneNumberId:       store.MetaPhoneNumberId,
-			PhoneNumber:             phoneNumberDetails.DisplayPhoneNumber,
-			Name:                    phoneNumberDetails.VerifiedName,
-			RegistrationPin:         pin,
-		}
-		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Insert(ctx, &phoneNumber); err != nil {
-			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-		}
-		d := dto_wa.NewPhoneNumber(phoneNumber)
-		return dto.NewSuccessResponse(&d)
 	}
+	phoneNumber := dao_wa.PhoneNumber{
+		MetaBusinessPortfolioId: store.MetaBusinessPortfolioId,
+		MetaWABAId:              store.MetaWABAId,
+		MetaPhoneNumberId:       store.MetaPhoneNumberId,
+		PhoneNumber:             store.PhoneNumber,
+		Name:                    store.Name,
+	}
+	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Insert(ctx, &phoneNumber); err != nil {
+		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	d := dto_wa.NewPhoneNumber(phoneNumber)
+	return dto.NewSuccessResponse(&d)
 }
