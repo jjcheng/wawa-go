@@ -56,11 +56,11 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 		}
 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	displayPhoneNumber, displayName, err := dependencies.Whatsapp.GetDisplayPhoneNumberAndName(ctx, store.MetaPhoneNumberId, businessPortfolio.AccessToken)
+	phoneNumberDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, store.MetaPhoneNumberId, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
-	// update existing
+	// validate ownership before registering, otherwise a rejected request still mutates Meta state
 	if existing != nil {
 		if existing.MetaBusinessPortfolioId != store.MetaBusinessPortfolioId {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "existing phone number does not match the Meta business portfolio id")
@@ -68,8 +68,22 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 		if existing.MetaWABAId != store.MetaWABAId {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "existing phone number does not match the Meta WABA id")
 		}
-		existing.PhoneNumber = displayPhoneNumber
-		existing.Name = displayName
+	}
+	var pin string
+	if phoneNumberDetails.Status != service.WhatsAppPhoneNumberStatusConnected {
+		registrationPin, err := dependencies.Whatsapp.RegisterPhoneNumber(ctx, store.MetaPhoneNumberId, businessPortfolio.AccessToken)
+		if err != nil {
+			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadGateway, err.Error())
+		}
+		pin = registrationPin
+	}
+	// update existing
+	if existing != nil {
+		existing.PhoneNumber = phoneNumberDetails.DisplayPhoneNumber
+		existing.Name = phoneNumberDetails.VerifiedName
+		if pin != "" {
+			existing.RegistrationPin = pin
+		}
 		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, existing); err != nil {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
@@ -80,8 +94,9 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 			MetaBusinessPortfolioId: store.MetaBusinessPortfolioId,
 			MetaWABAId:              store.MetaWABAId,
 			MetaPhoneNumberId:       store.MetaPhoneNumberId,
-			PhoneNumber:             displayPhoneNumber,
-			Name:                    displayName,
+			PhoneNumber:             phoneNumberDetails.DisplayPhoneNumber,
+			Name:                    phoneNumberDetails.VerifiedName,
+			RegistrationPin:         pin,
 		}
 		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Insert(ctx, &phoneNumber); err != nil {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

@@ -9,6 +9,8 @@ type PhoneNumber struct {
 	MetaPhoneNumberId       string `gorm:"column:meta_phone_number_id"`
 	PhoneNumber             string `gorm:"column:phone_number"`
 	Name                    string `gorm:"column:name"`
+	// two-step verification PIN set at registration, required to re-register the number later
+	RegistrationPin string `gorm:"column:registration_pin"`
 }
 
 func (PhoneNumber) TableName() string {

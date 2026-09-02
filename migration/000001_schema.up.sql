@@ -33,6 +33,7 @@ CREATE TABLE "wa"."phone_numbers" (
   "meta_phone_number_id" text NOT NULL,
   "phone_number" text NOT NULL,
   "name" account.citext NOT NULL,
+  "registration_pin" text NOT NULL DEFAULT '',
   "entry_date" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "last_update" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ("id"),

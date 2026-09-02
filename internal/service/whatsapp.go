@@ -3,11 +3,13 @@ package service
 import (
 	"bytes"
 	"context"
+	cryptorand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -63,6 +65,9 @@ const (
 	WhatsAppMessageTypeReaction    WhatsAppMessageType = "reaction"
 
 	WhatsAppMessageStatusRead = "read"
+
+	WhatsAppPhoneNumberStatusConnected = "CONNECTED"
+	WhatsAppPhoneNumberStatusPending   = "PENDING"
 )
 
 type WhatsAppMessageRequest struct {
@@ -305,9 +310,11 @@ type WhatsAppWABAResponse struct {
 }
 
 type WhatsAppPhoneNumberDetailsResponse struct {
-	DisplayPhoneNumber string `json:"display_phone_number"`
-	VerifiedName       string `json:"verified_name"`
-	ID                 string `json:"id"`
+	DisplayPhoneNumber     string `json:"display_phone_number"`
+	VerifiedName           string `json:"verified_name"`
+	ID                     string `json:"id"`
+	Status                 string `json:"status"`
+	CodeVerificationStatus string `json:"code_verification_status"`
 }
 
 type WhatsAppMediaResponse struct {
@@ -448,26 +455,29 @@ func (whatsapp *Whatsapp) UploadMedia(ctx context.Context, phoneNumberID string,
 	return uploadResponse.ID, nil
 }
 
-// func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
-// 	phoneNumberID = strings.TrimSpace(phoneNumberID)
-// 	if phoneNumberID == "" {
-// 		return fmt.Errorf("phone number ID is required")
-// 	}
-// 	pinNumber, err := cryptorand.Int(cryptorand.Reader, big.NewInt(1000000))
-// 	if err != nil {
-// 		return fmt.Errorf("failed to generate registration PIN: %w", err)
-// 	}
-// 	payload := map[string]any{
-// 		"messaging_product": WhatsAppMessagingProduct,
-// 		"pin":               fmt.Sprintf("%06d", pinNumber.Int64()),
-// 	}
-// 	endpoint := whatsapp.buildEndpoint(phoneNumberID, "register")
-// 	if err := whatsapp.doJSONRequest(ctx, "register_phone_number", http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
-// 		whatsapp.logger.ErrorFunction(err, phoneNumberID)
-// 		return err
-// 	}
-// 	return nil
-// }
+// RegisterPhoneNumber registers the number on Cloud API and returns the generated two-step verification PIN,
+// which must be persisted because the same PIN is required to re-register the number later.
+func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) (string, error) {
+	phoneNumberID = strings.TrimSpace(phoneNumberID)
+	if phoneNumberID == "" {
+		return "", fmt.Errorf("phone number ID is required")
+	}
+	pinNumber, err := cryptorand.Int(cryptorand.Reader, big.NewInt(1000000))
+	if err != nil {
+		return "", fmt.Errorf("failed to generate registration PIN: %w", err)
+	}
+	pin := fmt.Sprintf("%06d", pinNumber.Int64())
+	payload := map[string]any{
+		"messaging_product": WhatsAppMessagingProduct,
+		"pin":               pin,
+	}
+	endpoint := whatsapp.buildEndpoint(phoneNumberID, "register")
+	if err := whatsapp.doJSONRequest(ctx, "register_phone_number", http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, phoneNumberID)
+		return "", err
+	}
+	return pin, nil
+}
 
 func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
 	phoneNumberID = strings.TrimSpace(phoneNumberID)
@@ -810,20 +820,29 @@ func (whatsapp *Whatsapp) DeleteTemplate(ctx context.Context, wabaId string, nam
 	return nil
 }
 
-func (whatsapp *Whatsapp) GetDisplayPhoneNumberAndName(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) (string, string, error) {
+func (whatsapp *Whatsapp) GetPhoneNumber(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) (*WhatsAppPhoneNumberDetailsResponse, error) {
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaPhoneNumberId))
 	query := url.Values{}
-	query.Set("fields", "display_phone_number,verified_name")
+	query.Set("fields", "display_phone_number,verified_name,status,code_verification_status")
 	endpoint += "?" + query.Encode()
 	var response WhatsAppPhoneNumberDetailsResponse
-	if err := whatsapp.doJSONRequest(ctx, "get_display_phone_number_and_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "get_phone_number", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, metaPhoneNumberId)
-		return "", "", err
+		return nil, err
 	}
 	if strings.TrimSpace(response.DisplayPhoneNumber) == "" || strings.TrimSpace(response.VerifiedName) == "" {
-		return "", "", fmt.Errorf("display phone number or verified name is missing from the WhatsApp API response")
+		return nil, fmt.Errorf("display phone number or verified name is missing from the WhatsApp API response")
 	}
-	return response.DisplayPhoneNumber, response.VerifiedName, nil
+	return &response, nil
+}
+
+// GetPhoneNumberStatus returns the connection status and code verification status, e.g. CONNECTED and VERIFIED once registration succeeded.
+func (whatsapp *Whatsapp) GetPhoneNumberStatus(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) (string, string, error) {
+	response, err := whatsapp.GetPhoneNumber(ctx, metaPhoneNumberId, businessAccessToken)
+	if err != nil {
+		return "", "", err
+	}
+	return response.Status, response.CodeVerificationStatus, nil
 }
 
 func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, message *MessageQueueMessage, handler func(incomingMessage dto_wa.IncomingMessage) error, historyHandler func(wabaID string, incomingMessage dto_wa.IncomingMessage) error) {
