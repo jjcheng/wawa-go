@@ -18,12 +18,14 @@ import (
 
 type List struct {
 	MetaWABAId string `form:"meta_waba_id" val:"required" description:"Meta WABA id"`
+	Before     string `form:"before" description:"optional Meta pagination cursor"`
 	After      string `form:"after" description:"optional Meta pagination cursor"`
 	Limit      int    `form:"limit" description:"optional number of templates per page"`
 }
 
 func (list *List) Validate() []exception.InputException {
 	list.MetaWABAId = strings.TrimSpace(list.MetaWABAId)
+	list.Before = strings.TrimSpace(list.Before)
 	list.After = strings.TrimSpace(list.After)
 	if list.Limit == 0 {
 		list.Limit = 10
@@ -57,7 +59,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	templates := make([]dto_wa.Template, 0)
-	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplatesPage(ctx, list.MetaWABAId, list.After, list.Limit, businessPortfolio.AccessToken)
+	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplatesPage(ctx, list.MetaWABAId, list.Before, list.After, list.Limit, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}

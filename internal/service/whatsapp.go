@@ -672,14 +672,16 @@ func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, busi
 	return templates, nil
 }
 
-func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
+func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, before string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
 		return nil, nil, fmt.Errorf("wabaId is required")
 	}
 	query := url.Values{}
 	query.Set("fields", "id,name,status,category,language,parameter_format,components,quality_score,rejected_reason,previous_category")
-	if after = strings.TrimSpace(after); after != "" {
+	if before = strings.TrimSpace(before); before != "" {
+		query.Set("before", before)
+	} else if after = strings.TrimSpace(after); after != "" {
 		query.Set("after", after)
 	}
 	if limit > 0 {

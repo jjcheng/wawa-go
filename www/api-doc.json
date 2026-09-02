@@ -2391,6 +2391,15 @@
             "description": "optional Meta pagination cursor",
             "example": "",
             "in": "query",
+            "name": "before",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "optional Meta pagination cursor",
+            "example": "",
+            "in": "query",
             "name": "after",
             "schema": {
               "type": "string"

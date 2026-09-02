@@ -68,3 +68,5 @@ deploy-staging-db:
 	@./scripts/deploy_staging_db.sh
 init-debugging:
 	@make env
+local-ssl:
+	ngrok http 9000
