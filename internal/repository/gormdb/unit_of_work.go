@@ -22,6 +22,7 @@ type UnitOfWork struct {
 	waPhoneNumberRepository       repository.WAPhoneNumberRepository
 	waUserPhoneNumberRepository   repository.WAUserPhoneNumberRepository
 	waHistoryMessageRepository    repository.WAHistoryMessageRepository
+	waSampleTemplateRepository    repository.WASampleTemplateRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -39,6 +40,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waPhoneNumberRepository = NewWAPhoneNumberRepository(db, logger)
 	unitOfWork.waUserPhoneNumberRepository = NewWAUserPhoneNumberRepository(db, logger)
 	unitOfWork.waHistoryMessageRepository = NewWAHistoryMessageRepository(db, logger)
+	unitOfWork.waSampleTemplateRepository = NewWASampleTemplateRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -78,6 +80,10 @@ func (unitOfWork *UnitOfWork) WAUserPhoneNumberRepository() repository.WAUserPho
 
 func (unitOfWork *UnitOfWork) WAHistoryMessageRepository() repository.WAHistoryMessageRepository {
 	return unitOfWork.waHistoryMessageRepository
+}
+
+func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTemplateRepository {
+	return unitOfWork.waSampleTemplateRepository
 }
 
 // transaction

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -342,6 +343,14 @@ type WhatsAppMediaUploadResponse struct {
 	ID string `json:"id"`
 }
 
+type WhatsAppUploadSessionResponse struct {
+	ID string `json:"id"`
+}
+
+type WhatsAppTemplateHeaderSampleUploadResponse struct {
+	Handle string `json:"h"`
+}
+
 type WhatsAppBusinessTokenResponse struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type,omitempty"`
@@ -466,6 +475,96 @@ func (whatsapp *Whatsapp) UploadMedia(ctx context.Context, phoneNumberID string,
 		return "", fmt.Errorf("media ID is missing from Meta response")
 	}
 	return uploadResponse.ID, nil
+}
+
+func (whatsapp *Whatsapp) DownloadFile(ctx context.Context, fileURL string, businessAccessToken string) ([]byte, string, string, error) {
+	fileURL = strings.TrimSpace(fileURL)
+	if fileURL == "" {
+		return nil, "", "", fmt.Errorf("file URL is required")
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to create file download request: %w", err)
+	}
+	if businessAccessToken = strings.TrimSpace(businessAccessToken); businessAccessToken != "" {
+		request.Header.Set("Authorization", "Bearer "+businessAccessToken)
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("file download request failed: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return nil, "", "", fmt.Errorf("file download failed with status %d", response.StatusCode)
+	}
+	content, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("failed to read file content: %w", err)
+	}
+	if len(content) == 0 {
+		return nil, "", "", fmt.Errorf("file content is empty")
+	}
+	contentType := normalizeContentType(response.Header.Get("Content-Type"))
+	filename := filenameFromURL(fileURL, contentType)
+	if contentType == "" {
+		contentType = mime.TypeByExtension(filepath.Ext(filename))
+	}
+	return content, contentType, filename, nil
+}
+
+func (whatsapp *Whatsapp) UploadTemplateHeaderSample(ctx context.Context, filename string, contentType string, content []byte, businessAccessToken string) (string, error) {
+	filename = strings.TrimSpace(filename)
+	contentType = strings.TrimSpace(contentType)
+	if filename == "" {
+		return "", fmt.Errorf("filename is required")
+	}
+	if contentType == "" {
+		return "", fmt.Errorf("content type is required")
+	}
+	if len(content) == 0 {
+		return "", fmt.Errorf("file content is required")
+	}
+	query := url.Values{}
+	query.Set("file_name", filename)
+	query.Set("file_length", strconv.Itoa(len(content)))
+	query.Set("file_type", contentType)
+	endpoint := fmt.Sprintf("%s/%s/%s/uploads?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(whatsapp.appID), query.Encode())
+	var sessionResponse WhatsAppUploadSessionResponse
+	if err := whatsapp.doJSONRequest(ctx, "create_template_header_sample_upload_session", http.MethodPost, endpoint, nil, &sessionResponse, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, filename, contentType)
+		return "", err
+	}
+	if strings.TrimSpace(sessionResponse.ID) == "" {
+		return "", fmt.Errorf("upload session ID is missing from Meta response")
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(sessionResponse.ID)), bytes.NewReader(content))
+	if err != nil {
+		return "", fmt.Errorf("failed to create template header sample upload request: %w", err)
+	}
+	request.Header.Set("Authorization", "OAuth "+strings.TrimSpace(businessAccessToken))
+	request.Header.Set("Content-Type", contentType)
+	request.Header.Set("file_offset", "0")
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return "", fmt.Errorf("template header sample upload request failed: %w", err)
+	}
+	defer response.Body.Close()
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read template header sample upload response: %w", err)
+	}
+	responseText := string(responseBody)
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return "", parseWhatsAppAPIError(response.StatusCode, &responseText)
+	}
+	var uploadResponse WhatsAppTemplateHeaderSampleUploadResponse
+	if err := json.Unmarshal(responseBody, &uploadResponse); err != nil {
+		return "", fmt.Errorf("failed to parse template header sample upload response: %w", err)
+	}
+	if strings.TrimSpace(uploadResponse.Handle) == "" {
+		return "", fmt.Errorf("template header sample handle is missing from Meta response")
+	}
+	return uploadResponse.Handle, nil
 }
 
 // RegisterPhoneNumber registers the number on Cloud API and returns the generated two-step verification PIN,
@@ -638,6 +737,33 @@ func normalizeWhatsAppPhoneNumber(phoneNumber string) string {
 	}, phoneNumber)
 }
 
+func filenameFromURL(fileURL string, contentType string) string {
+	filename := "template-header-sample"
+	if parsedURL, err := url.Parse(fileURL); err == nil {
+		if base := strings.TrimSpace(filepath.Base(parsedURL.Path)); base != "" && base != "." && base != "/" {
+			filename = base
+		}
+	}
+	if filepath.Ext(filename) == "" {
+		if extensions, err := mime.ExtensionsByType(strings.TrimSpace(contentType)); err == nil && len(extensions) > 0 {
+			filename += extensions[0]
+		}
+	}
+	return filename
+}
+
+func normalizeContentType(contentType string) string {
+	contentType = strings.TrimSpace(contentType)
+	if contentType == "" {
+		return ""
+	}
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return contentType
+	}
+	return mediaType
+}
+
 func (whatsapp *Whatsapp) getMessageAnalyticsForPhoneNumber(ctx context.Context, requestType string, wabaId string, phoneNumber string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
 	query := url.Values{}
 	query.Set("fields", fmt.Sprintf("analytics.start(%d).end(%d).granularity(%s).phone_numbers([%s])", start, end, granularity, strconv.Quote(phoneNumber)))
@@ -672,13 +798,28 @@ func (whatsapp *Whatsapp) ListAllTemplates(ctx context.Context, wabaId string, b
 	return templates, nil
 }
 
-func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, before string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
+func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, nameOrContent string, category types.WATemplateCategory, language string, status types.WATemplateStatus, qualityScore types.WATemplateQualityScore, before string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
 		return nil, nil, fmt.Errorf("wabaId is required")
 	}
 	query := url.Values{}
 	query.Set("fields", "id,name,status,category,language,parameter_format,components,quality_score,rejected_reason,previous_category")
+	if nameOrContent = strings.TrimSpace(nameOrContent); nameOrContent != "" {
+		query.Set("name_or_content", nameOrContent)
+	}
+	if category != "" {
+		query.Set("category", string(category))
+	}
+	if language = strings.TrimSpace(language); language != "" {
+		query.Set("language", language)
+	}
+	if status != "" {
+		query.Set("status", string(status))
+	}
+	if qualityScore != "" {
+		query.Set("quality_score", string(qualityScore))
+	}
 	if before = strings.TrimSpace(before); before != "" {
 		query.Set("before", before)
 	} else if after = strings.TrimSpace(after); after != "" {
@@ -692,6 +833,10 @@ func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, 
 	if err := whatsapp.doJSONRequest(ctx, "list_templates_page", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
 		return nil, nil, err
+	}
+	for i := range response.Data {
+		previewHtml := response.Data[i].GetPreviewHTML()
+		response.Data[i].PreviewHTML = previewHtml
 	}
 	return response.Data, response.Paging, nil
 }
@@ -768,7 +913,6 @@ func (whatsapp *Whatsapp) CreateTemplate(ctx context.Context, wabaId string, pay
 		whatsapp.logger.ErrorFunction(err, wabaId, payload)
 		return nil, err
 	}
-	response.MetaWABAId = wabaId
 	return &response, nil
 }
 

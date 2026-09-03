@@ -17,10 +17,3 @@ const (
 	UserStatusPendingPassword UserStatus = "PENDING_PASSWORD"
 	UserStatusInactive        UserStatus = "INACTIVE"
 )
-
-// type CreateUserSource string
-
-// const (
-// 	CreateUserSourceEmbededSignUp CreateUserSource = "EMBEDED_SIGNUP"
-// 	CreateUserSourceAdmin         CreateUserSource = "ADMIN"
-// )

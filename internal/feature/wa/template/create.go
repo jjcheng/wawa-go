@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -17,72 +16,26 @@ import (
 )
 
 type Create struct {
-	MetaWABAId string           `json:"meta_waba_id" description:"Meta WABA ID"`
-	Name       string           `json:"name" description:"template name"`
-	Language   string           `json:"language" description:"template language code"`
-	Category   string           `json:"category" description:"template category"`
-	Components []map[string]any `json:"components" description:"template components"`
-}
-
-func (create *Create) Payload() map[string]any {
-	return map[string]any{
-		"name":       create.Name,
-		"language":   create.Language,
-		"category":   create.Category,
-		"components": create.Components,
-	}
+	dto_wa.TemplateBase
 }
 
 func (create *Create) Validate() []exception.InputException {
-	create.MetaWABAId = strings.TrimSpace(create.MetaWABAId)
-	create.Name = strings.TrimSpace(create.Name)
-	create.Language = strings.TrimSpace(create.Language)
-	create.Category = strings.TrimSpace(create.Category)
-	errors := []exception.InputException{}
-	if create.MetaWABAId == "" {
-		errors = append(errors, exception.NewInputException("meta_waba_id", "missing meta WABA id"))
-	}
-	if create.Name == "" {
-		errors = append(errors, exception.NewInputException("name", "missing template name"))
-	}
-	if create.Language == "" {
-		errors = append(errors, exception.NewInputException("language", "missing template language"))
-	}
-	if create.Category == "" {
-		errors = append(errors, exception.NewInputException("category", "missing template category"))
-	}
-	if len(create.Components) == 0 {
-		errors = append(errors, exception.NewInputException("components", "missing template components"))
-	}
-	return errors
+	return create.TemplateBase.Validate()
 }
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Template] {
 	if errors := create.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Template](errors)
 	}
-	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	authorized := false
-	for _, phoneNumber := range phoneNumbers {
-		if phoneNumber.MetaWABAId == create.MetaWABAId {
-			authorized = true
-			break
-		}
-	}
-	if !authorized {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
-	}
-	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumbers[0].MetaBusinessPortfolioId)
+	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.Template](http.StatusNotFound, "business portfolio not found")
+			return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
 		}
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	template, err := dependencies.Whatsapp.CreateTemplate(ctx, create.MetaWABAId, create.Payload(), businessPortfolio.AccessToken)
+	metaWABAId := businessAccount.MetaWABAId
+	template, err := dependencies.Whatsapp.CreateTemplate(ctx, metaWABAId, create.Payload(), businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}

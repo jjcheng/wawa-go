@@ -16,24 +16,19 @@ import (
 )
 
 type Delete struct {
-	MetaWABAId string `json:"meta_waba_id" description:"Meta WABA ID"`
-	Name       string `json:"name" description:"template name"`
-	ID         string `json:"id" description:"template ID"`
+	Id   string `json:"id" val:"required" description:"template id"`
+	Name string `json:"name" val:"required" description:"name of the template"`
 }
 
 func (delete *Delete) Validate() []exception.InputException {
-	delete.MetaWABAId = strings.TrimSpace(delete.MetaWABAId)
+	delete.Id = strings.TrimSpace(delete.Id)
 	delete.Name = strings.TrimSpace(delete.Name)
-	delete.ID = strings.TrimSpace(delete.ID)
 	errors := []exception.InputException{}
-	if delete.MetaWABAId == "" {
-		errors = append(errors, exception.NewInputException("meta_waba_id", "missing meta WABA id"))
+	if delete.Id == "" {
+		errors = append(errors, exception.NewInputException("id", "missing id"))
 	}
 	if delete.Name == "" {
-		errors = append(errors, exception.NewInputException("name", "missing template name"))
-	}
-	if delete.ID == "" {
-		errors = append(errors, exception.NewInputException("id", "missing template id"))
+		errors = append(errors, exception.NewInputException("name", "missing name"))
 	}
 	return errors
 }
@@ -42,28 +37,15 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	phoneNumbers, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
-	if ex != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	authorized := false
-	for _, phoneNumber := range phoneNumbers {
-		if phoneNumber.MetaWABAId == delete.MetaWABAId {
-			authorized = true
-			break
-		}
-	}
-	if !authorized {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to access this WABA")
-	}
-	businessPortfolio, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumbers[0].MetaBusinessPortfolioId)
-	if ex != nil {
-		if errors.Is(ex, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "business portfolio not found")
+	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to access this WABA")
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if err := dependencies.Whatsapp.DeleteTemplate(ctx, delete.MetaWABAId, delete.Name, delete.ID, businessPortfolio.AccessToken); err != nil {
+	metaWABAId := businessAccount.MetaWABAId
+	if err := dependencies.Whatsapp.DeleteTemplate(ctx, metaWABAId, delete.Name, delete.Id, businessPortfolio.AccessToken); err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)

@@ -12,6 +12,7 @@ import (
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
+	feature_wa_sample_template "github.com/jjcheng/wawa-go/internal/feature/wa/sample_template"
 	feature_wa_template "github.com/jjcheng/wawa-go/internal/feature/wa/template"
 	feature_wa_user_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/user_phone_number"
 	feature_wa_webhook "github.com/jjcheng/wawa-go/internal/feature/wa/webhook"
@@ -62,7 +63,11 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	// template
 	registerRoute[*dto.ListResponse[dto_wa.Template], feature_wa_template.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.Template, feature_wa_template.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.Template, feature_wa_template.CreateFromSample](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_template.Delete](routerGroup, dependencies, apiGenerator)
+	// sample templates
+	registerRoute[[]dto_wa.SampleTemplate, feature_wa_sample_template.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.SampleTemplate, feature_wa_sample_template.Create](routerGroup, dependencies, apiGenerator)
 	// analytics
 	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.PhoneNumberMessageAnalytics, feature_wa_phone_number.GetUsage](routerGroup, dependencies, apiGenerator)
