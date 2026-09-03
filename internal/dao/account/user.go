@@ -8,8 +8,8 @@ import (
 type User struct {
 	dao.DAOBase
 	Name         string           `gorm:"column:name"`
+	CountryCode  string           `gorm:"country_code"`
 	PhoneNumber  string           `gorm:"column:phone_number"`
-	Email        string           `gorm:"column:email"`
 	PasswordHash string           `gorm:"column:password_hash"`
 	Description  string           `gorm:"column:description"`
 	Type         types.UserType   `gorm:"column:type"`

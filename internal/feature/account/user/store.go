@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -22,19 +21,21 @@ import (
 
 type Store struct {
 	Name            string           `json:"name" val:"required" description:"name of the new user" example:"John Doe"`
-	PhoneNumber     string           `json:"phone_number" val:"required" description:"phone number of the user"`
+	CountryCode     string           `json:"country_code" val:"required" description:"country code number"`
+	PhoneNumber     string           `json:"phone_number" val:"required" description:"phone number of the user, without country code"`
 	Type            types.UserType   `json:"type" val:"required" description:"type of the user" example:"PUBLIC"`
 	Description     string           `json:"description" description:"for your reference" example:"created by account department"`
 	Password        string           `json:"password" val:"required" description:"password of the user"`
 	ConfirmPassword string           `json:"confirm_password" val:"required" description:"confirm password of the user"`
 	Status          types.UserStatus `json:"status" val:"required" description:"status of the user"`
-	// set only by embedded signup, where Meta has already proven the caller owns the phone number
+	// set only by embedded signup, where Meta has already proven the caller owns the phone number, not a public member
 	ResumePendingPassword bool `json:"-"`
 }
 
 func (store *Store) Validate() []exception.InputException {
 	store.Name = strings.TrimSpace(store.Name)
 	store.Description = strings.TrimSpace(store.Description)
+	store.CountryCode = strings.TrimSpace(store.CountryCode)
 	store.PhoneNumber = strings.TrimSpace(store.PhoneNumber)
 	// remove any space or + or - from phone number
 	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, "+", "")
@@ -45,6 +46,9 @@ func (store *Store) Validate() []exception.InputException {
 	errors := []exception.InputException{}
 	if store.Name == "" {
 		errors = append(errors, exception.NewInputException("name", "missing name"))
+	}
+	if store.CountryCode == "" {
+		errors = append(errors, exception.NewInputException("country_code", "missing country code"))
 	}
 	if store.PhoneNumber == "" {
 		errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
@@ -70,7 +74,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
 	// get existing
-	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, store.PhoneNumber)
+	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, store.CountryCode, store.PhoneNumber)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
@@ -87,7 +91,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	if existing != nil {
 		// a user who never set a password has no credential to bypass, so signup may hand back a session to finish onboarding
 		if !store.ResumePendingPassword || existing.Status != types.UserStatusPendingPassword {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "phone number already exists")
+			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "phone number already exists, please login instead")
 		}
 		u = dto_account.NewUser(*existing)
 	} else {
@@ -99,7 +103,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		}
 		newUser := dao_account.User{
 			Name:         store.Name,
-			Email:        strings.ReplaceAll(uuid.NewString(), "-", "") + "@coreconcept.tech",
+			CountryCode:  store.CountryCode,
 			PhoneNumber:  store.PhoneNumber,
 			Description:  store.Description,
 			Type:         store.Type,

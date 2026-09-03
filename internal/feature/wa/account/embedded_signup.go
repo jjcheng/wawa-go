@@ -69,8 +69,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	// Step 1 — Swap the code for a token
 	accessToken, err := dependencies.Whatsapp.ExchangeAccessToken(ctx, embeddedSignup.AuthorizationCode)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, embeddedSignup.Data.BusinessId)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
 	}
 	// Step 2 — Check the customer is telling the truth
 	waba, phoneNumberDetails, response := embeddedSignup.verifyOwnership(ctx, accessToken, dependencies)
@@ -123,9 +122,18 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	}
 	// create user
 	tmpPassword := uuid.NewString()
+	// extract country code and phone number
+	split := strings.Split(createPhoneNumberResponse.Data.PhoneNumber, " ")
+	countryCode := strings.ReplaceAll(split[0], "+", "")
+	countryCode = strings.TrimSpace(countryCode)
+	phoneNumber := strings.TrimPrefix(createPhoneNumberResponse.Data.PhoneNumber, split[0])
+	phoneNumber = strings.ReplaceAll(phoneNumber, "-", "")
+	phoneNumber = strings.ReplaceAll(phoneNumber, " ", "")
+	phoneNumber = strings.TrimSpace(phoneNumber)
 	createUser := feature_account_user.Store{
 		Name:            createPhoneNumberResponse.Data.Name,
-		PhoneNumber:     createPhoneNumberResponse.Data.PhoneNumber,
+		CountryCode:     countryCode,
+		PhoneNumber:     phoneNumber,
 		Type:            types.UserTypeOperator,
 		Description:     "created by WhatsApp embedded signup",
 		Password:        tmpPassword,
@@ -139,10 +147,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	}
 	createUserResponse := createUser.Handle(ctx, nil, &transactionDependencies)
 	if !createUserResponse.Success {
-		if createUserResponse.StatusCode == http.StatusConflict {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "an account already exists for this phone number, please login instead")
-		}
-		return dto.NewFailedResponse[*dto_account.User](createUserResponse.StatusCode, createUserResponse.Message)
+		return createUserResponse
 	}
 	// User ↔ phone number link — this is what grants the user permission to that number.
 	createUserPhoneNumberResponse := (feature_wa_user_phone_number.Create{

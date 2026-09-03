@@ -11,8 +11,8 @@ import (
 type User struct {
 	dto.DTOBase
 	Name              string           `json:"name"`
+	CountryCode       string           `json:"country_code"`
 	PhoneNumber       string           `json:"phone_number"`
-	Email             string           `json:"email"`
 	Description       string           `json:"description"`
 	Type              types.UserType   `json:"type"`
 	Status            types.UserStatus `json:"status"`
@@ -28,8 +28,8 @@ func NewUser(user dao_account.User) User {
 			LastUpdate: user.LastUpdate,
 		},
 		Name:        user.Name,
+		CountryCode: user.CountryCode,
 		PhoneNumber: user.PhoneNumber,
-		Email:       user.Email,
 		Description: user.Description,
 		Type:        user.Type,
 		Status:      user.Status,

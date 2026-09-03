@@ -54,9 +54,9 @@ func (accountUserRepository *AccountUserRepository) HasMasterUser(ctx context.Co
 	return count > 0, nil
 }
 
-func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context.Context, phoneNumber string) (*dao_account.User, error) {
+func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context.Context, countryCode string, phoneNumber string) (*dao_account.User, error) {
 	var item *dao_account.User
-	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("phone_number = ?", phoneNumber).First(&item)
+	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number = ?", countryCode, phoneNumber).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			accountUserRepository.logger.ErrorFunction(result.Error, phoneNumber)
@@ -72,18 +72,6 @@ func (accountUserRepository *AccountUserRepository) GetByAccessTokenHash(ctx con
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			accountUserRepository.logger.ErrorFunction(result.Error, accessTokenHash)
-		}
-		return nil, result.Error
-	}
-	return item, nil
-}
-
-func (accountUserRepository *AccountUserRepository) GetByEmailOrPhoneNumber(ctx context.Context, email string, phoneNumber string) (*dao_account.User, error) {
-	var item *dao_account.User
-	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("email = ? OR phone_number = ?", email, phoneNumber).First(&item)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			accountUserRepository.logger.ErrorFunction(result.Error, email, phoneNumber)
 		}
 		return nil, result.Error
 	}

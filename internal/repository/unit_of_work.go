@@ -15,6 +15,8 @@ type UnitOfWork interface {
 	AccountUserRepository() AccountUserRepository
 	AccountSettingRepository() AccountSettingRepository
 	AccountSessionRepository() AccountSessionRepository
+	// customer
+	CustomerRepository() CustomerRepository
 	// wa
 	WABusinessPortfolioRepository() WABusinessPortfolioRepository
 	WABusinessAccountRepository() WABusinessAccountRepository

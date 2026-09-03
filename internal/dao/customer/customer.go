@@ -1,0 +1,24 @@
+package dao_customer
+
+import (
+	"github.com/jjcheng/wawa-go/internal/dao"
+	"github.com/lib/pq"
+)
+
+type Customer struct {
+	dao.DAOBase
+	UserId      int32          `gorm:"column:user_id"`
+	DisplayName string         `gorm:"column:display_name"`
+	CountryCode string         `gorm:"column:country_code"`
+	PhoneNumber string         `gorm:"column:phone_number"`
+	BSUID       string         `gorm:"column:bsuid"`
+	Tags        pq.StringArray `gorm:"column:tags;type:text[]"`
+}
+
+func (Customer) TableName() string {
+	return "customer.customers"
+}
+
+func (customer Customer) Base() dao.DAOBase {
+	return customer.DAOBase
+}

@@ -20,14 +20,19 @@ import (
 )
 
 type Login struct {
-	PhoneNumber string `json:"phone_number" val:"required" description:"user's full phone number" example:"6590909090"`
+	CountryCode string `json:"country_code" val:"required" description:"country code of the phone number" example:"65"`
+	PhoneNumber string `json:"phone_number" val:"required" description:"phone number without country code" example:"90909090"`
 	Password    string `json:"password" val:"required" description:"user's password"`
 }
 
 func (login *Login) Validate() []exception.InputException {
+	login.CountryCode = strings.TrimSpace(login.CountryCode)
 	login.PhoneNumber = strings.TrimSpace(login.PhoneNumber)
 	login.Password = strings.TrimSpace(login.Password)
 	errors := []exception.InputException{}
+	if login.CountryCode == "" {
+		errors = append(errors, exception.NewInputException("country_code", "missing country code"))
+	}
 	if login.PhoneNumber == "" {
 		errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
 	} else if !helper.IsValidPhoneNumber(login.PhoneNumber) {
@@ -45,7 +50,7 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	if errors := login.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
-	user, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, login.PhoneNumber)
+	user, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, login.CountryCode, login.PhoneNumber)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "invalid phone number or password")

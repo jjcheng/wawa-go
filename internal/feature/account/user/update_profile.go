@@ -41,7 +41,6 @@ func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, 
 			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")
 		}
 	}
-	existing.Email = update.Email
 	existing.Description = update.Description
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

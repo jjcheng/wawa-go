@@ -16,6 +16,8 @@ type UnitOfWork struct {
 	accountUserRepository    repository.AccountUserRepository
 	accountSettingRepository repository.AccountSettingRepository
 	accountSessionRepository repository.AccountSessionRepository
+	// customer
+	customerRepository repository.CustomerRepository
 	// wa
 	waBusinessPortfolioRepository repository.WABusinessPortfolioRepository
 	waBusinessAccountRepository   repository.WABusinessAccountRepository
@@ -34,6 +36,8 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.accountUserRepository = NewAccountUserRepository(db, logger)
 	unitOfWork.accountSettingRepository = NewAccountSettingRepository(db, logger)
 	unitOfWork.accountSessionRepository = NewAccountSessionRepository(db, logger)
+	// customer
+	unitOfWork.customerRepository = NewCustomerRepository(db, logger)
 	// wa
 	unitOfWork.waBusinessPortfolioRepository = NewWABusinessPortfolioRepository(db, logger)
 	unitOfWork.waBusinessAccountRepository = NewWABusinessAccountRepository(db, logger)
@@ -59,6 +63,11 @@ func (unitOfWork *UnitOfWork) AccountSettingRepository() repository.AccountSetti
 
 func (unitOfWork *UnitOfWork) AccountSessionRepository() repository.AccountSessionRepository {
 	return unitOfWork.accountSessionRepository
+}
+
+// customer
+func (unitOfWork *UnitOfWork) CustomerRepository() repository.CustomerRepository {
+	return unitOfWork.customerRepository
 }
 
 // wa
