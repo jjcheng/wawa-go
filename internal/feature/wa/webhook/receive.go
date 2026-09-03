@@ -3,11 +3,14 @@ package feature_wa_webhook
 import (
 	"context"
 	"net/http"
+	"path/filepath"
 	"strings"
 
+	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -29,9 +32,12 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 	if errors := receive.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[map[string]any](errors)
 	}
-	messageID, err := dependencies.MessageQueue.PublishMessage(receive.RawBody, 0, 8)
+	// save raw body to file receive.json
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		helper.WriteToFile(receive.RawBody, filepath.Join("files/wa", "receive.json"))
+	}
+	messageID, err := dependencies.MessageQueue.PublishMessage(receive.RawBody, 0, service.MessageQueuePriorityHighest)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err)
 		return dto.NewFailedResponse[map[string]any](http.StatusInternalServerError, "failed to queue raw webhook body")
 	}
 	return dto.NewSuccessResponse(map[string]any{"message_id": messageID})

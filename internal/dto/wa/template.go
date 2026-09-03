@@ -29,6 +29,7 @@ type TemplateBase struct {
 	Components      []TemplateComponent             `json:"components,omitempty"`
 	// lazy loaded
 	PreviewHTML string `json:"preview_html,omitempty"`
+	RawHTML     string `json:"raw_html,omitempty"`
 }
 
 func (templateBase *TemplateBase) Validate() []exception.InputException {
@@ -59,10 +60,10 @@ func (templateBase TemplateBase) Payload() map[string]any {
 	}
 }
 
-func (template *Template) GetPreviewHTML() string {
+func (template *Template) HTML(withExample bool) string {
 	var html strings.Builder
 	for _, component := range template.Components {
-		componentHtml, err := component.PreviewHTML()
+		componentHtml, err := component.HTML(withExample)
 		if err != nil {
 			fmt.Fprintf(&html, "%s ERROR: %s", component.Type, err.Error())
 		} else {
@@ -242,26 +243,28 @@ func formatWhatsAppText(text string) string {
 	return formatted.String()
 }
 
-func (templateComponent *TemplateComponent) PreviewHTML() (string, error) {
+func (templateComponent *TemplateComponent) HTML(withExample bool) (string, error) {
 	switch templateComponent.Type {
 	case types.WATemplateComponentTypeHeader:
 		switch templateComponent.Format {
 		case types.WATemplateComponentFormatText:
 			headerText := templateComponent.Text
-			if templateComponent.Example != nil {
-				if len(templateComponent.Example.HeaderText) > 0 {
-					for i, text := range templateComponent.Example.HeaderText {
-						position := i + 1
-						headerText = strings.Replace(headerText, fmt.Sprintf("{{%d}}", position), text, 1)
-					}
-				} else if len(templateComponent.Example.HeaderTextNamedParams) > 0 {
-					for _, param := range templateComponent.Example.HeaderTextNamedParams {
-						headerText = strings.ReplaceAll(headerText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
+			if withExample {
+				if templateComponent.Example != nil {
+					if len(templateComponent.Example.HeaderText) > 0 {
+						for i, text := range templateComponent.Example.HeaderText {
+							position := i + 1
+							headerText = strings.Replace(headerText, fmt.Sprintf("{{%d}}", position), text, 1)
+						}
+					} else if len(templateComponent.Example.HeaderTextNamedParams) > 0 {
+						for _, param := range templateComponent.Example.HeaderTextNamedParams {
+							headerText = strings.ReplaceAll(headerText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
+						}
 					}
 				}
-			}
-			if strings.Contains(headerText, "{{") {
-				return "", errors.New("no header_text or header_text_named_params in example")
+				if strings.Contains(headerText, "{{") {
+					return "", errors.New("no header_text or header_text_named_params in example")
+				}
 			}
 			return fmt.Sprintf("<div style='padding:8px 9px 0;font-size:14.2px;font-weight:600;color:#111b21;line-height:19px;'>%s</div>", formatWhatsAppText(headerText)), nil
 		case types.WATemplateComponentFormatImage:
@@ -291,26 +294,26 @@ func (templateComponent *TemplateComponent) PreviewHTML() (string, error) {
 
 	case types.WATemplateComponentTypeBody:
 		bodyText := templateComponent.Text
-		if templateComponent.Example != nil {
-			if len(templateComponent.Example.BodyText) > 0 && len(templateComponent.Example.BodyText[0]) > 0 {
-				for i, text := range templateComponent.Example.BodyText[0] {
-					position := i + 1
-					bodyText = strings.Replace(bodyText, fmt.Sprintf("{{%d}}", position), text, 1)
-				}
-			} else if len(templateComponent.Example.BodyTextNamedParams) > 0 {
-				for _, param := range templateComponent.Example.BodyTextNamedParams {
-					bodyText = strings.ReplaceAll(bodyText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
+		if withExample {
+			if templateComponent.Example != nil {
+				if len(templateComponent.Example.BodyText) > 0 && len(templateComponent.Example.BodyText[0]) > 0 {
+					for i, text := range templateComponent.Example.BodyText[0] {
+						position := i + 1
+						bodyText = strings.Replace(bodyText, fmt.Sprintf("{{%d}}", position), text, 1)
+					}
+				} else if len(templateComponent.Example.BodyTextNamedParams) > 0 {
+					for _, param := range templateComponent.Example.BodyTextNamedParams {
+						bodyText = strings.ReplaceAll(bodyText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
+					}
 				}
 			}
-		}
-		if strings.Contains(bodyText, "{{") {
-			return "", errors.New("no body_text or body_text_named_params in example")
+			if strings.Contains(bodyText, "{{") {
+				return "", errors.New("no body_text or body_text_named_params in example")
+			}
 		}
 		return fmt.Sprintf("<div style='padding:6px 9px 8px;color:#111b21;font-size:14.2px;line-height:19px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", formatWhatsAppText(bodyText)), nil
-
 	case types.WATemplateComponentTypeFooter:
 		return fmt.Sprintf("<div style='padding:4px 9px 7px;color:#667781;font-size:12px;line-height:16px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", formatWhatsAppText(templateComponent.Text)), nil
-
 	case types.WATemplateComponentTypeButtons:
 		if len(templateComponent.Buttons) == 0 {
 			return "", errors.New("no buttons in component")

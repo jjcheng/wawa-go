@@ -20,6 +20,16 @@ type MessageQueue struct {
 	queue  ali_mns.AliMNSQueue
 }
 
+type MessageQueuePriority int64
+
+const (
+	MessageQueuePriorityLowest  MessageQueuePriority = 1
+	MessageQueuePriorityLow     MessageQueuePriority = 4
+	MessageQueuePriorityNormal  MessageQueuePriority = 8
+	MessageQueuePriorityHigh    MessageQueuePriority = 12
+	MessageQueuePriorityHighest MessageQueuePriority = 16
+)
+
 type MessageQueueMessage struct {
 	MessageID     string
 	ReceiptHandle string
@@ -50,31 +60,34 @@ func NewMessageQueue(logger *Logger) *MessageQueue {
 	}
 }
 
-func (mq *MessageQueue) PublishMessage(body string, delaySeconds int64, priority int64) (string, error) {
+func (mq *MessageQueue) PublishMessage(body string, delaySeconds int64, priority MessageQueuePriority) (string, error) {
 	if strings.TrimSpace(body) == "" {
 		return "", errors.New("message body cannot be empty")
 	}
 	if delaySeconds < 0 {
 		delaySeconds = 0
 	}
-	if priority < 0 {
-		priority = 0
+	if priority < MessageQueuePriorityLowest {
+		priority = MessageQueuePriorityLowest
+	}
+	if priority > MessageQueuePriorityHighest {
+		priority = MessageQueuePriorityHighest
 	}
 	encodedBody := base64.StdEncoding.EncodeToString([]byte(body))
 	resp, err := mq.queue.SendMessage(ali_mns.MessageSendRequest{
 		MessageBody:  encodedBody,
 		DelaySeconds: delaySeconds,
-		Priority:     priority,
+		Priority:     int64(priority),
 	})
 	if err != nil {
+		mq.logger.ErrorFunction(err, body)
 		return "", fmt.Errorf("failed to publish message to queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
 	}
-
 	mq.logger.Debugf("SMQ message published: queue=%s message_id=%s", cfg.Default().AliyunSMQ.QueueName, resp.MessageId)
 	return resp.MessageId, nil
 }
 
-func (mq *MessageQueue) PublishJSON(v any, delaySeconds int64, priority int64) (string, error) {
+func (mq *MessageQueue) PublishJSON(v any, delaySeconds int64, priority MessageQueuePriority) (string, error) {
 	body, err := json.Marshal(v)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal message payload: %w", err)

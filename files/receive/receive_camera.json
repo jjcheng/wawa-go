@@ -1,0 +1,45 @@
+{
+    "object": "whatsapp_business_account",
+    "entry": [
+        {
+            "id": "1074463462131761",
+            "changes": [
+                {
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {
+                            "display_phone_number": "6580993376",
+                            "phone_number_id": "1263693160166816"
+                        },
+                        "contacts": [
+                            {
+                                "profile": {
+                                    "name": "jj cheng"
+                                },
+                                "wa_id": "6590073708",
+                                "user_id": "SG.1027797919756740"
+                            }
+                        ],
+                        "messages": [
+                            {
+                                "from": "6590073708",
+                                "from_user_id": "SG.1027797919756740",
+                                "id": "wamid.HBgKNjU5MDA3MzcwOBUCABIYIEFDMEU3Qzk1MTA3MkI3QTRGMDg5RUFFMDc1NTcxQTk1AA==",
+                                "timestamp": "1788431175",
+                                "type": "image",
+                                "image": {
+                                    "caption": "Camera",
+                                    "mime_type": "image\/jpeg",
+                                    "sha256": "gRWWbXCGBstDRY1KVWBzWO9rX4jf7wruyRAZDaJaptY=",
+                                    "id": "1973504303313367",
+                                    "url": "https:\/\/lookaside.fbsbx.com\/whatsapp_business\/attachments\/?mid=1973504303313367&source=webhook&ext=1788431476&hash=ATyaIL3aVVvn32bSR63saWN4E-WViLL9nhYcID8CuCh_Sw"
+                                }
+                            }
+                        ]
+                    },
+                    "field": "messages"
+                }
+            ]
+        }
+    ]
+}
