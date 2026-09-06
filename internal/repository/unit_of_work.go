@@ -23,5 +23,7 @@ type UnitOfWork interface {
 	WAPhoneNumberRepository() WAPhoneNumberRepository
 	WAUserPhoneNumberRepository() WAUserPhoneNumberRepository
 	WAHistoryMessageRepository() WAHistoryMessageRepository
+	WAMessageRepository() WAMessageRepository
 	WASampleTemplateRepository() WASampleTemplateRepository
+	WACampaignRepository() WACampaignRepository
 }

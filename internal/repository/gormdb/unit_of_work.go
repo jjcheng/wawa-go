@@ -24,7 +24,9 @@ type UnitOfWork struct {
 	waPhoneNumberRepository       repository.WAPhoneNumberRepository
 	waUserPhoneNumberRepository   repository.WAUserPhoneNumberRepository
 	waHistoryMessageRepository    repository.WAHistoryMessageRepository
+	waMessageRepository           repository.WAMessageRepository
 	waSampleTemplateRepository    repository.WASampleTemplateRepository
+	waCampaignRepository          repository.WACampaignRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -44,7 +46,9 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waPhoneNumberRepository = NewWAPhoneNumberRepository(db, logger)
 	unitOfWork.waUserPhoneNumberRepository = NewWAUserPhoneNumberRepository(db, logger)
 	unitOfWork.waHistoryMessageRepository = NewWAHistoryMessageRepository(db, logger)
+	unitOfWork.waMessageRepository = NewWAMessageRepository(db, logger)
 	unitOfWork.waSampleTemplateRepository = NewWASampleTemplateRepository(db, logger)
+	unitOfWork.waCampaignRepository = NewWACampaignRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -91,8 +95,16 @@ func (unitOfWork *UnitOfWork) WAHistoryMessageRepository() repository.WAHistoryM
 	return unitOfWork.waHistoryMessageRepository
 }
 
+func (unitOfWork *UnitOfWork) WAMessageRepository() repository.WAMessageRepository {
+	return unitOfWork.waMessageRepository
+}
+
 func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTemplateRepository {
 	return unitOfWork.waSampleTemplateRepository
+}
+
+func (unitOfWork *UnitOfWork) WACampaignRepository() repository.WACampaignRepository {
+	return unitOfWork.waCampaignRepository
 }
 
 // transaction

@@ -2,7 +2,8 @@ package setup
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -48,50 +49,49 @@ func StartQueueListener(ctx context.Context, dependencies *service.Dependencies)
 			continue
 		}
 		messageCtx, messageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		whatsappService.ReceiveMessage(messageQueueService, message, func(incomingMessage dto_wa.IncomingMessage) error {
-			return processIncomingWhatsAppMessage(messageCtx, dependencies, incomingMessage)
-		}, func(wabaID string, incomingMessage dto_wa.IncomingMessage) error {
-			return storeWhatsAppHistoryMessage(messageCtx, dependencies, wabaID, incomingMessage)
+		whatsappService.ReceiveMessage(messageQueueService, message, func(incomingMessage dto_wa.IncomingMessage, contact dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
+			return processIncomingWhatsAppMessage(messageCtx, dependencies, incomingMessage, contact, metadata)
+		}, func(wabaID string, incoming dto_wa.Incoming) error {
+			return storeWhatsAppHistoryMessage(messageCtx, dependencies, wabaID, incoming)
 		})
 		messageCancel()
 	}
 }
 
-func storeWhatsAppHistoryMessage(ctx context.Context, dependencies *service.Dependencies, wabaID string, incomingMessage dto_wa.IncomingMessage) error {
-	rawPayload, err := json.Marshal(incomingMessage)
-	if err != nil {
-		return err
-	}
-	return dependencies.UnitOfWork.WAHistoryMessageRepository().Insert(ctx, &dao_wa.HistoryMessage{
-		WABAId:           wabaID,
-		PhoneNumberId:    incomingMessage.PhoneNumberID,
-		From:             incomingMessage.From,
-		MessageId:        incomingMessage.ID,
-		MessageType:      incomingMessage.Type,
-		TextBody:         incomingMessage.Text.Body,
-		MessageTimestamp: incomingMessage.Timestamp,
-		RawPayload:       string(rawPayload),
-	})
-}
-
-func processIncomingWhatsAppMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage) error {
-	go func() {
-		businessPortfolio, ex := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, incomingMessage.PhoneNumberID)
-		if ex != nil {
-			return
-		}
-		dependencies.Whatsapp.StartTyping(ctx, incomingMessage.PhoneNumberID, incomingMessage.ID, businessPortfolio.AccessToken)
-	}()
-	// getUser := feature_account_user.Get{Identifier: phoneNumberID}
-	// getUserResponse := getUser.Handle(ctx, nil, dependencies)
-	// if !getUserResponse.Success || getUserResponse.Data == nil || getUserResponse.Data.App == nil {
-	// 	return fmt.Errorf("failed to identify user and app from identifier: %s", phoneNumberID)
+func storeWhatsAppHistoryMessage(ctx context.Context, dependencies *service.Dependencies, wabaID string, incoming dto_wa.Incoming) error {
+	// rawPayload, err := json.Marshal(incoming)
+	// if err != nil {
+	// 	return err
 	// }
-	// _, err := dependencies.Whatsapp.SendMessage(ctx, &service.WhatsAppMessageRequest{
-	// 	PhoneNumberID: phoneNumberID,
-	// 	To:            incomingMessage.From,
-	// 	Type:          service.WhatsAppMessageTypeText,
-	// 	Text:          &service.WhatsAppTextObject{Body: "hello"},
+	// return dependencies.UnitOfWork.WAHistoryMessageRepository().Insert(ctx, &dao_wa.HistoryMessage{
+	// 	WABAId:           wabaID,
+	// 	PhoneNumberId:    incomingMessage.PhoneNumberID,
+	// 	From:             incomingMessage.From,
+	// 	MessageId:        incomingMessage.ID,
+	// 	MessageType:      incomingMessage.Type,
+	// 	TextBody:         incomingMessage.Text.Body,
+	// 	MessageTimestamp: incomingMessage.Timestamp,
+	// 	RawPayload:       string(rawPayload),
 	// })
 	return nil
+}
+
+func processIncomingWhatsAppMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contact dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
+	timestamp, err := strconv.ParseInt(incomingMessage.Timestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid WhatsApp message timestamp %q: %w", incomingMessage.Timestamp, err)
+	}
+	message := dao_wa.Message{
+		Sending:             false,
+		PhoneNumber:         metadata.DisplayPhoneNumber,
+		PhoneNumberId:       incomingMessage.PhoneNumberID,
+		CustomerName:        contact.Profile.Name,
+		CustomerPhoneNumber: incomingMessage.From,
+		CustomerMetaUserId:  incomingMessage.FromUserID,
+		MetaId:              incomingMessage.ID,
+		Timestamp:           timestamp,
+		Type:                incomingMessage.Type,
+		Payload:             incomingMessage.Payload,
+	}
+	return dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message)
 }

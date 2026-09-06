@@ -51,6 +51,23 @@ func (customerRepository *CustomerRepository) GetByBSUID(ctx context.Context, us
 	return customer, nil
 }
 
+func (customerRepository *CustomerRepository) ListByIds(ctx context.Context, userId int32, ids []int32) ([]dao_customer.Customer, error) {
+	if len(ids) == 0 {
+		return []dao_customer.Customer{}, nil
+	}
+	var customers []dao_customer.Customer
+	result := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("user_id = ? AND id IN ?", userId, ids).
+		Order("id").
+		Find(&customers)
+	if result.Error != nil {
+		customerRepository.logger.ErrorFunction(result.Error, userId, ids)
+		return nil, result.Error
+	}
+	return customers, nil
+}
+
 func (customerRepository *CustomerRepository) GetDistinctTags(ctx context.Context, userId int32) ([]string, error) {
 	var tags []string
 	result := customerRepository.db.WithContext(ctx).

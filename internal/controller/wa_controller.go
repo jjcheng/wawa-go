@@ -11,6 +11,8 @@ import (
 	feature_wa_account "github.com/jjcheng/wawa-go/internal/feature/wa/account"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
+	feature_wa_campaign "github.com/jjcheng/wawa-go/internal/feature/wa/campaign"
+	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
 	feature_wa_sample_template "github.com/jjcheng/wawa-go/internal/feature/wa/sample_template"
 	feature_wa_template "github.com/jjcheng/wawa-go/internal/feature/wa/template"
@@ -60,6 +62,9 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[[]dto_wa.PhoneNumber, feature_wa_user_phone_number.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.UserPhoneNumber, feature_wa_user_phone_number.Create](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_phone_number.Delete](routerGroup, dependencies, apiGenerator)
+	// message
+	registerRoute[*service.WhatsAppMessageResponse, feature_wa_message.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto.ListResponse[dto_wa.Message], feature_wa_message.List](routerGroup, dependencies, apiGenerator)
 	// template
 	registerRoute[*dto.ListResponse[dto_wa.Template], feature_wa_template.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.Template, feature_wa_template.Create](routerGroup, dependencies, apiGenerator)
@@ -72,4 +77,10 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.PhoneNumberMessageAnalytics, feature_wa_phone_number.GetUsage](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetUsage](routerGroup, dependencies, apiGenerator)
+	// campaigns
+	registerRoute[*dto.ListResponse[dto_wa.Campaign], feature_wa_campaign.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.Campaign, feature_wa_campaign.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.Campaign, feature_wa_campaign.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_campaign.Archive](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_campaign.Cancel](routerGroup, dependencies, apiGenerator)
 }

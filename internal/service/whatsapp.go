@@ -45,25 +45,8 @@ func NewWhatsapp(logger *Logger) *Whatsapp {
 	}
 }
 
-type WhatsAppMessageType string
-
 const (
 	WhatsAppMessagingProduct = "whatsapp"
-
-	WhatsAppRecipientIndividual = "individual"
-	WhatsAppRecipientGroup      = "group"
-
-	WhatsAppMessageTypeText        WhatsAppMessageType = "text"
-	WhatsAppMessageTypeImage       WhatsAppMessageType = "image"
-	WhatsAppMessageTypeAudio       WhatsAppMessageType = "audio"
-	WhatsAppMessageTypeVideo       WhatsAppMessageType = "video"
-	WhatsAppMessageTypeDocument    WhatsAppMessageType = "document"
-	WhatsAppMessageTypeSticker     WhatsAppMessageType = "sticker"
-	WhatsAppMessageTypeLocation    WhatsAppMessageType = "location"
-	WhatsAppMessageTypeContacts    WhatsAppMessageType = "contacts"
-	WhatsAppMessageTypeInteractive WhatsAppMessageType = "interactive"
-	WhatsAppMessageTypeTemplate    WhatsAppMessageType = "template"
-	WhatsAppMessageTypeReaction    WhatsAppMessageType = "reaction"
 
 	WhatsAppMessageStatusRead = "read"
 
@@ -73,118 +56,13 @@ const (
 
 type WhatsAppMessageRequest struct {
 	MessagingProduct string                   `json:"messaging_product"`
-	RecipientType    string                   `json:"recipient_type,omitempty"`
-	To               string                   `json:"to,omitempty"`
-	PhoneNumberID    string                   `json:"phone_number_id,omitempty"`
-	Type             WhatsAppMessageType      `json:"type,omitempty"`
-	Context          *WhatsAppMessageContext  `json:"context,omitempty"`
-	Text             *WhatsAppTextObject      `json:"text,omitempty"`
-	Image            *WhatsAppMediaObject     `json:"image,omitempty"`
-	Audio            *WhatsAppMediaObject     `json:"audio,omitempty"`
-	Video            *WhatsAppMediaObject     `json:"video,omitempty"`
-	Document         *WhatsAppMediaObject     `json:"document,omitempty"`
-	Sticker          *WhatsAppMediaObject     `json:"sticker,omitempty"`
-	Location         *WhatsAppLocationObject  `json:"location,omitempty"`
-	Contacts         []map[string]any         `json:"contacts,omitempty"`
-	Interactive      *WhatsAppInteractiveBody `json:"interactive,omitempty"`
-	Template         *WhatsAppTemplateObject  `json:"template,omitempty"`
-	Reaction         *WhatsAppReactionObject  `json:"reaction,omitempty"`
-
-	Status          string                   `json:"status,omitempty"`
-	MessageID       string                   `json:"message_id,omitempty"`
-	TypingIndicator *WhatsAppTypingIndicator `json:"typing_indicator,omitempty"`
-}
-
-type WhatsAppMessageContext struct {
-	MessageID string `json:"message_id"`
-}
-
-type WhatsAppTextObject struct {
-	Body       string `json:"body"`
-	PreviewURL bool   `json:"preview_url,omitempty"`
-}
-
-type WhatsAppMediaObject struct {
-	ID       string `json:"id,omitempty"`
-	Link     string `json:"link,omitempty"`
-	Caption  string `json:"caption,omitempty"`
-	Filename string `json:"filename,omitempty"`
-}
-
-type WhatsAppLocationObject struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Name      string  `json:"name,omitempty"`
-	Address   string  `json:"address,omitempty"`
-	URL       string  `json:"url,omitempty"`
-}
-
-type WhatsAppReactionObject struct {
-	MessageID string `json:"message_id"`
-	Emoji     string `json:"emoji"`
+	Status           string                   `json:"status,omitempty"`
+	MessageID        string                   `json:"message_id,omitempty"`
+	TypingIndicator  *WhatsAppTypingIndicator `json:"typing_indicator,omitempty"`
 }
 
 type WhatsAppTypingIndicator struct {
 	Type string `json:"type"`
-}
-
-type WhatsAppTemplateObject struct {
-	Name       string                      `json:"name"`
-	Language   WhatsAppTemplateLanguage    `json:"language"`
-	Components []WhatsAppTemplateComponent `json:"components,omitempty"`
-}
-
-type WhatsAppTemplateLanguage struct {
-	Policy string `json:"policy,omitempty"`
-	Code   string `json:"code"`
-}
-
-type WhatsAppTemplateComponent struct {
-	Type       string           `json:"type"`
-	SubType    string           `json:"sub_type,omitempty"`
-	Index      string           `json:"index,omitempty"`
-	Parameters []map[string]any `json:"parameters,omitempty"`
-}
-
-type WhatsAppInteractiveBody struct {
-	Type   string                     `json:"type"`
-	Header *WhatsAppInteractiveHeader `json:"header,omitempty"`
-	Body   *WhatsAppInteractiveText   `json:"body,omitempty"`
-	Footer *WhatsAppInteractiveText   `json:"footer,omitempty"`
-	Action *WhatsAppInteractiveAction `json:"action,omitempty"`
-}
-
-type WhatsAppInteractiveHeader struct {
-	Type     string               `json:"type"`
-	Text     string               `json:"text,omitempty"`
-	Image    *WhatsAppMediaObject `json:"image,omitempty"`
-	Video    *WhatsAppMediaObject `json:"video,omitempty"`
-	Document *WhatsAppMediaObject `json:"document,omitempty"`
-}
-
-type WhatsAppInteractiveText struct {
-	Text string `json:"text"`
-}
-
-type WhatsAppInteractiveAction struct {
-	Button            string                       `json:"button,omitempty"`
-	Sections          []WhatsAppInteractiveSection `json:"sections,omitempty"`
-	CatalogID         string                       `json:"catalog_id,omitempty"`
-	ProductRetailerID string                       `json:"product_retailer_id,omitempty"`
-	Name              string                       `json:"name,omitempty"`
-	Parameters        map[string]any               `json:"parameters,omitempty"`
-}
-
-type WhatsAppInteractiveSection struct {
-	Title        string                   `json:"title,omitempty"`
-	Rows         []WhatsAppInteractiveRow `json:"rows,omitempty"`
-	ProductItems []map[string]any         `json:"product_items,omitempty"`
-}
-
-type WhatsAppInteractiveRow struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description,omitempty"`
 }
 
 type WhatsAppMessageResponse struct {
@@ -945,7 +823,7 @@ func (whatsapp *Whatsapp) GetPhoneNumber(ctx context.Context, metaPhoneNumberId 
 	return &response, nil
 }
 
-func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, message *MessageQueueMessage, handler func(incomingMessage dto_wa.IncomingMessage) error, historyHandler func(wabaID string, incomingMessage dto_wa.IncomingMessage) error) {
+func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, message *MessageQueueMessage, handler func(incomingMessage dto_wa.IncomingMessage, contact dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error, historyHandler func(wabaID string, incoming dto_wa.Incoming) error) {
 	whatsapp.logger.Infof("SMQ listener received message: message_id=%s", message.MessageID)
 	body := []byte(strings.TrimSpace(message.Body))
 	if len(body) == 0 {
@@ -967,17 +845,24 @@ func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, mess
 		for _, change := range entry.Changes {
 			phoneNumberID := strings.TrimSpace(change.Value.Metadata.PhoneNumberID)
 			if change.Field == "history" {
-				for _, historyMessage := range change.Value.Messages {
-					historyMessage.PhoneNumberID = phoneNumberID
-					if err := historyHandler(entry.ID, historyMessage); err != nil {
-						whatsapp.logger.Warnf("failed to store WhatsApp history message: message_id=%s err=%v", message.MessageID, err)
-					}
-				}
+				// for _, historyMessage := range change.Value.Messages {
+				// 	historyMessage.PhoneNumberID = phoneNumberID
+				// 	if err := historyHandler(entry.ID, historyMessage); err != nil {
+				// 		whatsapp.logger.Warnf("failed to store WhatsApp history message: message_id=%s err=%v", message.MessageID, err)
+				// 	}
+				// }
 				continue
 			}
 			if len(change.Value.Messages) > 0 {
 				for _, incomingMessage := range change.Value.Messages {
 					incomingMessage.PhoneNumberID = phoneNumberID
+					contact := dto_wa.IncomingContact{WaID: incomingMessage.From, UserID: incomingMessage.FromUserID}
+					for _, candidate := range change.Value.Contacts {
+						if candidate.WaID == incomingMessage.From || (incomingMessage.FromUserID != "" && candidate.UserID == incomingMessage.FromUserID) {
+							contact = candidate
+							break
+						}
+					}
 					whatsapp.logger.Infof(
 						"SMQ incoming whatsapp message: message_id=%s entry_id=%s field=%s from=%s type=%s wa_message_id=%s body=%s",
 						message.MessageID,
@@ -991,7 +876,7 @@ func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, mess
 					if incomingMessage.From == "" {
 						continue
 					}
-					err := handler(incomingMessage)
+					err := handler(incomingMessage, contact, change.Value.Metadata)
 					if err != nil {
 						whatsapp.logger.Warnf("SMQ processor failed to handle incoming whatsapp message: message_id=%s from=%s err=%v", message.MessageID, incomingMessage.From, err)
 					}
@@ -1008,22 +893,15 @@ func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, mess
 	}
 }
 
-func (whatsapp *Whatsapp) SendMessage(ctx context.Context, request *WhatsAppMessageRequest, businessAccessToken string) (*WhatsAppMessageResponse, error) {
-	if strings.TrimSpace(request.To) == "" {
-		return nil, fmt.Errorf("to is required")
-	}
-	if request.Type == "" {
-		return nil, fmt.Errorf("type is required")
-	}
-	phoneNumberID := strings.TrimSpace(request.PhoneNumberID)
-	request.MessagingProduct = WhatsAppMessagingProduct
-	if strings.TrimSpace(request.RecipientType) == "" {
-		request.RecipientType = WhatsAppRecipientIndividual
+func (whatsapp *Whatsapp) SendMessage(ctx context.Context, phoneNumberID string, payload any, businessAccessToken string) (*WhatsAppMessageResponse, error) {
+	phoneNumberID = strings.TrimSpace(phoneNumberID)
+	if phoneNumberID == "" {
+		return nil, fmt.Errorf("phone number ID is required")
 	}
 	var response WhatsAppMessageResponse
-	err := whatsapp.doJSONRequest(ctx, "send_message", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
+	err := whatsapp.doJSONRequest(ctx, "send_message", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), payload, &response, businessAccessToken)
 	if err != nil {
-		whatsapp.logger.ErrorFunction(err, request)
+		whatsapp.logger.ErrorFunction(err, phoneNumberID)
 		return nil, err
 	}
 	return &response, nil

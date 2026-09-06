@@ -24,16 +24,12 @@
                             {
                                 "from": "6590073708",
                                 "from_user_id": "SG.1027797919756740",
-                                "id": "wamid.HBgKNjU5MDA3MzcwOBUCABIYIEFDQzJBQ0ZCNjg2NEY5MzMzNTAyN0ZGRTg1QTg0MzJGAA==",
-                                "timestamp": "1788702355",
-                                "type": "image",
-                                "image": {
-                                    "caption": "Camera",
-                                    "mime_type": "image\/jpeg",
-                                    "sha256": "C95p1KDTo25idZYVx3AF3V\/M0KI4qg2OHlfxOU8n0mE=",
-                                    "id": "1550914439606165",
-                                    "url": "https:\/\/lookaside.fbsbx.com\/whatsapp_business\/attachments\/?mid=1550914439606165&source=webhook&ext=1788702657&hash=ATwUFGsbktPK4O0kX4RuqaEdSuggDTb_33XDYjvnpoIFiw"
-                                }
+                                "id": "wamid.HBgKNjU5MDA3MzcwOBUCABIYIEFDMUZFOUFEMDhCRDk0NUQwM0YzNDY5QTRBRjVFMTg3AA==",
+                                "timestamp": "1788702177",
+                                "text": {
+                                    "body": "Hello \ud83d\udc4b\ud83e\udd17"
+                                },
+                                "type": "text"
                             }
                         ]
                     },

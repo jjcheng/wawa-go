@@ -71,3 +71,21 @@ type WATemplateFlowAction string
 const (
 	WATemplateFlowActionNavigate WATemplateFlowAction = "NAVIGATE"
 )
+
+type WAAttachmentType string
+
+const (
+	WAAttachmentTypeImage    WAAttachmentType = "IMAGE"
+	WAAttachmentTypeVideo    WAAttachmentType = "VIDEO"
+	WAAttachmentTypeDocument WAAttachmentType = "DOCUMENT"
+)
+
+type WACampaignStatus string
+
+const (
+	WACampaignStatusPending    WACampaignStatus = "PENDING"
+	WACampaignStatusCompleted  WACampaignStatus = "COMPLETED"
+	WACampaignStatusProcessing WACampaignStatus = "PROCESSING"
+	WACampaignStatusFailed     WACampaignStatus = "FAILED"
+	WACampaignStatusCancelled  WACampaignStatus = "CANCELLED"
+)
