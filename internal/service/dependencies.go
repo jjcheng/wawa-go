@@ -5,21 +5,19 @@ import (
 )
 
 type Dependencies struct {
-	UnitOfWork      repository.UnitOfWork
-	Logger          *Logger
-	File            *File
-	MessageQueue    *MessageQueue
-	Whatsapp        *Whatsapp
-	WAMessageStream *WAMessageStream
+	UnitOfWork   repository.UnitOfWork
+	Logger       *Logger
+	File         *File
+	MessageQueue *MessageQueue
+	Whatsapp     *Whatsapp
 }
 
-func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *File, messageQueue *MessageQueue, whatsapp *Whatsapp, waMessageStream *WAMessageStream) *Dependencies {
+func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *File, messageQueue *MessageQueue, whatsapp *Whatsapp) *Dependencies {
 	return &Dependencies{
-		UnitOfWork:      unitOfWork,
-		Logger:          logger,
-		File:            file,
-		MessageQueue:    messageQueue,
-		Whatsapp:        whatsapp,
-		WAMessageStream: waMessageStream,
+		UnitOfWork:   unitOfWork,
+		Logger:       logger,
+		File:         file,
+		MessageQueue: messageQueue,
+		Whatsapp:     whatsapp,
 	}
 }

@@ -6771,38 +6771,61 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
-                        "contacts": {
-                          "items": {
-                            "properties": {
-                              "input": {
-                                "type": "string"
-                              },
-                              "wa_id": {
-                                "type": "string"
-                              }
-                            },
+                        "customer_meta_user_id": {
+                          "type": "string"
+                        },
+                        "customer_name": {
+                          "type": "string"
+                        },
+                        "customer_phone_number": {
+                          "type": "string"
+                        },
+                        "entry_date": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "example": 1,
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "last_update": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "payload": {
+                          "additionalProperties": {
                             "type": "object"
                           },
-                          "type": "array"
+                          "type": "object"
                         },
-                        "messages": {
-                          "items": {
-                            "properties": {
-                              "id": {
-                                "type": "string"
-                              },
-                              "message_status": {
-                                "type": "string"
-                              }
-                            },
-                            "type": "object"
-                          },
-                          "type": "array"
+                        "phone_number": {
+                          "type": "string"
                         },
-                        "messaging_product": {
+                        "phone_number_id": {
+                          "type": "string"
+                        },
+                        "sending": {
+                          "type": "boolean"
+                        },
+                        "timestamp": {
+                          "format": "int64",
+                          "type": "integer"
+                        },
+                        "type": {
+                          "type": "string"
+                        },
+                        "wa_message_id": {
                           "type": "string"
                         }
                       },
+                      "required": [
+                        "id",
+                        "entry_date",
+                        "last_update"
+                      ],
                       "type": "object"
                     },
                     "request_id": {
@@ -7129,50 +7152,6 @@
           }
         ],
         "summary": "Send WhatsApp message",
-        "tags": [
-          "WA"
-        ]
-      }
-    },
-    "/v1/wa/messages/stream": {
-      "get": {
-        "description": "Establishes a WebSocket connection that emits message and status events for one customer conversation.",
-        "parameters": [
-          {
-            "description": "Meta ID of the business phone number",
-            "example": "",
-            "in": "query",
-            "name": "phone_number_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Customer WhatsApp ID",
-            "example": "6590073708",
-            "in": "query",
-            "name": "customer_phone_number",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "101": {
-            "description": "WebSocket connection established"
-          },
-          "default": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "apiKey": []
-          }
-        ],
-        "summary": "Stream WhatsApp conversation messages",
         "tags": [
           "WA"
         ]

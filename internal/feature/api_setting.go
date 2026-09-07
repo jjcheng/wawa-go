@@ -16,7 +16,6 @@ type APISettings struct {
 	Tag             types.APITag
 	Errors          []APIError
 	BodyContentType string
-	WebSocket       bool
 }
 
 type APIError struct {
@@ -42,12 +41,6 @@ func NewAPISettings(summary string, description string, t types.HttpRequestType,
 func NewBinaryAPISettings(summary string, description string, t types.HttpRequestType, method string, endpoint string, auth bool, public bool, tag types.APITag, errors []APIError) APISettings {
 	settings := NewAPISettings(summary, description, t, method, endpoint, auth, public, tag, errors)
 	settings.BodyContentType = "application/octet-stream"
-	return settings
-}
-
-func NewWebSocketAPISettings(summary string, description string, endpoint string, auth bool, public bool, tag types.APITag, errors []APIError) APISettings {
-	settings := NewAPISettings(summary, description, types.HttpRequestTypeQuery, "GET", endpoint, auth, public, tag, errors)
-	settings.WebSocket = true
 	return settings
 }
 

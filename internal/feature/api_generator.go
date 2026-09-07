@@ -106,8 +106,7 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 	// Generate request body schema if needed.
 	// Some endpoints read raw binary data from the request body even though they also
 	// include query/form parameters, so we must allow explicit binary request bodies.
-	hasBody := settings.Type != types.HttpRequestTypeUri &&
-		settings.Type != types.HttpRequestTypeUriQuery
+	hasBody := settings.Type != types.HttpRequestTypeUri && settings.Type != types.HttpRequestTypeUriQuery
 	if settings.Type == types.HttpRequestTypeQuery && settings.BodyContentType == "application/json" {
 		hasBody = false
 	}
@@ -135,12 +134,7 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 		}
 	}
 	// Generate response schema
-	if settings.WebSocket {
-		operation.Responses.Set(fmt.Sprint(http.StatusSwitchingProtocols), &openapi3.ResponseRef{
-			Value: &openapi3.Response{Description: helper.ConvertToPointer("WebSocket connection established")},
-		})
-	}
-	if responseType != nil && !settings.WebSocket {
+	if responseType != nil {
 		successResponseSchema := g.generateResponseSchema(responseType, true, http.StatusOK, "")
 		operation.Responses.Set(fmt.Sprint(http.StatusOK), &openapi3.ResponseRef{
 			Value: &openapi3.Response{

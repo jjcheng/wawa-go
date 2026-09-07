@@ -211,27 +211,27 @@ func (create *Create) Validate() []exception.InputException {
 	return inputErrors
 }
 
-func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.WhatsAppMessageResponse] {
+func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Message] {
 	if user == nil {
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusForbidden, "you are not authenticated")
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[*service.WhatsAppMessageResponse](inputErrors)
+		return dto.NewInvalidInputResponse[*dto_wa.Message](inputErrors)
 	}
 	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
 	if err != nil {
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if len(phoneNumbers) == 0 {
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
 	}
 	create.PhoneNumberID = phoneNumbers[0].MetaPhoneNumberId
 	businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, create.PhoneNumberID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
 		}
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	create.MessagingProduct = "whatsapp"
 	if create.RecipientType == "" {
@@ -239,14 +239,14 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	response, err := dependencies.Whatsapp.SendMessage(ctx, create.PhoneNumberID, create, businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
 	if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusBadGateway, "WhatsApp did not return a message ID")
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, "WhatsApp did not return a message ID")
 	}
 	payload, err := messagePayload(create)
 	if err != nil {
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	recipient := create.To
 	if len(response.Contacts) > 0 && strings.TrimSpace(response.Contacts[0].WaID) != "" {
@@ -266,10 +266,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Status:              types.WAMessageStatusAccepted,
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
-		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	dependencies.WAMessageStream.PublishMessage(dto_wa.NewMessage(message))
-	return dto.NewSuccessResponse(response)
+	result := dto_wa.NewMessage(message)
+	return dto.NewSuccessResponse(&result)
 }
 
 func messagePayload(message Create) (map[string]any, error) {

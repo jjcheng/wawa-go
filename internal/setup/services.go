@@ -23,8 +23,7 @@ func SetupServices(unitOfWork repository.UnitOfWork, logger *service.Logger) *se
 	fileService := service.NewFileService(logger)
 	messageQueueService := service.NewMessageQueue(logger)
 	whatsappService := service.NewWhatsapp(logger)
-	waMessageStream := service.NewWAMessageStream()
-	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, whatsappService, waMessageStream)
+	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, whatsappService)
 	return dependencies
 }
 
@@ -111,10 +110,6 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 		}
 	}()
 	messageStatus := types.WAMessageStatus(status.Status)
-	message, err := transaction.WAMessageRepository().GetByWAMessageId(ctx, status.ID)
-	if err != nil {
-		return err
-	}
 	event := dao_wa.MessageStatusEvent{
 		WAMessageId: status.ID,
 		Status:      messageStatus,
@@ -131,7 +126,6 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 		return err
 	}
 	committed = true
-	dependencies.WAMessageStream.PublishStatus(dto_wa.NewMessage(*message), dto_wa.NewMessageStatusEvent(event))
 	return nil
 }
 
@@ -161,6 +155,5 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
 		return err
 	}
-	dependencies.WAMessageStream.PublishMessage(dto_wa.NewMessage(message))
 	return nil
 }
