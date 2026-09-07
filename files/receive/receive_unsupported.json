@@ -24,14 +24,22 @@
                             {
                                 "from": "6590073708",
                                 "from_user_id": "SG.1027797919756740",
-                                "id": "wamid.HBgKNjU5MDA3MzcwOBUCABIYIEFDRDA1OEIwNTk4Q0Y0Mjc0MEZGRTAyQzNDQkE2MDZCAA==",
-                                "timestamp": "1788702206",
-                                "type": "image",
-                                "image": {
-                                    "mime_type": "image\/jpeg",
-                                    "sha256": "HwKDKsLGyBzeWv4q5TYTgyqALZgZOzKAselBZ4bWyuw=",
-                                    "id": "28014132298282539",
-                                    "url": "https:\/\/lookaside.fbsbx.com\/whatsapp_business\/attachments\/?mid=28014132298282539&source=webhook&ext=1788702508&hash=ATy41Rc-W5EniP1fQauKh2kn64mLSIaObaEVTV-YOdcBnQ"
+                                "id": "wamid.HBgKNjU5MDA3MzcwOBUCABIYIEFDODM0NUQ4OEZFQjM0NjY1M0RGREU4NkQyRjM5NzgwAA==",
+                                "timestamp": "1788763208",
+                                "errors": [
+                                    {
+                                        "code": 131051,
+                                        "title": "Message type unknown",
+                                        "message": "Message type unknown",
+                                        "error_data": {
+                                            "details": "Message type is currently not supported."
+                                        }
+                                    }
+                                ],
+                                "type": "unsupported",
+                                "unsupported": {
+                                    "type": "unknown",
+                                    "raw_type": "unknown"
                                 }
                             }
                         ]

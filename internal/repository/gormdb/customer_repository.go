@@ -39,7 +39,22 @@ func (customerRepository *CustomerRepository) GetByCountryCodePhoneNumber(ctx co
 	return customer, nil
 }
 
-func (customerRepository *CustomerRepository) GetByBSUID(ctx context.Context, userId int32, bsuid string) (*dao_customer.Customer, error) {
+func (customerRepository *CustomerRepository) GetByMetaWAId(ctx context.Context, userId int32, metaWAId string) (*dao_customer.Customer, error) {
+	var customer dao_customer.Customer
+	result := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("user_id = ? AND CONCAT(country_code, phone_number) = ?", userId, metaWAId).
+		First(&customer)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			customerRepository.logger.ErrorFunction(result.Error, userId, metaWAId)
+		}
+		return nil, result.Error
+	}
+	return &customer, nil
+}
+
+func (customerRepository *CustomerRepository) GetByMetaUserId(ctx context.Context, userId int32, bsuid string) (*dao_customer.Customer, error) {
 	var customer *dao_customer.Customer
 	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND bsuid = ?", userId, bsuid).First(&customer)
 	if result.Error != nil {

@@ -3,6 +3,7 @@ package dto_wa
 import (
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
+	"github.com/jjcheng/wawa-go/internal/helper"
 )
 
 type PhoneNumber struct {
@@ -30,4 +31,8 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 		PhoneNumber:             phoneNumber.PhoneNumber,
 		Name:                    phoneNumber.Name,
 	}
+}
+
+func (phoneNumber PhoneNumber) WAId() string {
+	return helper.NormalizeWAId(phoneNumber.PhoneNumber)
 }

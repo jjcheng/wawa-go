@@ -1,15 +1,13 @@
 package repository
 
 import (
-	"github.com/jjcheng/wawa-go/internal/exception"
-
 	"gorm.io/gorm"
 )
 
 type UnitOfWork interface {
 	BeginTransaction() UnitOfWork
 	Rollback()
-	CommitTransaction() *exception.Exception
+	CommitTransaction() error
 	DB() *gorm.DB
 	// account
 	AccountUserRepository() AccountUserRepository
@@ -24,6 +22,7 @@ type UnitOfWork interface {
 	WAUserPhoneNumberRepository() WAUserPhoneNumberRepository
 	WAHistoryMessageRepository() WAHistoryMessageRepository
 	WAMessageRepository() WAMessageRepository
+	WAMessageStatusEventRepository() WAMessageStatusEventRepository
 	WASampleTemplateRepository() WASampleTemplateRepository
 	WACampaignRepository() WACampaignRepository
 }

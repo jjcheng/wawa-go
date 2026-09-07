@@ -2,15 +2,20 @@ package setup
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
 )
 
 // initializes and returns all application services
@@ -18,23 +23,23 @@ func SetupServices(unitOfWork repository.UnitOfWork, logger *service.Logger) *se
 	fileService := service.NewFileService(logger)
 	messageQueueService := service.NewMessageQueue(logger)
 	whatsappService := service.NewWhatsapp(logger)
-	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, whatsappService)
+	waMessageStream := service.NewWAMessageStream()
+	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, whatsappService, waMessageStream)
 	return dependencies
 }
 
 func StartQueueListener(ctx context.Context, dependencies *service.Dependencies) {
 	logger := dependencies.Logger
 	messageQueueService := dependencies.MessageQueue
-	whatsappService := dependencies.Whatsapp
 	for {
-		pollCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.Default().AliyunSMQ.PollingWaitSeconds+5)*time.Second)
+		pollCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.Default().AliyunSMQ.PollingWaitSeconds+25)*time.Second)
 		message, err := messageQueueService.ReceiveMessage(pollCtx)
 		cancel()
 		if err != nil {
 			if ctx.Err() != nil {
 				return
 			}
-			logger.Warnf("queue listener receive error: %v", err)
+			logger.ErrorFunction(err)
 			select {
 			case <-ctx.Done():
 				return
@@ -48,50 +53,114 @@ func StartQueueListener(ctx context.Context, dependencies *service.Dependencies)
 		if message == nil {
 			continue
 		}
+		body := []byte(strings.TrimSpace(message.Body))
+		if decodedBody, err := base64.StdEncoding.DecodeString(message.Body); err == nil && json.Valid(decodedBody) {
+			body = decodedBody
+		}
+		incoming, err := helper.DeserializeJSON[dto_wa.Incoming](string(body))
+		if err != nil {
+			logger.ErrorFunction(err, message.MessageID)
+			continue
+		}
 		messageCtx, messageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		whatsappService.ReceiveMessage(messageQueueService, message, func(incomingMessage dto_wa.IncomingMessage, contact dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
-			return processIncomingWhatsAppMessage(messageCtx, dependencies, incomingMessage, contact, metadata)
-		}, func(wabaID string, incoming dto_wa.Incoming) error {
-			return storeWhatsAppHistoryMessage(messageCtx, dependencies, wabaID, incoming)
-		})
+		err = processWAIncoming(messageCtx, dependencies, *incoming)
 		messageCancel()
+		if err != nil {
+			// delete the queued message if already stored
+			if strings.Contains(err.Error(), "duplicate key value violates") {
+				if err := messageQueueService.DeleteMessage(message.ReceiptHandle); err != nil {
+					logger.ErrorFunction(err, message.MessageID)
+				}
+			}
+			continue
+		}
+		if err := messageQueueService.DeleteMessage(message.ReceiptHandle); err != nil {
+			logger.ErrorFunction(err, message.MessageID)
+		}
 	}
 }
 
-func storeWhatsAppHistoryMessage(ctx context.Context, dependencies *service.Dependencies, wabaID string, incoming dto_wa.Incoming) error {
-	// rawPayload, err := json.Marshal(incoming)
-	// if err != nil {
-	// 	return err
-	// }
-	// return dependencies.UnitOfWork.WAHistoryMessageRepository().Insert(ctx, &dao_wa.HistoryMessage{
-	// 	WABAId:           wabaID,
-	// 	PhoneNumberId:    incomingMessage.PhoneNumberID,
-	// 	From:             incomingMessage.From,
-	// 	MessageId:        incomingMessage.ID,
-	// 	MessageType:      incomingMessage.Type,
-	// 	TextBody:         incomingMessage.Text.Body,
-	// 	MessageTimestamp: incomingMessage.Timestamp,
-	// 	RawPayload:       string(rawPayload),
-	// })
+func processWAIncoming(ctx context.Context, dependencies *service.Dependencies, incoming dto_wa.Incoming) error {
+	for _, entry := range incoming.Entry {
+		for _, change := range entry.Changes {
+			for _, incomingMessage := range change.Value.Messages {
+				if err := storeWAIncomingMessage(ctx, dependencies, incomingMessage, change.Value.Contacts, change.Value.Metadata); err != nil {
+					return err
+				}
+			}
+			for _, status := range change.Value.Statuses {
+				if err := storeWAMessageStatus(ctx, dependencies, status); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 
-func processIncomingWhatsAppMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contact dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
+func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status) error {
+	timestamp, err := strconv.ParseInt(status.Timestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid WhatsApp status timestamp %q: %w", status.Timestamp, err)
+	}
+	transaction := dependencies.UnitOfWork.BeginTransaction()
+	committed := false
+	defer func() {
+		if !committed {
+			transaction.Rollback()
+		}
+	}()
+	messageStatus := types.WAMessageStatus(status.Status)
+	message, err := transaction.WAMessageRepository().GetByWAMessageId(ctx, status.ID)
+	if err != nil {
+		return err
+	}
+	event := dao_wa.MessageStatusEvent{
+		WAMessageId: status.ID,
+		Status:      messageStatus,
+		Timestamp:   timestamp,
+		Payload:     status.Payload,
+	}
+	if err := transaction.WAMessageStatusEventRepository().Insert(ctx, &event); err != nil {
+		return err
+	}
+	if err := transaction.WAMessageRepository().UpdateStatusByWAMessageId(ctx, status.ID, messageStatus); err != nil {
+		return err
+	}
+	if err := transaction.CommitTransaction(); err != nil {
+		return err
+	}
+	committed = true
+	dependencies.WAMessageStream.PublishStatus(dto_wa.NewMessage(*message), dto_wa.NewMessageStatusEvent(event))
+	return nil
+}
+
+func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
 	timestamp, err := strconv.ParseInt(incomingMessage.Timestamp, 10, 64)
 	if err != nil {
 		return fmt.Errorf("invalid WhatsApp message timestamp %q: %w", incomingMessage.Timestamp, err)
 	}
+	contact := helper.First(contacts, func(c dto_wa.IncomingContact) bool {
+		return c.UserID == incomingMessage.FromUserID
+	})
+	if contact == nil {
+		return fmt.Errorf("missing contact in WA incoming message: %s", incomingMessage.ID)
+	}
 	message := dao_wa.Message{
 		Sending:             false,
 		PhoneNumber:         metadata.DisplayPhoneNumber,
-		PhoneNumberId:       incomingMessage.PhoneNumberID,
+		PhoneNumberId:       metadata.PhoneNumberID,
 		CustomerName:        contact.Profile.Name,
 		CustomerPhoneNumber: incomingMessage.From,
 		CustomerMetaUserId:  incomingMessage.FromUserID,
-		MetaId:              incomingMessage.ID,
+		WAMessageId:         incomingMessage.ID,
 		Timestamp:           timestamp,
 		Type:                incomingMessage.Type,
 		Payload:             incomingMessage.Payload,
 	}
-	return dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message)
+	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
+		return err
+	}
+	dependencies.WAMessageStream.PublishMessage(dto_wa.NewMessage(message))
+	return nil
 }

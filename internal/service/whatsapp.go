@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	cryptorand "crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -823,81 +822,7 @@ func (whatsapp *Whatsapp) GetPhoneNumber(ctx context.Context, metaPhoneNumberId 
 	return &response, nil
 }
 
-func (whatsapp *Whatsapp) ReceiveMessage(messageQueueService *MessageQueue, message *MessageQueueMessage, handler func(incomingMessage dto_wa.IncomingMessage, contact dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error, historyHandler func(wabaID string, incoming dto_wa.Incoming) error) {
-	whatsapp.logger.Infof("SMQ listener received message: message_id=%s", message.MessageID)
-	body := []byte(strings.TrimSpace(message.Body))
-	if len(body) == 0 {
-		whatsapp.logger.Warnf("SMQ message body is empty: message_id=%s", message.MessageID)
-		return
-	}
-	if decodedBody, err := base64.StdEncoding.DecodeString(message.Body); err == nil && json.Valid(decodedBody) {
-		body = decodedBody
-	} else if err != nil {
-		whatsapp.logger.Debugf("SMQ message body is not base64, treating as raw webhook body: message_id=%s", message.MessageID)
-		return
-	}
-	incoming, err := helper.DeserializeJSON[dto_wa.Incoming](string(body))
-	if err != nil {
-		whatsapp.logger.Warnf("SMQ processor failed to decode whatsapp send-status payload: message_id=%s err=%v", message.MessageID, err)
-		return
-	}
-	for _, entry := range incoming.Entry {
-		for _, change := range entry.Changes {
-			phoneNumberID := strings.TrimSpace(change.Value.Metadata.PhoneNumberID)
-			if change.Field == "history" {
-				// for _, historyMessage := range change.Value.Messages {
-				// 	historyMessage.PhoneNumberID = phoneNumberID
-				// 	if err := historyHandler(entry.ID, historyMessage); err != nil {
-				// 		whatsapp.logger.Warnf("failed to store WhatsApp history message: message_id=%s err=%v", message.MessageID, err)
-				// 	}
-				// }
-				continue
-			}
-			if len(change.Value.Messages) > 0 {
-				for _, incomingMessage := range change.Value.Messages {
-					incomingMessage.PhoneNumberID = phoneNumberID
-					contact := dto_wa.IncomingContact{WaID: incomingMessage.From, UserID: incomingMessage.FromUserID}
-					for _, candidate := range change.Value.Contacts {
-						if candidate.WaID == incomingMessage.From || (incomingMessage.FromUserID != "" && candidate.UserID == incomingMessage.FromUserID) {
-							contact = candidate
-							break
-						}
-					}
-					whatsapp.logger.Infof(
-						"SMQ incoming whatsapp message: message_id=%s entry_id=%s field=%s from=%s type=%s wa_message_id=%s body=%s",
-						message.MessageID,
-						entry.ID,
-						change.Field,
-						incomingMessage.From,
-						incomingMessage.Type,
-						incomingMessage.ID,
-						incomingMessage.Text.Body,
-					)
-					if incomingMessage.From == "" {
-						continue
-					}
-					err := handler(incomingMessage, contact, change.Value.Metadata)
-					if err != nil {
-						whatsapp.logger.Warnf("SMQ processor failed to handle incoming whatsapp message: message_id=%s from=%s err=%v", message.MessageID, incomingMessage.From, err)
-					}
-				}
-			} else if len(change.Value.Statuses) > 0 {
-				for _, status := range change.Value.Statuses {
-					whatsapp.logger.Infof("wa status change: %s - %s", status.ID, status.Status)
-				}
-			}
-		}
-	}
-	if err := messageQueueService.DeleteMessage(message.ReceiptHandle); err != nil {
-		whatsapp.logger.Warnf("SMQ processor failed to delete message: message_id=%s err=%v", message.MessageID, err)
-	}
-}
-
 func (whatsapp *Whatsapp) SendMessage(ctx context.Context, phoneNumberID string, payload any, businessAccessToken string) (*WhatsAppMessageResponse, error) {
-	phoneNumberID = strings.TrimSpace(phoneNumberID)
-	if phoneNumberID == "" {
-		return nil, fmt.Errorf("phone number ID is required")
-	}
 	var response WhatsAppMessageResponse
 	err := whatsapp.doJSONRequest(ctx, "send_message", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), payload, &response, businessAccessToken)
 	if err != nil {
@@ -908,7 +833,6 @@ func (whatsapp *Whatsapp) SendMessage(ctx context.Context, phoneNumberID string,
 }
 
 func (whatsapp *Whatsapp) MarkAsRead(ctx context.Context, phoneNumberID string, messageID string, businessAccessToken string) (*WhatsAppMessageResponse, error) {
-	messageID = strings.TrimSpace(messageID)
 	request := &WhatsAppMessageRequest{
 		MessagingProduct: WhatsAppMessagingProduct,
 		Status:           WhatsAppMessageStatusRead,

@@ -11,7 +11,7 @@ type Customer struct {
 	DisplayName string         `gorm:"column:display_name"`
 	CountryCode string         `gorm:"column:country_code"`
 	PhoneNumber string         `gorm:"column:phone_number"`
-	BSUID       string         `gorm:"column:bsuid"`
+	MetaUserId  string         `gorm:"column:meta_user_id"`
 	Tags        pq.StringArray `gorm:"column:tags;type:text[]"`
 }
 

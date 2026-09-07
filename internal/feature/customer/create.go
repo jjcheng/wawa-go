@@ -21,7 +21,7 @@ type Create struct {
 	DisplayName string   `json:"display_name" val:"required" description:"customer display name"`
 	CountryCode string   `json:"country_code" val:"required" description:"customer country code"`
 	PhoneNumber string   `json:"phone_number" val:"required" description:"customer phone number"`
-	BSUID       string   `json:"bsuid" description:"if whatapp user id"`
+	MetaUserId  string   `json:"meta_user_id" description:"a string given by Meta"`
 	Tags        []string `json:"tags" description:"tags of the customer"`
 }
 
@@ -32,7 +32,7 @@ func (create *Create) Validate() []exception.InputException {
 	create.PhoneNumber = strings.ReplaceAll(create.PhoneNumber, "+", "")
 	create.PhoneNumber = strings.ReplaceAll(create.PhoneNumber, " ", "")
 	create.PhoneNumber = strings.ReplaceAll(create.PhoneNumber, "-", "")
-	create.BSUID = strings.TrimSpace(create.BSUID)
+	create.MetaUserId = strings.TrimSpace(create.MetaUserId)
 	for i := range create.Tags {
 		create.Tags[i] = strings.TrimSpace(create.Tags[i])
 	}
@@ -40,17 +40,13 @@ func (create *Create) Validate() []exception.InputException {
 	if create.DisplayName == "" {
 		errors = append(errors, exception.NewInputException("display_name", "missing display name"))
 	}
-	// if bsuid is empty, check for country code + phone number
-	if create.BSUID == "" {
+	// if metaUserId is empty, check for country code + phone number
+	if create.MetaUserId == "" {
 		if create.CountryCode == "" {
 			errors = append(errors, exception.NewInputException("country_code", "missing country code"))
 		}
 		if create.PhoneNumber == "" {
 			errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
-		}
-	} else {
-		if create.BSUID == "" {
-			errors = append(errors, exception.NewInputException("bsuid", "missing bsuid"))
 		}
 	}
 	return errors
@@ -69,8 +65,8 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		if existing != nil {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists")
 		}
-	} else if create.BSUID != "" {
-		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByBSUID(ctx, user.Id, create.BSUID)
+	} else if create.MetaUserId != "" {
+		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByMetaUserId(ctx, user.Id, create.MetaUserId)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
@@ -82,7 +78,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		DisplayName: create.DisplayName,
 		CountryCode: create.CountryCode,
 		PhoneNumber: create.PhoneNumber,
-		BSUID:       create.BSUID,
+		MetaUserId:  create.MetaUserId,
 		Tags:        create.Tags,
 		UserId:      user.Id,
 	}

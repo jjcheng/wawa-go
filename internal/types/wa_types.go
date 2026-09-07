@@ -89,3 +89,16 @@ const (
 	WACampaignStatusFailed     WACampaignStatus = "FAILED"
 	WACampaignStatusCancelled  WACampaignStatus = "CANCELLED"
 )
+
+type WAMessageStatus string
+
+const (
+	WAMessageStatusAccepted                 WAMessageStatus = "accepted"
+	WAMessageStatusHeldForQualityAssessment WAMessageStatus = "held_for_quality_assessment"
+	WAMessageStatusPaused                   WAMessageStatus = "paused"
+	WAMessageStatusSent                     WAMessageStatus = "sent"
+	WAMessageStatusDelivered                WAMessageStatus = "delivered"
+	WAMessageStatusRead                     WAMessageStatus = "read"
+	WAMessageStatusPlayed                   WAMessageStatus = "played"
+	WAMessageStatusFailed                   WAMessageStatus = "failed"
+)

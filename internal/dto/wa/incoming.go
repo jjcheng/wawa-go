@@ -43,14 +43,15 @@ type IncomingProfile struct {
 }
 
 type IncomingMessage struct {
-	PhoneNumberID string              `json:"phone_number_id,omitempty"`
-	From          string              `json:"from"`
-	FromUserID    string              `json:"from_user_id,omitempty"`
-	ID            string              `json:"id"`
-	Text          IncomingMessageText `json:"text,omitempty"`
-	Timestamp     string              `json:"timestamp"`
-	Type          string              `json:"type"`
-	Payload       map[string]any      `json:"-"`
+	PhoneNumberID string               `json:"phone_number_id,omitempty"`
+	From          string               `json:"from"`
+	FromUserID    string               `json:"from_user_id,omitempty"`
+	ID            string               `json:"id"`
+	Text          *IncomingMessageText `json:"text,omitempty"`
+	Timestamp     string               `json:"timestamp"`
+	Type          string               `json:"type"`
+	Errors        []StatusError        `json:"errors,omitempty"`
+	Payload       map[string]any       `json:"-"`
 }
 
 func (message *IncomingMessage) UnmarshalJSON(data []byte) error {
@@ -80,6 +81,22 @@ type Status struct {
 	Conversation *StatusConversation `json:"conversation,omitempty"`
 	Pricing      *StatusPricing      `json:"pricing,omitempty"`
 	Errors       []StatusError       `json:"errors,omitempty"`
+	Payload      map[string]any      `json:"-"`
+}
+
+func (status *Status) UnmarshalJSON(data []byte) error {
+	type statusAlias Status
+	var decoded statusAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	*status = Status(decoded)
+	status.Payload = payload
+	return nil
 }
 
 type StatusConversation struct {

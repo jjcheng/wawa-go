@@ -1,10 +1,8 @@
 package gormdb
 
 import (
-	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
-	"github.com/jjcheng/wawa-go/internal/types"
 
 	"gorm.io/gorm"
 )
@@ -19,14 +17,15 @@ type UnitOfWork struct {
 	// customer
 	customerRepository repository.CustomerRepository
 	// wa
-	waBusinessPortfolioRepository repository.WABusinessPortfolioRepository
-	waBusinessAccountRepository   repository.WABusinessAccountRepository
-	waPhoneNumberRepository       repository.WAPhoneNumberRepository
-	waUserPhoneNumberRepository   repository.WAUserPhoneNumberRepository
-	waHistoryMessageRepository    repository.WAHistoryMessageRepository
-	waMessageRepository           repository.WAMessageRepository
-	waSampleTemplateRepository    repository.WASampleTemplateRepository
-	waCampaignRepository          repository.WACampaignRepository
+	waBusinessPortfolioRepository  repository.WABusinessPortfolioRepository
+	waBusinessAccountRepository    repository.WABusinessAccountRepository
+	waPhoneNumberRepository        repository.WAPhoneNumberRepository
+	waUserPhoneNumberRepository    repository.WAUserPhoneNumberRepository
+	waHistoryMessageRepository     repository.WAHistoryMessageRepository
+	waMessageRepository            repository.WAMessageRepository
+	waMessageStatusEventRepository repository.WAMessageStatusEventRepository
+	waSampleTemplateRepository     repository.WASampleTemplateRepository
+	waCampaignRepository           repository.WACampaignRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -47,6 +46,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waUserPhoneNumberRepository = NewWAUserPhoneNumberRepository(db, logger)
 	unitOfWork.waHistoryMessageRepository = NewWAHistoryMessageRepository(db, logger)
 	unitOfWork.waMessageRepository = NewWAMessageRepository(db, logger)
+	unitOfWork.waMessageStatusEventRepository = NewWAMessageStatusEventRepository(db, logger)
 	unitOfWork.waSampleTemplateRepository = NewWASampleTemplateRepository(db, logger)
 	unitOfWork.waCampaignRepository = NewWACampaignRepository(db, logger)
 	return &unitOfWork
@@ -99,6 +99,10 @@ func (unitOfWork *UnitOfWork) WAMessageRepository() repository.WAMessageReposito
 	return unitOfWork.waMessageRepository
 }
 
+func (unitOfWork *UnitOfWork) WAMessageStatusEventRepository() repository.WAMessageStatusEventRepository {
+	return unitOfWork.waMessageStatusEventRepository
+}
+
 func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTemplateRepository {
 	return unitOfWork.waSampleTemplateRepository
 }
@@ -118,10 +122,10 @@ func (transaction *UnitOfWork) Rollback() {
 	transaction.db.Rollback()
 }
 
-func (transaction *UnitOfWork) CommitTransaction() *exception.Exception {
+func (transaction *UnitOfWork) CommitTransaction() error {
 	if err := transaction.db.Commit().Error; err != nil {
 		transaction.logger.ErrorFunction(err)
-		return exception.NewException(types.ExceptionTypeDatabase)
+		return err
 	}
 	return nil
 }

@@ -2,14 +2,19 @@ package feature_wa_message
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
+	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -37,9 +42,9 @@ const (
 )
 
 type Create struct {
-	MessagingProduct string           `json:"messaging_product" val:"required" description:"always whatsapp"`
+	MessagingProduct string           `json:"messaging_product" val:"required" description:"always whatsapp, can leave empty"`
 	RecipientType    RecipientType    `json:"recipient_type" val:"required" description:"type of the recipient. individual or group"`
-	To               string           `json:"to" val:"required" description:"recipient's phone number or wa_id" example:"6590000000"`
+	To               string           `json:"to" val:"required" description:"recipient's phone number or BSUID" example:"6590000000"`
 	PhoneNumberID    string           `json:"phone_number_id" description:"set dynamically based on current user, any value is ignored"`
 	Type             MessageType      `json:"type" val:"required" description:"one of the enum types"`
 	Context          *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
@@ -154,6 +159,55 @@ func (create *Create) Validate() []exception.InputException {
 	if create.Type == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("type", "missing message type"))
 	}
+	switch create.Type {
+	case MessageTypeText:
+		if create.Text == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("text", "text is missing for text message"))
+		}
+	case MessageTypeImage:
+		if create.Image == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("image", "image is missing for image message"))
+		}
+	case MessageTypeAudio:
+		if create.Audio == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("audio", "audio is missing for audio message"))
+		}
+	case MessageTypeVideo:
+		if create.Video == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("video", "video is missing for video message"))
+		}
+	case MessageTypeDocument:
+		if create.Document == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("document", "document is missing for document message"))
+		}
+	case MessageTypeSticker:
+		if create.Sticker == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("sticker", "sticker is missing for sticker message"))
+		}
+	case MessageTypeLocation:
+		if create.Location == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("location", "location is missing for location message"))
+		}
+	case MessageTypeContacts:
+		if len(create.Contacts) == 0 {
+			inputErrors = append(inputErrors, exception.NewInputException("contacts", "contacts are missing for contacts message"))
+		}
+	case MessageTypeInteractive:
+		if create.Interactive == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("interactive", "interactive content is missing for interactive message"))
+		}
+	case MessageTypeTemplate:
+		if create.Template == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("template", "template is missing for template message"))
+		}
+	case MessageTypeReaction:
+		if create.Reaction == nil {
+			inputErrors = append(inputErrors, exception.NewInputException("reaction", "reaction is missing for reaction message"))
+		}
+	case "":
+	default:
+		inputErrors = append(inputErrors, exception.NewInputException("type", "unsupported message type"))
+	}
 	return inputErrors
 }
 
@@ -187,7 +241,47 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if err != nil {
 		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
+	if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
+		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusBadGateway, "WhatsApp did not return a message ID")
+	}
+	payload, err := messagePayload(create)
+	if err != nil {
+		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	recipient := create.To
+	if len(response.Contacts) > 0 && strings.TrimSpace(response.Contacts[0].WaID) != "" {
+		recipient = response.Contacts[0].WaID
+	}
+	payload["to"] = recipient
+	payload["id"] = response.Messages[0].ID
+	message := dao_wa.Message{
+		Sending:             true,
+		PhoneNumber:         helper.NormalizeWAId(phoneNumbers[0].PhoneNumber),
+		PhoneNumberId:       create.PhoneNumberID,
+		CustomerPhoneNumber: recipient,
+		WAMessageId:         response.Messages[0].ID,
+		Timestamp:           time.Now().Unix(),
+		Type:                string(create.Type),
+		Payload:             payload,
+		Status:              types.WAMessageStatusAccepted,
+	}
+	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
+		return dto.NewFailedResponse[*service.WhatsAppMessageResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	dependencies.WAMessageStream.PublishMessage(dto_wa.NewMessage(message))
 	return dto.NewSuccessResponse(response)
+}
+
+func messagePayload(message Create) (map[string]any, error) {
+	data, err := json.Marshal(message)
+	if err != nil {
+		return nil, err
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, err
+	}
+	return payload, nil
 }
 
 func (Create) APISettings() feature.APISettings {

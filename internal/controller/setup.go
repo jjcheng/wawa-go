@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -86,6 +87,14 @@ func registerRoute[R any, T feature.Request[R]](server *gin.RouterGroup, depende
 		responseObject.RequestId = middleware.GetRequestID(ctx)
 		if !responseObject.Success {
 			ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+			return
+		}
+		if binaryData, ok := any(responseObject.Data).(interface {
+			BinaryContent() ([]byte, string, string)
+		}); ok {
+			content, contentType, filename := binaryData.BinaryContent()
+			ctx.Header("Content-Disposition", `inline; filename="`+strings.ReplaceAll(filename, `"`, "")+`"`)
+			ctx.Data(responseObject.StatusCode, contentType, content)
 			return
 		}
 		ctx.JSON(responseObject.StatusCode, responseObject)

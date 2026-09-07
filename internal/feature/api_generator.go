@@ -135,7 +135,12 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 		}
 	}
 	// Generate response schema
-	if responseType != nil {
+	if settings.WebSocket {
+		operation.Responses.Set(fmt.Sprint(http.StatusSwitchingProtocols), &openapi3.ResponseRef{
+			Value: &openapi3.Response{Description: helper.ConvertToPointer("WebSocket connection established")},
+		})
+	}
+	if responseType != nil && !settings.WebSocket {
 		successResponseSchema := g.generateResponseSchema(responseType, true, http.StatusOK, "")
 		operation.Responses.Set(fmt.Sprint(http.StatusOK), &openapi3.ResponseRef{
 			Value: &openapi3.Response{

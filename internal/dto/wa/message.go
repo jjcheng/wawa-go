@@ -13,7 +13,7 @@ type Message struct {
 	CustomerName        string         `json:"customer_name"`
 	CustomerPhoneNumber string         `json:"customer_phone_number"`
 	CustomerMetaUserId  string         `json:"customer_meta_user_id"`
-	MetaId              string         `json:"meta_id"`
+	WAMessageId         string         `json:"wa_message_id"`
 	Timestamp           int64          `json:"timestamp"`
 	Type                string         `json:"type"`
 	Payload             map[string]any `json:"payload"`
@@ -32,7 +32,7 @@ func NewMessage(message dao_wa.Message) Message {
 		CustomerName:        message.CustomerName,
 		CustomerPhoneNumber: message.CustomerPhoneNumber,
 		CustomerMetaUserId:  message.CustomerMetaUserId,
-		MetaId:              message.MetaId,
+		WAMessageId:         message.WAMessageId,
 		Timestamp:           message.Timestamp,
 		Type:                message.Type,
 		Payload:             message.Payload,

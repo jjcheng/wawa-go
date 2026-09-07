@@ -72,19 +72,15 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if !authorized {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
-	messages, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, list.PhoneNumberId, list.CustomerMetaUserId, list.CustomerPhoneNumber)
+	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, list.PhoneNumberId, list.CustomerMetaUserId, list.CustomerPhoneNumber, true, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	offset := (list.Page - 1) * list.PageSize
-	page := make([]dto_wa.Message, 0, list.PageSize)
-	if offset < len(messages) {
-		end := min(offset+list.PageSize, len(messages))
-		for _, message := range messages[offset:end] {
-			page = append(page, dto_wa.NewMessage(message))
-		}
+	page := make([]dto_wa.Message, 0, len(messages))
+	for _, message := range messages {
+		page = append(page, dto_wa.NewMessage(message))
 	}
-	response := dto.NewPagedListResponse(page, (len(messages)+list.PageSize-1)/list.PageSize, len(messages))
+	response := dto.NewPagedListResponse(page, totalPages, totalCount)
 	return dto.NewSuccessResponse(&response)
 }
 

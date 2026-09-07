@@ -1395,9 +1395,6 @@
                         "items": {
                           "items": {
                             "properties": {
-                              "bsuid": {
-                                "type": "string"
-                              },
                               "country_code": {
                                 "type": "string"
                               },
@@ -1419,6 +1416,9 @@
                                 "format": "date-time",
                                 "type": "string"
                               },
+                              "meta_user_id": {
+                                "type": "string"
+                              },
                               "phone_number": {
                                 "type": "string"
                               },
@@ -1427,6 +1427,11 @@
                                   "type": "string"
                                 },
                                 "type": "array"
+                              },
+                              "wa_id": {
+                                "description": "country_code + phone_number",
+                                "example": "6590909090",
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -1658,17 +1663,17 @@
             "application/json": {
               "schema": {
                 "properties": {
-                  "bsuid": {
-                    "description": "if whatapp user id",
-                    "nullable": true,
-                    "type": "string"
-                  },
                   "country_code": {
                     "description": "customer country code",
                     "type": "string"
                   },
                   "display_name": {
                     "description": "customer display name",
+                    "type": "string"
+                  },
+                  "meta_user_id": {
+                    "description": "a string given by Meta",
+                    "nullable": true,
                     "type": "string"
                   },
                   "phone_number": {
@@ -1704,9 +1709,6 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
-                        "bsuid": {
-                          "type": "string"
-                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -1728,6 +1730,9 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "meta_user_id": {
+                          "type": "string"
+                        },
                         "phone_number": {
                           "type": "string"
                         },
@@ -1736,6 +1741,11 @@
                             "type": "string"
                           },
                           "type": "array"
+                        },
+                        "wa_id": {
+                          "description": "country_code + phone_number",
+                          "example": "6590909090",
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -1983,6 +1993,370 @@
           }
         ],
         "summary": "Create customer",
+        "tags": [
+          "Customer"
+        ]
+      }
+    },
+    "/v1/customers/get": {
+      "get": {
+        "description": "Gets a customer by WA ID or Meta user ID.",
+        "parameters": [
+          {
+            "description": "country code + phone number of the customer",
+            "example": "6590909090",
+            "in": "query",
+            "name": "wa_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Meta user id of the customer",
+            "example": "",
+            "in": "query",
+            "name": "meta_user_id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "properties": {
+                        "country_code": {
+                          "type": "string"
+                        },
+                        "display_name": {
+                          "type": "string"
+                        },
+                        "entry_date": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "example": 1,
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "last_update": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "meta_user_id": {
+                          "type": "string"
+                        },
+                        "phone_number": {
+                          "type": "string"
+                        },
+                        "tags": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "wa_id": {
+                          "description": "country_code + phone_number",
+                          "example": "6590909090",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "entry_date",
+                        "last_update"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "customer not found",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 404,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "customer not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Get customer",
         "tags": [
           "Customer"
         ]
@@ -3346,9 +3720,6 @@
                               "customers": {
                                 "items": {
                                   "properties": {
-                                    "bsuid": {
-                                      "type": "string"
-                                    },
                                     "country_code": {
                                       "type": "string"
                                     },
@@ -3370,6 +3741,9 @@
                                       "format": "date-time",
                                       "type": "string"
                                     },
+                                    "meta_user_id": {
+                                      "type": "string"
+                                    },
                                     "phone_number": {
                                       "type": "string"
                                     },
@@ -3378,6 +3752,11 @@
                                         "type": "string"
                                       },
                                       "type": "array"
+                                    },
+                                    "wa_id": {
+                                      "description": "country_code + phone_number",
+                                      "example": "6590909090",
+                                      "type": "string"
                                     }
                                   },
                                   "required": [
@@ -3800,9 +4179,6 @@
                         "customers": {
                           "items": {
                             "properties": {
-                              "bsuid": {
-                                "type": "string"
-                              },
                               "country_code": {
                                 "type": "string"
                               },
@@ -3824,6 +4200,9 @@
                                 "format": "date-time",
                                 "type": "string"
                               },
+                              "meta_user_id": {
+                                "type": "string"
+                              },
                               "phone_number": {
                                 "type": "string"
                               },
@@ -3832,6 +4211,11 @@
                                   "type": "string"
                                 },
                                 "type": "array"
+                              },
+                              "wa_id": {
+                                "description": "country_code + phone_number",
+                                "example": "6590909090",
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -4193,9 +4577,6 @@
                         "customers": {
                           "items": {
                             "properties": {
-                              "bsuid": {
-                                "type": "string"
-                              },
                               "country_code": {
                                 "type": "string"
                               },
@@ -4217,6 +4598,9 @@
                                 "format": "date-time",
                                 "type": "string"
                               },
+                              "meta_user_id": {
+                                "type": "string"
+                              },
                               "phone_number": {
                                 "type": "string"
                               },
@@ -4225,6 +4609,11 @@
                                   "type": "string"
                                 },
                                 "type": "array"
+                              },
+                              "wa_id": {
+                                "description": "country_code + phone_number",
+                                "example": "6590909090",
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -5208,6 +5597,317 @@
         ]
       }
     },
+    "/v1/wa/media/{media_id}": {
+      "get": {
+        "description": "Downloads media using its WhatsApp media ID.",
+        "parameters": [
+          {
+            "description": "WhatsApp media ID from the inbound webhook",
+            "example": "",
+            "in": "path",
+            "name": "media_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authorized to use a WhatsApp phone number, unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authorized to use a WhatsApp phone number, unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, an error occured at the vendor.",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 502,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, an error occured at the vendor."
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Get WhatsApp media",
+        "tags": [
+          "WA"
+        ]
+      }
+    },
     "/v1/wa/messages": {
       "get": {
         "description": "Lists messages for a customer and WhatsApp business phone number.",
@@ -5303,9 +6003,6 @@
                                 "format": "date-time",
                                 "type": "string"
                               },
-                              "meta_id": {
-                                "type": "string"
-                              },
                               "payload": {
                                 "additionalProperties": {
                                   "type": "object"
@@ -5326,6 +6023,9 @@
                                 "type": "integer"
                               },
                               "type": {
+                                "type": "string"
+                              },
+                              "wa_message_id": {
                                 "type": "string"
                               }
                             },
@@ -5900,7 +6600,7 @@
                     "type": "object"
                   },
                   "messaging_product": {
-                    "description": "always whatsapp",
+                    "description": "always whatsapp, can leave empty",
                     "type": "string"
                   },
                   "phone_number_id": {
@@ -6018,7 +6718,7 @@
                     "type": "object"
                   },
                   "to": {
-                    "description": "recipient's phone number or wa_id",
+                    "description": "recipient's phone number or BSUID",
                     "example": "6590000000",
                     "type": "string"
                   },
@@ -6429,6 +7129,50 @@
           }
         ],
         "summary": "Send WhatsApp message",
+        "tags": [
+          "WA"
+        ]
+      }
+    },
+    "/v1/wa/messages/stream": {
+      "get": {
+        "description": "Establishes a WebSocket connection that emits message and status events for one customer conversation.",
+        "parameters": [
+          {
+            "description": "Meta ID of the business phone number",
+            "example": "",
+            "in": "query",
+            "name": "phone_number_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Customer WhatsApp ID",
+            "example": "6590073708",
+            "in": "query",
+            "name": "customer_phone_number",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket connection established"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Stream WhatsApp conversation messages",
         "tags": [
           "WA"
         ]
