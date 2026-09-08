@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
@@ -16,73 +17,61 @@ import (
 )
 
 type List struct {
+	Page     int `form:"page" description:"page number from 1"`
+	PageSize int `form:"page_size" description:"page size, default 10"`
 }
 
 func (list *List) Validate() []exception.InputException {
-	return nil
+	if list.Page <= 0 {
+		list.Page = 1
+	}
+	if list.PageSize <= 0 {
+		list.PageSize = 10
+	}
+	inputErrors := []exception.InputException{}
+	if list.PageSize > 10 {
+		inputErrors = append(inputErrors, exception.NewInputException("page_size", "page size must be between 1 and 10"))
+	}
+	return inputErrors
 }
 
-func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_wa.PhoneNumber] {
+func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_wa.PhoneNumber]] {
 	if errors := list.Validate(); len(errors) > 0 {
-		return dto.NewInvalidInputResponse[[]dto_wa.PhoneNumber](errors)
+		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.PhoneNumber]](errors)
 	}
-	phoneNumbers, ex := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
+	if user == nil {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusForbidden, "you are not authenticated")
+	}
+	var phoneNumbers []dao_wa.PhoneNumber
+	var ex error
+	var totalCount, totalPages int
+	if user.Type == types.UserTypeMaster {
+		_, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusUnauthorized, "you are not authorized to access a WhatsApp business portfolio")
+			}
+			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		phoneNumbers, totalCount, totalPages, ex = dependencies.UnitOfWork.WAPhoneNumberRepository().ListByMetaBusinessAccountId(ctx, businessAccount.MetaWABAId, list.Page, list.PageSize)
+	} else {
+		phoneNumbers, totalCount, totalPages, ex = dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, list.Page, list.PageSize)
+	}
 	if ex != nil {
-		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	// populate the PhoneNumber's BusinessPortfolio and BusinessAccount object using the newly created func
-	// first gather distinct MetaBusinessPortfolioId and MetaWABAId first
-	portfolioIDs := make([]string, 0, len(phoneNumbers))
-	wabaIDs := make([]string, 0, len(phoneNumbers))
-	seenPortfolioIDs := make(map[string]struct{})
-	seenWABAIDs := make(map[string]struct{})
-	for _, phoneNumber := range phoneNumbers {
-		if _, ok := seenPortfolioIDs[phoneNumber.MetaBusinessPortfolioId]; !ok && phoneNumber.MetaBusinessPortfolioId != "" {
-			seenPortfolioIDs[phoneNumber.MetaBusinessPortfolioId] = struct{}{}
-			portfolioIDs = append(portfolioIDs, phoneNumber.MetaBusinessPortfolioId)
-		}
-		if _, ok := seenWABAIDs[phoneNumber.MetaWABAId]; !ok && phoneNumber.MetaWABAId != "" {
-			seenWABAIDs[phoneNumber.MetaWABAId] = struct{}{}
-			wabaIDs = append(wabaIDs, phoneNumber.MetaWABAId)
-		}
+	items := make([]dto_wa.PhoneNumber, len(phoneNumbers))
+	for index, phoneNumber := range phoneNumbers {
+		items[index] = dto_wa.NewPhoneNumber(phoneNumber)
 	}
-	portfolios, ex := dependencies.UnitOfWork.WABusinessPortfolioRepository().ListByMetaBusinessPortfolioIds(ctx, portfolioIDs)
-	if ex != nil {
-		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	accounts, ex := dependencies.UnitOfWork.WABusinessAccountRepository().ListByMetaWABAIds(ctx, wabaIDs)
-	if ex != nil {
-		if errors.Is(ex, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusNotFound, "business account not found")
-		}
-		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	portfolioByID := make(map[string]dto_wa.BusinessPortfolio, len(portfolios))
-	for _, portfolio := range portfolios {
-		portfolioByID[portfolio.MetaBusinessPortfolioId] = dto_wa.NewBusinessPortfolio(portfolio, false)
-	}
-	accountByID := make(map[string]dto_wa.BusinessAccount, len(accounts))
-	for _, account := range accounts {
-		accountByID[account.MetaWABAId] = dto_wa.NewBusinessAccount(account)
-	}
-	result := make([]dto_wa.PhoneNumber, 0, len(phoneNumbers))
-	for _, phoneNumber := range phoneNumbers {
-		phoneNumberDTO := dto_wa.NewPhoneNumber(phoneNumber)
-		if portfolio, ok := portfolioByID[phoneNumber.MetaBusinessPortfolioId]; ok {
-			phoneNumberDTO.BusinessPortfolio = &portfolio
-		}
-		if account, ok := accountByID[phoneNumber.MetaWABAId]; ok {
-			phoneNumberDTO.BusinessAccount = &account
-		}
-		result = append(result, phoneNumberDTO)
-	}
-	return dto.NewSuccessResponse(result)
+	response := dto.NewPagedListResponse(items, totalPages, totalCount)
+	return dto.NewSuccessResponse(&response)
 }
 
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List user WhatsApp phone numbers",
-		"Lists the WhatsApp phone numbers assigned to the authenticated user.",
+		"Lists WhatsApp phone numbers in pages: all numbers in a master's business portfolio, or numbers assigned to another authenticated user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/user-phone-numbers",
@@ -90,8 +79,9 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
+			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access a WhatsApp business portfolio", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
 		},
 	)
 }

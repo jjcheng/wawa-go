@@ -24,20 +24,24 @@ func NewWAUserPhoneNumberRepository(db *gorm.DB, logger *service.Logger) reposit
 	}
 }
 
-func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersByUserId(ctx context.Context, userId int32) ([]dao_wa.PhoneNumber, error) {
-	var phoneNumbers []dao_wa.PhoneNumber
-	result := userPhoneNumberRepository.db.WithContext(ctx).
+func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersByUserId(ctx context.Context, userId int32, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
+	query := userPhoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers").
-		Select("wa.phone_numbers.*").
 		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.phone_number_id = wa.phone_numbers.id").
-		Where("wa.user_phone_numbers.user_id = ?", userId).
-		Order("wa.phone_numbers.id").
-		Find(&phoneNumbers)
-	if result.Error != nil {
-		userPhoneNumberRepository.logger.ErrorFunction(result.Error, userId)
-		return nil, result.Error
+		Where("wa.user_phone_numbers.user_id = ?", userId)
+	var count int64
+	if err := query.Distinct("wa.phone_numbers.id").Count(&count).Error; err != nil {
+		userPhoneNumberRepository.logger.ErrorFunction(err, userId)
+		return nil, 0, 0, err
 	}
-	return phoneNumbers, nil
+	totalCount = int(count)
+	totalPages = (totalCount + pageSize - 1) / pageSize
+	list := query.Select("wa.phone_numbers.*").Group("wa.phone_numbers.id").Order("wa.phone_numbers.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers)
+	if list.Error != nil {
+		userPhoneNumberRepository.logger.ErrorFunction(list.Error, userId)
+		return nil, 0, 0, list.Error
+	}
+	return phoneNumbers, totalCount, totalPages, nil
 }
 
 func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetByUserIdPhoneNumberId(ctx context.Context, userId int32, phoneNumberId int32) (*dao_wa.UserPhoneNumber, error) {

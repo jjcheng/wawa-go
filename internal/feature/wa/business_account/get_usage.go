@@ -20,15 +20,14 @@ import (
 )
 
 type GetUsage struct {
-	MetaWABAId  string `form:"meta_waba_id" val:"required" description:"Meta WABA id to query"`
-	Start       int64  `form:"start" val:"required" description:"Unix timestamp for the analytics start"`
-	End         int64  `form:"end" val:"required" description:"Unix timestamp for the analytics end"`
-	Granularity string `form:"granularity" val:"required" description:"analytics granularity: HALF_HOUR, DAY, or MONTH"`
+	MetaWABAId  string                       `form:"meta_waba_id" val:"required" description:"Meta WABA id to query"`
+	Start       int64                        `form:"start" val:"required" description:"Unix timestamp for the analytics start"`
+	End         int64                        `form:"end" val:"required" description:"Unix timestamp for the analytics end"`
+	Granularity types.WAAnalyticsGranularity `form:"granularity" val:"required" description:"analytics granularity: HALF_HOUR, DAY, or MONTH"`
 }
 
 func (getAnalytics *GetUsage) Validate() []exception.InputException {
 	getAnalytics.MetaWABAId = strings.TrimSpace(getAnalytics.MetaWABAId)
-	getAnalytics.Granularity = strings.ToUpper(strings.TrimSpace(getAnalytics.Granularity))
 	errors := []exception.InputException{}
 	if getAnalytics.MetaWABAId == "" {
 		errors = append(errors, exception.NewInputException("meta_waba_id", "missing Meta WABA id"))
@@ -78,7 +77,7 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	usage, err := dependencies.Whatsapp.GetWABAUsage(ctx, getUsage.MetaWABAId, getUsage.Start, getUsage.End, getUsage.Granularity, businessPortfolio.AccessToken)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, getUsage.MetaWABAId)
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error())
 	}
 	return dto.NewSuccessResponse(usage)
 }

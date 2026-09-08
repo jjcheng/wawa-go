@@ -15,16 +15,16 @@ import (
 )
 
 type List struct {
-	PhoneNumberId       string `form:"phone_number_id" val:"required" description:"user's phone number id"`
-	CustomerPhoneNumber string `form:"customer_phone_number" description:"country code + phone number, all numbers, must present if customer_meta_user_id is empty" example:"6590909900"`
-	CustomerMetaUserId  string `form:"customer_meta_user_id" description:"user id from Meta, must present if customer_phone_number is empty"`
-	Page                int    `form:"page" description:"page number from 1"`
-	PageSize            int    `form:"page_size" description:"page size, default 50"`
+	PhoneNumberId      string `form:"phone_number_id" val:"required" description:"user's phone number id"`
+	CustomerWAId       string `form:"customer_wa_id" description:"country code + phone number, all numbers, must present if customer_meta_user_id is empty" example:"6590909900"`
+	CustomerMetaUserId string `form:"customer_meta_user_id" description:"user id from Meta, must present if customer WA Id is empty"`
+	Page               int    `form:"page" description:"page number from 1"`
+	PageSize           int    `form:"page_size" description:"page size, default 50"`
 }
 
 func (list *List) Validate() []exception.InputException {
 	list.PhoneNumberId = strings.TrimSpace(list.PhoneNumberId)
-	list.CustomerPhoneNumber = strings.TrimSpace(list.CustomerPhoneNumber)
+	list.CustomerWAId = strings.TrimSpace(list.CustomerWAId)
 	list.CustomerMetaUserId = strings.TrimSpace(list.CustomerMetaUserId)
 	if list.Page == 0 {
 		list.Page = 1
@@ -36,11 +36,8 @@ func (list *List) Validate() []exception.InputException {
 	if list.PhoneNumberId == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("phone_number_id", "missing phone number ID"))
 	}
-	if list.CustomerPhoneNumber == "" && list.CustomerMetaUserId == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("customer_phone_number", "customer phone number or Meta user ID is required"))
-	}
-	if list.CustomerPhoneNumber != "" && list.CustomerMetaUserId != "" {
-		inputErrors = append(inputErrors, exception.NewInputException("customer_phone_number", "customer phone number and Meta user ID cannot both be provided"))
+	if list.CustomerWAId == "" && list.CustomerMetaUserId == "" {
+		inputErrors = append(inputErrors, exception.NewInputException("customer_wa_id", "customerWA Id or Meta user ID is required"))
 	}
 	if list.Page < 1 {
 		inputErrors = append(inputErrors, exception.NewInputException("page", "page must be at least 1"))
@@ -58,7 +55,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.Message]](inputErrors)
 	}
-	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
+	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -72,7 +69,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if !authorized {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
-	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, list.PhoneNumberId, list.CustomerMetaUserId, list.CustomerPhoneNumber, true, list.Page, list.PageSize)
+	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, list.PhoneNumberId, list.CustomerWAId, list.CustomerMetaUserId, true, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

@@ -97,10 +97,14 @@ type TemplatePagingCursors struct {
 
 // #region usage
 type TemplateAnalytics struct {
-	WABATimezone string                       `json:"waba_timezone,omitempty"`
-	Granularity  string                       `json:"granularity,omitempty"`
-	ProductType  string                       `json:"product_type,omitempty"`
-	DataPoints   []TemplateAnalyticsDataPoint `json:"data_points"`
+	WABATimezone   string                       `json:"waba_timezone,omitempty"`
+	Granularity    string                       `json:"granularity,omitempty"`
+	ProductType    string                       `json:"product_type,omitempty"`
+	DataPoints     []TemplateAnalyticsDataPoint `json:"data_points"`
+	TotalSent      int                          `json:"total_sent"`
+	TotalDelivered int                          `json:"total_delivered"`
+	TotalRead      int                          `json:"total_read"`
+	TotalClicked   int                          `json:"total_clicked"`
 }
 
 type TemplateAnalyticsDataPoint struct {
@@ -110,6 +114,7 @@ type TemplateAnalyticsDataPoint struct {
 	Sent       int64  `json:"sent,omitempty"`
 	Delivered  int64  `json:"delivered,omitempty"`
 	Read       int64  `json:"read,omitempty"`
+	Clicked    int64  `json:"clicked,omitempty"`
 }
 
 type TemplateAnalyticsListResponse struct {

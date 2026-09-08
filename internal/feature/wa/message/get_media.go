@@ -3,9 +3,7 @@ package feature_wa_message
 import (
 	"context"
 	"errors"
-	"mime"
 	"net/http"
-	"path/filepath"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -18,24 +16,23 @@ import (
 )
 
 type GetMedia struct {
-	MediaID string `uri:"media_id" val:"required" description:"WhatsApp media ID from the inbound webhook"`
+	WAMessageId string `form:"wa_message_id" val:"required" description:"WhatsApp message ID"`
+	WAMediaID   string `form:"wa_media_id" val:"required" description:"WhatsApp media ID"`
 }
 
 type Media struct {
-	Content     []byte `json:"-"`
-	ContentType string `json:"-"`
-	Filename    string `json:"-"`
-}
-
-func (media Media) BinaryContent() ([]byte, string, string) {
-	return media.Content, media.ContentType, media.Filename
+	URL string `json:"url" description:"Permanent OSS URL for the WhatsApp media"`
 }
 
 func (getMedia *GetMedia) Validate() []exception.InputException {
-	getMedia.MediaID = strings.TrimSpace(getMedia.MediaID)
+	getMedia.WAMediaID = strings.TrimSpace(getMedia.WAMediaID)
+	getMedia.WAMessageId = strings.TrimSpace(getMedia.WAMessageId)
 	inputErrors := []exception.InputException{}
-	if getMedia.MediaID == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("media_id", "missing WhatsApp media ID"))
+	if getMedia.WAMediaID == "" {
+		inputErrors = append(inputErrors, exception.NewInputException("wa_media_id", "missing WA media id"))
+	}
+	if getMedia.WAMessageId == "" {
+		inputErrors = append(inputErrors, exception.NewInputException("wa_message_id", "missing WA message id"))
 	}
 	return inputErrors
 }
@@ -47,39 +44,78 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	if inputErrors := getMedia.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*Media](inputErrors)
 	}
-	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
-	if err != nil {
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	if len(phoneNumbers) == 0 {
-		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
-	}
-	businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, phoneNumbers[0].MetaPhoneNumberId)
+	message, err := dependencies.UnitOfWork.WAMessageRepository().GetByWAMessageId(ctx, getMedia.WAMessageId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
+			return dto.NewFailedResponse[*Media](http.StatusNotFound, "message not found")
 		}
 		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	content, contentType, err := dependencies.Whatsapp.DownloadMedia(ctx, getMedia.MediaID, businessPortfolio.AccessToken)
+	if !payloadContainsMediaID(message.Payload, getMedia.WAMediaID) {
+		return dto.NewFailedResponse[*Media](http.StatusNotFound, "media not found in message")
+	}
+	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
+	if err != nil {
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	authorized := false
+	for _, phoneNumber := range phoneNumbers {
+		if phoneNumber.MetaPhoneNumberId == message.PhoneNumberId {
+			authorized = true
+			break
+		}
+	}
+	if !authorized {
+		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to access this message")
+	}
+	businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, message.PhoneNumberId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use this phone number")
+		}
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	content, contentType, err := dependencies.Whatsapp.DownloadMedia(ctx, getMedia.WAMediaID, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*Media](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}
-	filename := "whatsapp-media"
-	if extensions, err := mime.ExtensionsByType(contentType); err == nil && len(extensions) > 0 {
-		filename += extensions[0]
+	filename := getMedia.WAMediaID
+	if contentTypeParts := strings.SplitN(contentType, "/", 2); len(contentTypeParts) == 2 && contentTypeParts[1] != "" {
+		filename += "." + contentTypeParts[1]
 	}
-	filename = filepath.Base(filename)
-	return dto.NewSuccessResponse(&Media{Content: content, ContentType: contentType, Filename: filename})
+	attachmentURL, err := dependencies.File.UploadFile(content, "media", filename, types.StorageClassCool)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, getMedia.WAMediaID)
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	message.AttachmentURL = attachmentURL
+	if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	return dto.NewSuccessResponse(&Media{URL: attachmentURL})
+}
+
+func payloadContainsMediaID(payload map[string]any, mediaID string) bool {
+	for _, mediaType := range []string{"audio", "document", "image", "sticker", "video"} {
+		media, ok := payload[mediaType].(map[string]any)
+		if !ok {
+			continue
+		}
+		id, _ := media["id"].(string)
+		if id == mediaID {
+			return true
+		}
+	}
+	return false
 }
 
 func (GetMedia) APISettings() feature.APISettings {
-	return feature.NewBinaryAPISettings(
+	return feature.NewAPISettings(
 		"Get WhatsApp media",
-		"Downloads media using its WhatsApp media ID.",
-		types.HttpRequestTypeUri,
+		"Downloads WhatsApp media, persists it and returns its permanent URL.",
+		types.HttpRequestTypeQuery,
 		http.MethodGet,
-		"/v1/wa/media/:media_id",
+		"/v1/wa/media",
 		true,
 		true,
 		types.APITagWA,

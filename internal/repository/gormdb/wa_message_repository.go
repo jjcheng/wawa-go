@@ -7,7 +7,6 @@ import (
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
-	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
 )
 
@@ -25,48 +24,36 @@ func NewWAMessageRepository(db *gorm.DB, logger *service.Logger) repository.WAMe
 	}
 }
 
-func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNumberId string, customerMetaId string, customerPhoneNumber string, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error) {
+func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNumberId string, customerWAId string, customerMetaUserId string, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error) {
 	phoneNumberId = strings.TrimSpace(phoneNumberId)
-	customerMetaId = strings.TrimSpace(customerMetaId)
-	customerPhoneNumber = strings.TrimSpace(customerPhoneNumber)
+	customerWAId = strings.TrimSpace(customerWAId)
+	customerMetaUserId = strings.TrimSpace(customerMetaUserId)
 	query := messageRepository.db.WithContext(ctx).Model(&dao_wa.Message{})
 	if phoneNumberId != "" {
 		query = query.Where("phone_number_id = ?", phoneNumberId)
 	}
-	if customerMetaId != "" {
-		query = query.Where("customer_meta_user_id = ?", customerMetaId)
-	}
-	if customerPhoneNumber != "" {
-		query = query.Where("customer_phone_number = ?", customerPhoneNumber)
+	// take either customer_wa_id or customer_meta_user_id
+	if customerWAId != "" {
+		query = query.Where("customer_wa_id = ?", customerWAId)
+	} else if customerMetaUserId != "" {
+		query = query.Where("customer_meta_user_id = ?", customerMetaUserId)
 	}
 	if ignoreUnsupportedType {
 		query = query.Where("type <> ?", "unsupported")
 	}
 	var count int64
 	if err = query.Count(&count).Error; err != nil {
-		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerMetaId, customerPhoneNumber)
+		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerWAId, customerMetaUserId)
 		return nil, 0, 0, err
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	offset := (page - 1) * pageSize
 	if err = query.Order("timestamp DESC").Offset(offset).Limit(pageSize).Find(&messages).Error; err != nil {
-		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerMetaId, customerPhoneNumber, page, pageSize)
+		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerWAId, customerMetaUserId, page, pageSize)
 		return nil, 0, 0, err
 	}
 	return messages, totalPages, totalCount, nil
-}
-
-func (messageRepository *WAMessageRepository) UpdateStatusByWAMessageId(ctx context.Context, metaID string, status types.WAMessageStatus) error {
-	result := messageRepository.db.WithContext(ctx).
-		Model(&dao_wa.Message{}).
-		Where("wa_message_id = ?", strings.TrimSpace(metaID)).
-		Update("status", status)
-	if result.Error != nil {
-		messageRepository.logger.ErrorFunction(result.Error, metaID, status)
-		return result.Error
-	}
-	return nil
 }
 
 func (messageRepository *WAMessageRepository) GetByWAMessageId(ctx context.Context, waMessageId string) (*dao_wa.Message, error) {

@@ -39,7 +39,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
+	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
 	if err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -61,7 +61,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, businessPortfolio.MetaBusinessPortfolioId); err != nil {
-		return dto.NewFailedResponse[any](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
 	}
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().DeleteById(ctx, phoneNumber.Id); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

@@ -18,7 +18,7 @@ type Campaign struct {
 	UserId       int32                  `json:"user_id"`
 	Status       types.WACampaignStatus `json:"status"`
 	Archived     bool                   `json:"archived"`
-	MessageBase
+	//MessageBase
 	// lazy loaded
 	Customers []dto_customer.Customer `json:"customers"`
 }
@@ -30,7 +30,7 @@ func NewCampaign(campaign dao_wa.Campaign, customers []dto_customer.Customer) Ca
 			EntryDate:  campaign.EntryDate,
 			LastUpdate: campaign.LastUpdate,
 		},
-		MessageBase:  MessageBase(campaign.MessageBase),
+		//MessageBase:  MessageBase(campaign.MessageBase),
 		Name:         campaign.Name,
 		WATemplateId: campaign.WATemplateId,
 		CustomerIds:  campaign.CustomerIds,

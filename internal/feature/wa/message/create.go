@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -44,7 +45,7 @@ const (
 type Create struct {
 	MessagingProduct string           `json:"messaging_product" val:"required" description:"always whatsapp, can leave empty"`
 	RecipientType    RecipientType    `json:"recipient_type" val:"required" description:"type of the recipient. individual or group"`
-	To               string           `json:"to" val:"required" description:"recipient's phone number or BSUID" example:"6590000000"`
+	To               string           `json:"to" val:"required" description:"recipient's WA Id or BSUID" example:"6590000000"`
 	PhoneNumberID    string           `json:"phone_number_id" description:"set dynamically based on current user, any value is ignored"`
 	Type             MessageType      `json:"type" val:"required" description:"one of the enum types"`
 	Context          *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
@@ -59,6 +60,7 @@ type Create struct {
 	Interactive      *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
 	Template         *TemplateObject  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
 	Reaction         *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
+	AttachmentURL    string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
 }
 
 type MessageContext struct {
@@ -152,6 +154,11 @@ type InteractiveRow struct {
 func (create *Create) Validate() []exception.InputException {
 	create.To = strings.TrimSpace(create.To)
 	create.PhoneNumberID = strings.TrimSpace(create.PhoneNumberID)
+	// origin and vcard are not part of Meta’s WhatsApp Cloud API contacts[] schema.
+	for _, contact := range create.Contacts {
+		delete(contact, "origin")
+		delete(contact, "vcard")
+	}
 	inputErrors := []exception.InputException{}
 	if create.To == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("to", "missing recipient"))
@@ -218,7 +225,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Message](inputErrors)
 	}
-	phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id)
+	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -254,21 +261,25 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	payload["to"] = recipient
 	payload["id"] = response.Messages[0].ID
+	timestamp := time.Now().Unix()
+	payload["timestamp"] = fmt.Sprint(timestamp) // to be consistent with WA
 	message := dao_wa.Message{
-		Sending:             true,
-		PhoneNumber:         helper.NormalizeWAId(phoneNumbers[0].PhoneNumber),
-		PhoneNumberId:       create.PhoneNumberID,
-		CustomerPhoneNumber: recipient,
-		WAMessageId:         response.Messages[0].ID,
-		Timestamp:           time.Now().Unix(),
-		Type:                string(create.Type),
-		Payload:             payload,
-		Status:              types.WAMessageStatusAccepted,
+		Sending:       true,
+		PhoneNumber:   helper.NormalizeWAId(phoneNumbers[0].PhoneNumber),
+		PhoneNumberId: create.PhoneNumberID,
+		CustomerWAId:  recipient,
+		WAMessageId:   response.Messages[0].ID,
+		Timestamp:     timestamp,
+		Type:          string(create.Type),
+		Payload:       payload,
+		Status:        types.WAMessageStatusAccepted,
+		AttachmentURL: create.AttachmentURL,
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewMessage(message)
+	dependencies.Ably.Publish("message", helper.GetChatChannelName(create.PhoneNumberID, recipient, ""), result)
 	return dto.NewSuccessResponse(&result)
 }
 

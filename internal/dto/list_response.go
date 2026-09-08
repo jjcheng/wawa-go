@@ -2,8 +2,8 @@ package dto
 
 type ListResponse[T any] struct {
 	Items          []T             `json:"items"`
-	NumberOfPages  int             `json:"number_of_pages"`
-	NumberOfItems  int             `json:"number_of_items"`
+	NumberOfPages  int             `json:"number_of_pages,omitempty"`
+	NumberOfItems  int             `json:"number_of_items,omitempty"`
 	NextPageOffset any             `json:"next_page_offset,omitempty"`
 	AdditionalData *map[string]any `json:"additional_data,omitempty"`
 }

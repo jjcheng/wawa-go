@@ -110,6 +110,16 @@ func Filter[T any](list []T, fn func(T) bool) []T {
 	return result
 }
 
+func Sum[T any, C interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~float32 | ~float64
+}](list []T, fn func(T) C) C {
+	var total C
+	for _, item := range list {
+		total += fn(item)
+	}
+	return total
+}
+
 // this function does not create new list
 func FilterPointers[T any](list []T, fn func(T) bool) []*T {
 	result := []*T{}

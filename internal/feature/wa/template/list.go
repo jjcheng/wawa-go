@@ -49,7 +49,6 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if errors := list.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.Template]](errors)
 	}
-
 	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -58,7 +57,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	metaWABAId := businessAccount.MetaWABAId
-	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplatesPage(ctx, metaWABAId, list.NameOrContent, list.Category, list.Language, list.Status, list.QualityScore, list.Before, list.After, list.Limit, businessPortfolio.AccessToken)
+	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplates(ctx, metaWABAId, list.NameOrContent, list.Category, list.Language, list.Status, list.QualityScore, list.Before, list.After, list.Limit, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusBadGateway, types.ExceptionMessageBadGateway)
 	}

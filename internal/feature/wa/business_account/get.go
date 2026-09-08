@@ -33,17 +33,6 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	// if get.MetaWABAId != "" {
-	// 	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, get.MetaWABAId)
-	// 	if err != nil {
-	// 		if errors.Is(err, gorm.ErrRecordNotFound) {
-	// 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
-	// 		}
-	// 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	// 	}
-	// 	result := dto_wa.NewBusinessAccount(*businessAccount)
-	// 	return dto.NewSuccessResponse(&result)
-	// } else {
 	// get user's business account
 	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByUserId(ctx, user.Id)
 	if err != nil {
@@ -54,7 +43,6 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	}
 	result := dto_wa.NewBusinessAccount(*businessAccount)
 	return dto.NewSuccessResponse(&result)
-	//}
 }
 
 func (Get) APISettings() feature.APISettings {

@@ -22,8 +22,9 @@ import (
 func SetupServices(unitOfWork repository.UnitOfWork, logger *service.Logger) *service.Dependencies {
 	fileService := service.NewFileService(logger)
 	messageQueueService := service.NewMessageQueue(logger)
+	ablyService := service.NewAbly(logger)
 	whatsappService := service.NewWhatsapp(logger)
-	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, whatsappService)
+	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, ablyService, whatsappService)
 	return dependencies
 }
 
@@ -110,6 +111,10 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 		}
 	}()
 	messageStatus := types.WAMessageStatus(status.Status)
+	message, err := transaction.WAMessageRepository().GetByWAMessageId(ctx, status.ID)
+	if err != nil {
+		return err
+	}
 	event := dao_wa.MessageStatusEvent{
 		WAMessageId: status.ID,
 		Status:      messageStatus,
@@ -119,14 +124,27 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 	if err := transaction.WAMessageStatusEventRepository().Insert(ctx, &event); err != nil {
 		return err
 	}
-	if err := transaction.WAMessageRepository().UpdateStatusByWAMessageId(ctx, status.ID, messageStatus); err != nil {
-		return err
+	// Persist every callback for audit, but only advance the current status. Meta may
+	// deliver callbacks out of order or omit delivered when a message is read directly.
+	// This prevents stale sent, delivered, or failed callbacks from regressing read/played.
+	if helper.CanTransitionWAMessageStatus(message.Status, messageStatus) {
+		message.Status = messageStatus
+		message.CustomerMetaUserId = status.RecipientUserID
+		message.CustomerWAId = status.RecipientID
+		if status.Pricing != nil {
+			if status.Pricing.Billable {
+				// set price
+			}
+			message.Category = status.Pricing.Category
+		}
+		transaction.WAMessageRepository().Update(ctx, message)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
 		return err
 	}
 	committed = true
-	return nil
+	err = dependencies.Ably.Publish("status", helper.GetChatChannelName(message.PhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), dto_wa.NewMessageStatusEvent(event))
+	return err
 }
 
 func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
@@ -141,19 +159,21 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 		return fmt.Errorf("missing contact in WA incoming message: %s", incomingMessage.ID)
 	}
 	message := dao_wa.Message{
-		Sending:             false,
-		PhoneNumber:         metadata.DisplayPhoneNumber,
-		PhoneNumberId:       metadata.PhoneNumberID,
-		CustomerName:        contact.Profile.Name,
-		CustomerPhoneNumber: incomingMessage.From,
-		CustomerMetaUserId:  incomingMessage.FromUserID,
-		WAMessageId:         incomingMessage.ID,
-		Timestamp:           timestamp,
-		Type:                incomingMessage.Type,
-		Payload:             incomingMessage.Payload,
+		Sending:            false,
+		PhoneNumber:        metadata.DisplayPhoneNumber,
+		PhoneNumberId:      metadata.PhoneNumberID,
+		CustomerName:       contact.Profile.Name,
+		CustomerWAId:       contact.WaID,
+		CustomerMetaUserId: incomingMessage.FromUserID,
+		WAMessageId:        incomingMessage.ID,
+		Timestamp:          timestamp,
+		Type:               incomingMessage.Type,
+		Payload:            incomingMessage.Payload,
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
 		return err
 	}
-	return nil
+	messageDTO := dto_wa.NewMessage(message)
+	err = dependencies.Ably.Publish("message", helper.GetChatChannelName(message.PhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), messageDTO)
+	return err
 }

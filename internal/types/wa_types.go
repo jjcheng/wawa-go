@@ -102,3 +102,11 @@ const (
 	WAMessageStatusPlayed                   WAMessageStatus = "played"
 	WAMessageStatusFailed                   WAMessageStatus = "failed"
 )
+
+type WAAnalyticsGranularity string
+
+const (
+	WAAnalyticsGranularityHalfHour WAAnalyticsGranularity = "HALF_HOUR"
+	WAAnalyticsGranularityDay      WAAnalyticsGranularity = "DAY"
+	WAAnalyticsGranularityMonth    WAAnalyticsGranularity = "MONTH"
+)

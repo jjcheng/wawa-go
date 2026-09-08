@@ -4,12 +4,10 @@ import (
 	"context"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
-	"github.com/jjcheng/wawa-go/internal/types"
 )
 
 type WAMessageRepository interface {
 	Repository[dao_wa.Message]
 	List(ctx context.Context, phoneNumberId string, customerMetaId string, customerPhoneNumber string, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error)
 	GetByWAMessageId(ctx context.Context, waMessageId string) (*dao_wa.Message, error)
-	UpdateStatusByWAMessageId(ctx context.Context, metaID string, status types.WAMessageStatus) error
 }

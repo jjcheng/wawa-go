@@ -18,6 +18,7 @@ type Config struct {
 	Database  DatabaseConfig
 	AliyunOSS AliyunOSSConfig
 	AliyunSMQ AliyunSMQConfig
+	Ably      AblyConfig
 	WhatsApp  WhatsAppConfig
 }
 
@@ -57,6 +58,10 @@ type AliyunSMQConfig struct {
 	AccessKeySecret    string
 	QueueName          string
 	PollingWaitSeconds int64
+}
+
+type AblyConfig struct {
+	APIKey string
 }
 
 type WhatsAppConfig struct {
@@ -118,6 +123,9 @@ func Default() *Config {
 				AccessKeySecret:    os.Getenv("ALIYUN_SMQ_ACCESS_KEY_SECRET"),
 				QueueName:          os.Getenv("ALIYUN_SMQ_QUEUE_NAME"),
 				PollingWaitSeconds: 15,
+			},
+			Ably: AblyConfig{
+				APIKey: os.Getenv("ABLY_API_KEY"),
 			},
 			WhatsApp: WhatsAppConfig{
 				BaseURL:              "https://graph.facebook.com",

@@ -270,7 +270,7 @@ func EncryptSecret(secretBytes []byte, keys *CryptoKeys, aadContext string) (*En
 	}
 	// Dynamic AAD includes version and context for stronger binding
 	// Format: "v{version}:{context}"
-	aad := []byte(fmt.Sprintf("v%d:%s", keys.Version, aadContext))
+	aad := fmt.Appendf(nil, "v%d:%s", keys.Version, aadContext)
 	// Encrypt with AAD authentication
 	ciphertext := aesGCM.Seal(nonce, nonce, secretBytes, aad)
 	return &EncryptedData{
@@ -318,7 +318,7 @@ func DecryptSecret(encrytedData *EncryptedData, keys *CryptoKeys, aadContext str
 	// Extract nonce and encrypted data
 	nonce, encryptedData := ciphertext[:nonceSize], ciphertext[nonceSize:]
 	// Reconstruct the same AAD used during encryption
-	aad := []byte(fmt.Sprintf("v%d:%s", keys.Version, aadContext))
+	aad := fmt.Appendf(nil, "v%d:%s", keys.Version, aadContext)
 	// Decrypt with AAD verification
 	plaintext, err := aesGCM.Open(nil, nonce, encryptedData, aad)
 	if err != nil {

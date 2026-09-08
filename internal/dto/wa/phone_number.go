@@ -14,12 +14,13 @@ type PhoneNumber struct {
 	PhoneNumber             string `json:"phone_number"`
 	Name                    string `json:"name"`
 	// lazy loaded
-	BusinessPortfolio *BusinessPortfolio `json:"business_portfolio"`
-	BusinessAccount   *BusinessAccount   `json:"business_account"`
+	WAId              string             `json:"wa_id,omitempty"`
+	BusinessPortfolio *BusinessPortfolio `json:"business_portfolio,omitempty"`
+	BusinessAccount   *BusinessAccount   `json:"business_account,omitempty"`
 }
 
 func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
-	return PhoneNumber{
+	d := PhoneNumber{
 		DTOBase: dto.DTOBase{
 			Id:         phoneNumber.Id,
 			EntryDate:  phoneNumber.EntryDate,
@@ -31,8 +32,10 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 		PhoneNumber:             phoneNumber.PhoneNumber,
 		Name:                    phoneNumber.Name,
 	}
+	d.WAId = d.GetWAId()
+	return d
 }
 
-func (phoneNumber PhoneNumber) WAId() string {
+func (phoneNumber PhoneNumber) GetWAId() string {
 	return helper.NormalizeWAId(phoneNumber.PhoneNumber)
 }

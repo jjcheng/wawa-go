@@ -77,14 +77,30 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByPhoneNumberId(ctx con
 	return phoneNumber, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessPortfolioId(ctx context.Context, businessPortfolioId int32) (*[]dao_wa.PhoneNumber, error) {
+func (phoneNumberRepository *WAPhoneNumberRepository) ListByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) ([]dao_wa.PhoneNumber, error) {
 	var phoneNumbers []dao_wa.PhoneNumber
-	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("business_portfolio_id = ?", businessPortfolioId).Order("id").Find(&phoneNumbers)
+	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_business_portfolio_id = ?", metaBusinessPortfolioId).Order("id").Find(&phoneNumbers)
 	if result.Error != nil {
-		phoneNumberRepository.logger.ErrorFunction(result.Error, businessPortfolioId)
+		phoneNumberRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioId)
 		return nil, result.Error
 	}
-	return &phoneNumbers, nil
+	return phoneNumbers, nil
+}
+
+func (phoneNumberRepository *WAPhoneNumberRepository) ListByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
+	query := phoneNumberRepository.db.WithContext(ctx).Table("wa.phone_numbers").Where("meta_waba_id = ?", metaBusinessAccountId)
+	var count int64
+	if err := query.Distinct("wa.phone_numbers.id").Count(&count).Error; err != nil {
+		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		return nil, 0, 0, err
+	}
+	totalCount = int(count)
+	totalPages = (totalCount + pageSize - 1) / pageSize
+	if err := query.Select("wa.phone_numbers.*").Group("wa.phone_numbers.id").Order("wa.phone_numbers.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers).Error; err != nil {
+		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		return nil, 0, 0, err
+	}
+	return phoneNumbers, totalCount, totalPages, nil
 }
 
 func (phoneNumberRepository *WAPhoneNumberRepository) CheckExists(ctx context.Context, metaPhoneNumberId string) (bool, error) {

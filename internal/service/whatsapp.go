@@ -153,6 +153,16 @@ type WhatsAppGraphAPIErrorResponse struct {
 	Error WhatsAppGraphAPIError `json:"error"`
 }
 
+type WhatsAppBusinessUseCaseUsage map[string][]WhatsAppBusinessUseCaseUsageEntry
+
+type WhatsAppBusinessUseCaseUsageEntry struct {
+	Type                        string `json:"type"`
+	CallCount                   int    `json:"call_count"`
+	TotalCPUTime                int    `json:"total_cputime"`
+	TotalTime                   int    `json:"total_time"`
+	EstimatedTimeToRegainAccess int    `json:"estimated_time_to_regain_access"`
+}
+
 type WhatsAppGraphAPIError struct {
 	Message        string `json:"message"`
 	Type           string `json:"type"`
@@ -162,6 +172,7 @@ type WhatsAppGraphAPIError struct {
 	IsTransient    bool   `json:"is_transient,omitempty"`
 	ErrorUserTitle string `json:"error_user_title,omitempty"`
 	ErrorUserMsg   string `json:"error_user_msg,omitempty"`
+	ErrorData      string `json:"error_data,omitempty"`
 }
 
 type WhatsAppAPIError struct {
@@ -171,7 +182,13 @@ type WhatsAppAPIError struct {
 
 func (err *WhatsAppAPIError) Error() string {
 	if err.GraphError.ErrorUserMsg != "" {
+		if err.GraphError.ErrorData != "" {
+			return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg, err.GraphError.ErrorData)
+		}
 		return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg)
+	}
+	if err.GraphError.ErrorData != "" {
+		return fmt.Sprintf("whatsapp api error %d (subcode %d): %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorData)
 	}
 	return fmt.Sprintf("whatsapp api error %d (subcode %d): %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message)
 }
@@ -536,7 +553,7 @@ func (whatsapp *Whatsapp) GetWABA(ctx context.Context, wabaId string, businessAc
 	return &response, nil
 }
 
-func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
+func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start int64, end int64, granularity types.WAAnalyticsGranularity, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
 		return nil, fmt.Errorf("wabaId is required")
@@ -551,6 +568,12 @@ func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start
 		whatsapp.logger.ErrorFunction(err, wabaId)
 		return nil, err
 	}
+	response.Analytics.TotalSent = helper.Sum(response.Analytics.DataPoints, func(dp dto_wa.MessageAnalyticsDataPoint) int {
+		return int(dp.Sent)
+	})
+	response.Analytics.TotalDelivered = helper.Sum(response.Analytics.DataPoints, func(dp dto_wa.MessageAnalyticsDataPoint) int {
+		return int(dp.Delivered)
+	})
 	return &response.Analytics, nil
 }
 
@@ -577,41 +600,36 @@ func (whatsapp *Whatsapp) GetAllPhoneNumbersByWABAId(ctx context.Context, wabaId
 	return phoneNumbers, nil
 }
 
-func (whatsapp *Whatsapp) GetPhoneNumberUsage(ctx context.Context, wabaId string, start int64, end int64, granularity string, businessAccessToken string) ([]dto_wa.PhoneNumberMessageAnalytics, error) {
-	wabaId = strings.TrimSpace(wabaId)
-	metaPhoneNumbers, err := whatsapp.GetAllPhoneNumbersByWABAId(ctx, wabaId, businessAccessToken)
+func (whatsapp *Whatsapp) GetPhoneNumberUsage(ctx context.Context, wabaId string, waIds []string, start int64, end int64, granularity types.WAAnalyticsGranularity, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
+	if len(waIds) == 0 || len(waIds) > 10 {
+		return nil, fmt.Errorf("waIds must contain between 1 and 10 phone numbers")
+	}
+	analytics, err := whatsapp.getPhoneNumerUsage(ctx, "get_phone_numbers_usage", wabaId, waIds, start, end, granularity, businessAccessToken)
 	if err != nil {
+		whatsapp.logger.ErrorFunction(err, wabaId, waIds)
 		return nil, err
 	}
-	phoneNumbers := make([]dto_wa.PhoneNumberMessageAnalytics, 0, len(metaPhoneNumbers))
-	for _, phoneNumber := range metaPhoneNumbers {
-		displayPhoneNumber := strings.TrimSpace(phoneNumber.DisplayPhoneNumber)
-		normalizedPhoneNumber := normalizeWhatsAppPhoneNumber(displayPhoneNumber)
-		if normalizedPhoneNumber == "" {
-			continue
-		}
-		analytics, err := whatsapp.getMessageAnalyticsForPhoneNumber(ctx, "get_phone_numbers_usage", wabaId, normalizedPhoneNumber, start, end, granularity, businessAccessToken)
-		if err != nil {
-			whatsapp.logger.ErrorFunction(err, wabaId, displayPhoneNumber)
-			return nil, err
-		}
-		phoneNumbers = append(phoneNumbers, dto_wa.PhoneNumberMessageAnalytics{
-			ID:                 phoneNumber.ID,
-			DisplayPhoneNumber: displayPhoneNumber,
-			VerifiedName:       phoneNumber.VerifiedName,
-			Analytics:          *analytics,
-		})
-	}
-	return phoneNumbers, nil
+	analytics.TotalSent = helper.Sum(analytics.DataPoints, func(d dto_wa.MessageAnalyticsDataPoint) int {
+		return int(d.Sent)
+	})
+	analytics.TotalDelivered = helper.Sum(analytics.DataPoints, func(d dto_wa.MessageAnalyticsDataPoint) int {
+		return int(d.Delivered)
+	})
+	return analytics, nil
 }
 
-func normalizeWhatsAppPhoneNumber(phoneNumber string) string {
-	return strings.Map(func(character rune) rune {
-		if character >= '0' && character <= '9' {
-			return character
-		}
-		return -1
-	}, phoneNumber)
+func (whatsapp *Whatsapp) getPhoneNumerUsage(ctx context.Context, requestType string, wabaId string, waIds []string, start int64, end int64, granularity types.WAAnalyticsGranularity, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
+	query := url.Values{}
+	phoneNumberStrings := helper.Distinct(helper.Map(waIds, strconv.Quote))
+	query.Set("fields", fmt.Sprintf("analytics.start(%d).end(%d).granularity(%s).phone_numbers([%s])", start, end, granularity, strings.Join(phoneNumberStrings, ",")))
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
+	var response struct {
+		Analytics dto_wa.MessageAnalytics `json:"analytics"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, requestType, http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		return nil, err
+	}
+	return &response.Analytics, nil
 }
 
 func filenameFromURL(fileURL string, contentType string) string {
@@ -641,41 +659,7 @@ func normalizeContentType(contentType string) string {
 	return mediaType
 }
 
-func (whatsapp *Whatsapp) getMessageAnalyticsForPhoneNumber(ctx context.Context, requestType string, wabaId string, phoneNumber string, start int64, end int64, granularity string, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
-	query := url.Values{}
-	query.Set("fields", fmt.Sprintf("analytics.start(%d).end(%d).granularity(%s).phone_numbers([%s])", start, end, granularity, strconv.Quote(phoneNumber)))
-	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
-	var response struct {
-		Analytics dto_wa.MessageAnalytics `json:"analytics"`
-	}
-	if err := whatsapp.doJSONRequest(ctx, requestType, http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-		return nil, err
-	}
-	return &response.Analytics, nil
-}
-
-func (whatsapp *Whatsapp) ListAllTemplates(ctx context.Context, wabaId string, businessAccessToken string) ([]dto_wa.Template, error) {
-	baseEndpoint := fmt.Sprintf("%s/%s/%s/message_templates", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId))
-	query := url.Values{}
-	query.Set("fields", "id,name,status,category,language,parameter_format,components,quality_score,rejected_reason,previous_category")
-	templates := []dto_wa.Template{}
-	for {
-		endpoint := fmt.Sprintf("%s?%s", baseEndpoint, query.Encode())
-		var response dto_wa.TemplateListResponse
-		if err := whatsapp.doJSONRequest(ctx, "list_templates", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-			whatsapp.logger.ErrorFunction(err, wabaId)
-			return nil, err
-		}
-		templates = append(templates, response.Data...)
-		if response.Paging == nil || strings.TrimSpace(response.Paging.Next) == "" {
-			break
-		}
-		query.Set("after", strings.TrimSpace(response.Paging.Next))
-	}
-	return templates, nil
-}
-
-func (whatsapp *Whatsapp) ListTemplatesPage(ctx context.Context, wabaId string, nameOrContent string, category types.WATemplateCategory, language string, status types.WATemplateStatus, qualityScore types.WATemplateQualityScore, before string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
+func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, nameOrContent string, category types.WATemplateCategory, language string, status types.WATemplateStatus, qualityScore types.WATemplateQualityScore, before string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
 		return nil, nil, fmt.Errorf("wabaId is required")
@@ -733,11 +717,11 @@ func (whatsapp *Whatsapp) EnableTemplateInsights(ctx context.Context, wabaId str
 	return nil
 }
 
-func (whatsapp *Whatsapp) GetTemplateUsage(ctx context.Context, wabaId string, start string, end string, templateIds []string, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
-	return whatsapp.getTemplateAnalytics(ctx, "get_template_usage", wabaId, start, end, templateIds, "sent,delivered,read,clicked", businessAccessToken)
+func (whatsapp *Whatsapp) GetTemplateUsage(ctx context.Context, wabaId string, start string, end string, templateIds []string, granularity types.WAAnalyticsGranularity, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
+	return whatsapp.getTemplateAnalytics(ctx, "get_template_usage", wabaId, start, end, templateIds, "sent,delivered,read,clicked", granularity, businessAccessToken)
 }
 
-func (whatsapp *Whatsapp) getTemplateAnalytics(ctx context.Context, requestType string, wabaId string, start string, end string, templateIds []string, metricTypes string, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
+func (whatsapp *Whatsapp) getTemplateAnalytics(ctx context.Context, requestType string, wabaId string, start string, end string, templateIds []string, metricTypes string, granularity types.WAAnalyticsGranularity, businessAccessToken string) ([]dto_wa.TemplateAnalytics, error) {
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
 		return nil, fmt.Errorf("wabaId is required")
@@ -751,7 +735,7 @@ func (whatsapp *Whatsapp) getTemplateAnalytics(ctx context.Context, requestType 
 	query := url.Values{}
 	query.Set("start", start)
 	query.Set("end", end)
-	query.Set("granularity", "daily")
+	query.Set("granularity", string(granularity))
 	query.Set("metric_types", metricTypes)
 	query.Set("use_waba_timezone", "true")
 	query.Set("template_ids", "["+strings.Join(templateIds, ",")+"]")
@@ -773,6 +757,20 @@ func (whatsapp *Whatsapp) getTemplateAnalytics(ctx context.Context, requestType 
 		if err != nil {
 			whatsapp.logger.ErrorFunction(err, wabaId, templateIds)
 			return nil, err
+		}
+		for index := range response.Data {
+			response.Data[index].TotalSent = helper.Sum(response.Data[index].DataPoints, func(dataPoint dto_wa.TemplateAnalyticsDataPoint) int {
+				return int(dataPoint.Sent)
+			})
+			response.Data[index].TotalDelivered = helper.Sum(response.Data[index].DataPoints, func(dataPoint dto_wa.TemplateAnalyticsDataPoint) int {
+				return int(dataPoint.Delivered)
+			})
+			response.Data[index].TotalRead = helper.Sum(response.Data[index].DataPoints, func(dataPoint dto_wa.TemplateAnalyticsDataPoint) int {
+				return int(dataPoint.Read)
+			})
+			response.Data[index].TotalClicked = helper.Sum(response.Data[index].DataPoints, func(dataPoint dto_wa.TemplateAnalyticsDataPoint) int {
+				return int(dataPoint.Clicked)
+			})
 		}
 		analytics = append(analytics, response.Data...)
 		if response.Paging == nil {
@@ -892,12 +890,22 @@ func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, requestType string,
 		}
 		bodyMap = &requestBody
 	}
-	statusCode, responseBody, _, err := helper.RequestHTTP(ctx, endpoint, method, &headers, bodyMap)
+	statusCode, responseBody, responseHeader, err := helper.RequestHTTP(ctx, endpoint, method, &headers, bodyMap)
 	if err != nil {
 		return err
 	}
+	var usage *WhatsAppBusinessUseCaseUsage
+	if responseHeader != nil {
+		if businessUseCaseUsage := responseHeader.Get("X-Business-Use-Case-Usage"); businessUseCaseUsage != "" {
+			if err := json.Unmarshal([]byte(businessUseCaseUsage), &usage); err != nil {
+				whatsapp.logger.Warnf("failed to parse X-Business-Use-Case-Usage header: %v", err)
+			} else {
+
+			}
+		}
+	}
 	if responseBody != nil && strings.TrimSpace(*responseBody) != "" {
-		if err := saveWhatsAppRawResponse(requestType, endpoint, method, bodyMap, *responseBody); err != nil {
+		if err := saveWhatsAppRawResponse(requestType, endpoint, method, bodyMap, *responseBody, usage); err != nil {
 			whatsapp.logger.Warnf("failed to save WhatsApp raw response: %v", err)
 		}
 	}
@@ -913,7 +921,7 @@ func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, requestType string,
 	return nil
 }
 
-func saveWhatsAppRawResponse(requestType string, endpoint string, method string, requestBody any, responseBody string) error {
+func saveWhatsAppRawResponse(requestType string, endpoint string, method string, requestBody any, responseBody string, usage *WhatsAppBusinessUseCaseUsage) error {
 	if cfg.Default().Site.Environment != types.EnvironmentDevelop {
 		return nil
 	}
@@ -933,6 +941,9 @@ func saveWhatsAppRawResponse(requestType string, endpoint string, method string,
 			"body":   requestBody,
 		},
 		"response": responseObject,
+	}
+	if usage != nil {
+		exchange["usage"] = *usage
 	}
 	data, err := json.MarshalIndent(exchange, "", "  ")
 	if err != nil {

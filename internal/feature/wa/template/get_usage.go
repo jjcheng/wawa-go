@@ -19,9 +19,10 @@ import (
 )
 
 type GetUsage struct {
-	Start       string   `form:"start" val:"required" description:"Analytics start date in YYYY-MM-DD format"`
-	End         string   `form:"end" val:"required" description:"Analytics end date in YYYY-MM-DD format"`
-	TemplateIds []string `form:"template_ids" val:"required" description:"one to ten numeric template IDs"`
+	Start       string                       `form:"start" val:"required" description:"Analytics start date in YYYY-MM-DD format"`
+	End         string                       `form:"end" val:"required" description:"Analytics end date in YYYY-MM-DD format"`
+	TemplateIds []string                     `form:"template_ids" val:"required" description:"one to ten numeric template IDs"`
+	Granularity types.WAAnalyticsGranularity `form:"granularity" val:"required" description:"analytics granularity: HALF_HOUR, DAY, or MONTH"`
 }
 
 func (getUsage *GetUsage) Validate() []exception.InputException {
@@ -66,7 +67,7 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	metaWABAId := businessAccount.MetaWABAId
-	analytics, err := dependencies.Whatsapp.GetTemplateUsage(ctx, metaWABAId, getUsage.Start, getUsage.End, getUsage.TemplateIds, businessPortfolio.AccessToken)
+	analytics, err := dependencies.Whatsapp.GetTemplateUsage(ctx, metaWABAId, getUsage.Start, getUsage.End, getUsage.TemplateIds, getUsage.Granularity, businessPortfolio.AccessToken)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, metaWABAId, getUsage.TemplateIds)
 		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusBadGateway, types.ExceptionMessageBadGateway)

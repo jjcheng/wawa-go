@@ -74,14 +74,15 @@ type IncomingMessageText struct {
 }
 
 type Status struct {
-	ID           string              `json:"id"`
-	Status       string              `json:"status"`
-	Timestamp    string              `json:"timestamp"`
-	RecipientID  string              `json:"recipient_id"`
-	Conversation *StatusConversation `json:"conversation,omitempty"`
-	Pricing      *StatusPricing      `json:"pricing,omitempty"`
-	Errors       []StatusError       `json:"errors,omitempty"`
-	Payload      map[string]any      `json:"-"`
+	ID              string              `json:"id"`
+	Status          string              `json:"status"`
+	Timestamp       string              `json:"timestamp"`
+	RecipientID     string              `json:"recipient_id"`
+	RecipientUserID string              `json:"recipient_user_id"`
+	Conversation    *StatusConversation `json:"conversation,omitempty"`
+	Pricing         *StatusPricing      `json:"pricing,omitempty"`
+	Errors          []StatusError       `json:"errors,omitempty"`
+	Payload         map[string]any      `json:"-"`
 }
 
 func (status *Status) UnmarshalJSON(data []byte) error {
