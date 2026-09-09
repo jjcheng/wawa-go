@@ -24,5 +24,5 @@ type UnitOfWork interface {
 	WAMessageRepository() WAMessageRepository
 	WAMessageStatusEventRepository() WAMessageStatusEventRepository
 	WASampleTemplateRepository() WASampleTemplateRepository
-	WACampaignRepository() WACampaignRepository
+	WACampaignRepository() CampaignRepository
 }

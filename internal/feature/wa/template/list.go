@@ -59,7 +59,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	metaWABAId := businessAccount.MetaWABAId
 	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplates(ctx, metaWABAId, list.NameOrContent, list.Category, list.Language, list.Status, list.QualityScore, list.Before, list.After, list.Limit, businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusBadGateway, err.Error())
 	}
 	templates := append(make([]dto_wa.Template, 0, len(wabaTemplates)), wabaTemplates...)
 	additionalData := map[string]any{}

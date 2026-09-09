@@ -42,7 +42,7 @@ func (update Update) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	}
 	businessName, err := dependencies.Whatsapp.GetBusinessName(ctx, update.MetaBusinessPortfolioId, existing.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusBadGateway, err.Error())
 	}
 	if existing.Name != businessName {
 		existing.Name = businessName

@@ -180,6 +180,14 @@ type WhatsAppAPIError struct {
 	GraphError WhatsAppGraphAPIError
 }
 
+type WhatsAppRateLimitError struct {
+	RetryAfterSeconds int
+}
+
+func (err *WhatsAppRateLimitError) Error() string {
+	return fmt.Sprintf("WhatsApp rate limited; retry after %d seconds", err.RetryAfterSeconds)
+}
+
 func (err *WhatsAppAPIError) Error() string {
 	if err.GraphError.ErrorUserMsg != "" {
 		if err.GraphError.ErrorData != "" {
@@ -899,8 +907,6 @@ func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, requestType string,
 		if businessUseCaseUsage := responseHeader.Get("X-Business-Use-Case-Usage"); businessUseCaseUsage != "" {
 			if err := json.Unmarshal([]byte(businessUseCaseUsage), &usage); err != nil {
 				whatsapp.logger.Warnf("failed to parse X-Business-Use-Case-Usage header: %v", err)
-			} else {
-
 			}
 		}
 	}
@@ -910,6 +916,11 @@ func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, requestType string,
 		}
 	}
 	if statusCode < 200 || statusCode >= 300 {
+		if statusCode == http.StatusTooManyRequests {
+			if retryAfterSeconds := maxEstimatedTimeToRegainAccess(usage); retryAfterSeconds > 0 {
+				return &WhatsAppRateLimitError{RetryAfterSeconds: retryAfterSeconds}
+			}
+		}
 		return parseWhatsAppAPIError(statusCode, responseBody)
 	}
 	if target == nil || responseBody == nil || strings.TrimSpace(*responseBody) == "" {
@@ -919,6 +930,21 @@ func (whatsapp *Whatsapp) doJSONRequest(ctx context.Context, requestType string,
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 	return nil
+}
+
+func maxEstimatedTimeToRegainAccess(usage *WhatsAppBusinessUseCaseUsage) int {
+	if usage == nil {
+		return 0
+	}
+	maxSeconds := 0
+	for _, entries := range *usage {
+		for _, entry := range entries {
+			if entry.EstimatedTimeToRegainAccess > maxSeconds {
+				maxSeconds = entry.EstimatedTimeToRegainAccess
+			}
+		}
+	}
+	return maxSeconds
 }
 
 func saveWhatsAppRawResponse(requestType string, endpoint string, method string, requestBody any, responseBody string, usage *WhatsAppBusinessUseCaseUsage) error {

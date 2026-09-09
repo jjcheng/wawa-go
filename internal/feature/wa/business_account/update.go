@@ -49,7 +49,7 @@ func (update Update) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	}
 	waba, err := dependencies.Whatsapp.GetWABA(ctx, update.MetaWABAId, businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, err.Error())
 	}
 	existing.Name = waba.Name
 	if err := dependencies.UnitOfWork.WABusinessAccountRepository().Update(ctx, existing); err != nil {

@@ -1,4 +1,4 @@
-package feature_wa_campaign
+package feature_campaign
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
-	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -27,26 +26,26 @@ func (get *Get) Validate() []exception.InputException {
 	return nil
 }
 
-func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Campaign] {
+func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Campaign] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusForbidden, "you are not authenticated")
 	}
 	if errors := get.Validate(); len(errors) > 0 {
-		return dto.NewInvalidInputResponse[*dto_wa.Campaign](errors)
+		return dto.NewInvalidInputResponse[*dto_customer.Campaign](errors)
 	}
 	campaign, err := dependencies.UnitOfWork.WACampaignRepository().GetById(ctx, get.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusNotFound, "campaign not found")
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusNotFound, "campaign not found")
 		}
-		return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if campaign.UserId != user.Id {
-		return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusNotFound, "campaign not found")
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusNotFound, "campaign not found")
 	}
 	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, campaign.CustomerIds)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	customersById := make(map[int32]dto_customer.Customer, len(customers))
 	for _, customer := range customers {
@@ -58,7 +57,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 			orderedCustomers = append(orderedCustomers, customer)
 		}
 	}
-	result := dto_wa.NewCampaign(*campaign, orderedCustomers)
+	result := dto_customer.NewCampaign(*campaign, orderedCustomers)
 	return dto.NewSuccessResponse(&result)
 }
 
@@ -68,7 +67,7 @@ func (Get) APISettings() feature.APISettings {
 		"Gets a campaign belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/campaigns/:id",
+		"/v1/campaigns/:id",
 		true,
 		true,
 		types.APITagWA,

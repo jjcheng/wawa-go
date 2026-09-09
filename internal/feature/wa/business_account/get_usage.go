@@ -41,7 +41,7 @@ func (getAnalytics *GetUsage) Validate() []exception.InputException {
 	if getAnalytics.Start > 0 && getAnalytics.Start < time.Now().UTC().AddDate(-1, 0, 0).Unix() {
 		errors = append(errors, exception.NewInputException("start", "start must be within the last year"))
 	}
-	if getAnalytics.Granularity != "HALF_HOUR" && getAnalytics.Granularity != "DAY" && getAnalytics.Granularity != "MONTH" {
+	if getAnalytics.Granularity != types.WAAnalyticsGranularityHalfHour && getAnalytics.Granularity != types.WAAnalyticsGranularityDay && getAnalytics.Granularity != types.WAAnalyticsGranularityMonth {
 		errors = append(errors, exception.NewInputException("granularity", "granularity must be HALF_HOUR, DAY, or MONTH"))
 	}
 	return errors
@@ -76,7 +76,6 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	}
 	usage, err := dependencies.Whatsapp.GetWABAUsage(ctx, getUsage.MetaWABAId, getUsage.Start, getUsage.End, getUsage.Granularity, businessPortfolio.AccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, getUsage.MetaWABAId)
 		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error())
 	}
 	return dto.NewSuccessResponse(usage)

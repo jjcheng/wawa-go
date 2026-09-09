@@ -5,6 +5,39 @@ import (
 	"testing"
 )
 
+func TestGetCountryCodeAndPhoneNumberFromWAId(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		countryCode string
+		phoneNumber string
+		expectError bool
+	}{
+		{name: "Singapore number", input: "6590000000", countryCode: "65", phoneNumber: "90000000"},
+		{name: "US number", input: "14155552671", countryCode: "1", phoneNumber: "4155552671"},
+		{name: "empty ID", input: "", expectError: true},
+		{name: "invalid ID", input: "65123", expectError: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			countryCode, phoneNumber, err := GetCountryCodeAndPhoneNumberFromWAId(test.input)
+			if test.expectError {
+				if err == nil {
+					t.Fatal("expected an error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if countryCode != test.countryCode || phoneNumber != test.phoneNumber {
+				t.Fatalf("got country code %q and phone number %q, want %q and %q", countryCode, phoneNumber, test.countryCode, test.phoneNumber)
+			}
+		})
+	}
+}
+
 func TestPointInRectangleToGeo(t *testing.T) {
 	// Define a test rectangle in Singapore (approximately 500m x 500m)
 	// Using Marina Bay area as an example

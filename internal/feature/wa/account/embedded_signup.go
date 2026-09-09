@@ -2,6 +2,7 @@ package feature_wa_account
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -164,7 +165,11 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	committed = true
 	// Step 4 — Commit, then talk to Meta
 	// The transaction commits. Only now does activateOnMeta run, because these two calls change things on Meta's side and a database rollback can't undo them:
-	embeddedSignup.activateOnMeta(ctx, accessToken, createPhoneNumberResponse.Data.Id, phoneNumberDetails.Status, dependencies)
+	if err := embeddedSignup.activateOnMeta(ctx, accessToken, createPhoneNumberResponse.Data.Id, phoneNumberDetails.Status, dependencies); err != nil {
+		createUserResponse.Data.WAActivationError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta. Please try again later. Error from Meta: %v", err)
+		return createUserResponse
+	}
+	createUserResponse.Data.WAActivated = true
 	// Step 5 — Respond
 	// The new user is returned along with a session token, so the customer lands logged in.
 	return createUserResponse
@@ -178,7 +183,8 @@ func (embeddedSignup EmbeddedSignup) verifyOwnership(ctx context.Context, access
 	// Read the WABA using the token. If the token doesn't cover that WABA, Meta refuses, and you return 403.
 	waba, err := dependencies.Whatsapp.GetWABA(ctx, embeddedSignup.Data.WABAId, accessToken)
 	if err != nil {
-		return nil, nil, &forbidden
+		failed := dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
+		return nil, nil, &failed
 	}
 	// Compare owners. The WABA response includes owner_business_info, which is Meta's own statement of which business portfolio owns it. If that doesn't match the business ID the browser sent, you return 403. This stops someone filing their WABA under somebody else's portfolio.
 	if waba.OwnerBusinessInfo.ID != embeddedSignup.Data.BusinessId {
@@ -188,8 +194,8 @@ func (embeddedSignup EmbeddedSignup) verifyOwnership(ctx context.Context, access
 	// List the WABA's phone numbers and confirm the submitted phone number ID is actually one of them.
 	phoneNumbers, err := dependencies.Whatsapp.GetAllPhoneNumbersByWABAId(ctx, embeddedSignup.Data.WABAId, accessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, embeddedSignup.Data.WABAId)
-		return nil, nil, &forbidden
+		failed := dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
+		return nil, nil, &failed
 	}
 	if !helper.Any(phoneNumbers, func(phoneNumber service.WhatsAppPhoneNumberDetailsResponse) bool {
 		return phoneNumber.ID == embeddedSignup.Data.PhoneNumberId
@@ -200,39 +206,34 @@ func (embeddedSignup EmbeddedSignup) verifyOwnership(ctx context.Context, access
 	// Read that phone number on its own, because the list doesn't include the status field and you need to know whether it's already live.
 	phoneNumberDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, embeddedSignup.Data.PhoneNumberId, accessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, embeddedSignup.Data.PhoneNumberId)
-		badGateway := dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		badGateway := dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
 		return nil, nil, &badGateway
 	}
 	return waba, phoneNumberDetails, nil
 }
 
-// activateOnMeta subscribes the WABA to webhooks and registers the number. Failures are logged, not returned:
-// the tenant already exists and a repeated signup retries both steps.
-func (embeddedSignup EmbeddedSignup) activateOnMeta(ctx context.Context, accessToken string, phoneNumberId int32, status string, dependencies *service.Dependencies) {
+func (embeddedSignup EmbeddedSignup) activateOnMeta(ctx context.Context, accessToken string, phoneNumberId int32, status string, dependencies *service.Dependencies) error {
 	// Subscribe to webhooks on the WABA, so inbound messages and delivery receipts start arriving.
 	if err := dependencies.Whatsapp.SubscribeApp(ctx, embeddedSignup.Data.WABAId, accessToken); err != nil {
-		dependencies.Logger.ErrorFunction(err, embeddedSignup.Data.WABAId)
+		return err
 	}
 	if status == service.WhatsAppPhoneNumberStatusConnected {
-		return
+		return nil
 	}
 	// Register the phone number, but only if it wasn't already CONNECTED. Registration generates a 6-digit two-step verification PIN, which gets saved on the phone number row — you need that same PIN to move the number between WABAs later.
 	pin, err := dependencies.Whatsapp.RegisterPhoneNumber(ctx, embeddedSignup.Data.PhoneNumberId, accessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, embeddedSignup.Data.PhoneNumberId)
-		return
+		return err
 	}
 	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, phoneNumberId)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, phoneNumberId)
-		return
+		return err
 	}
 	phoneNumber.RegistrationPin = pin
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, phoneNumber); err != nil {
-		dependencies.Logger.ErrorFunction(err, phoneNumberId)
+		return err
 	}
-	// Both failures are logged rather than returned. The customer's account already exists and works; a repeated signup will retry these steps.
+	return nil
 }
 
 // api endpoint only for testing

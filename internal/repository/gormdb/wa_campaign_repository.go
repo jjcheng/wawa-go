@@ -4,7 +4,7 @@ import (
 	"context"
 	"math"
 
-	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
+	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -15,21 +15,21 @@ import (
 type WACampaignRepository struct {
 	db     *gorm.DB
 	logger *service.Logger
-	repository.Repository[dao_wa.Campaign]
+	repository.Repository[dao_customer.Campaign]
 }
 
-func NewWACampaignRepository(db *gorm.DB, logger *service.Logger) repository.WACampaignRepository {
+func NewWACampaignRepository(db *gorm.DB, logger *service.Logger) repository.CampaignRepository {
 	return &WACampaignRepository{
 		db:         db,
 		logger:     logger,
-		Repository: NewRepository[dao_wa.Campaign](db, logger),
+		Repository: NewRepository[dao_customer.Campaign](db, logger),
 	}
 }
 
-func (campaignRepository *WACampaignRepository) ListByUserId(ctx context.Context, userId int32, archived bool, status types.WACampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_wa.Campaign], error) {
-	var campaigns []dao_wa.Campaign
+func (campaignRepository *WACampaignRepository) ListByUserId(ctx context.Context, userId int32, archived bool, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error) {
+	var campaigns []dao_customer.Campaign
 	query := campaignRepository.db.WithContext(ctx).
-		Model(&dao_wa.Campaign{}).
+		Model(&dao_customer.Campaign{}).
 		Where("archived = ? AND user_id = ?", archived, userId)
 	if status != "" {
 		query = query.Where("status = ?", status)

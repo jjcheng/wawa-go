@@ -154,3 +154,21 @@ func (mq *MessageQueue) DeleteMessage(receiptHandle string) error {
 	}
 	return nil
 }
+
+func (mq *MessageQueue) ExtendMessageVisibility(message *MessageQueueMessage, visibilityTimeoutSeconds int64) error {
+	if message == nil || strings.TrimSpace(message.ReceiptHandle) == "" {
+		return errors.New("message receipt handle cannot be empty")
+	}
+	if visibilityTimeoutSeconds <= 0 {
+		return errors.New("visibility timeout must be positive")
+	}
+	response, err := mq.queue.ChangeMessageVisibility(message.ReceiptHandle, visibilityTimeoutSeconds)
+	if err != nil {
+		return fmt.Errorf("failed to extend visibility for queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
+	}
+	if strings.TrimSpace(response.ReceiptHandle) == "" {
+		return errors.New("queue returned an empty receipt handle after visibility extension")
+	}
+	message.ReceiptHandle = response.ReceiptHandle
+	return nil
+}

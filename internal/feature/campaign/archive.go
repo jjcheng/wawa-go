@@ -1,4 +1,4 @@
-package feature_wa_campaign
+package feature_campaign
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func (archive Archive) Handle(ctx context.Context, user *dto_account.User, depen
 		return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
 	}
 	// status must not be pending
-	if campaign.Status == types.WACampaignStatusPending || campaign.Status == types.WACampaignStatusProcessing {
+	if campaign.Status == types.CampaignStatusPending || campaign.Status == types.CampaignStatusProcessing {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "campaign status cannot be pending or processing")
 	}
 	if err := dependencies.UnitOfWork.WACampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{"archived": archive}); err != nil {
@@ -59,7 +59,7 @@ func (Archive) APISettings() feature.APISettings {
 		"Archive or unarchive a campaign belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
 		http.MethodPatch,
-		"/v1/wa/campaigns/:id/archive",
+		"/v1/campaigns/:id/archive",
 		true,
 		true,
 		types.APITagWA,

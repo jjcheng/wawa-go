@@ -39,15 +39,15 @@ func (customerRepository *CustomerRepository) GetByCountryCodePhoneNumber(ctx co
 	return customer, nil
 }
 
-func (customerRepository *CustomerRepository) GetByMetaWAId(ctx context.Context, userId int32, metaWAId string) (*dao_customer.Customer, error) {
+func (customerRepository *CustomerRepository) GetByWAId(ctx context.Context, userId int32, waId string) (*dao_customer.Customer, error) {
 	var customer dao_customer.Customer
 	result := customerRepository.db.WithContext(ctx).
 		Model(&dao_customer.Customer{}).
-		Where("user_id = ? AND CONCAT(country_code, phone_number) = ?", userId, metaWAId).
+		Where("user_id = ? AND wa_id = ?", userId, waId).
 		First(&customer)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			customerRepository.logger.ErrorFunction(result.Error, userId, metaWAId)
+			customerRepository.logger.ErrorFunction(result.Error, userId, waId)
 		}
 		return nil, result.Error
 	}
@@ -56,7 +56,7 @@ func (customerRepository *CustomerRepository) GetByMetaWAId(ctx context.Context,
 
 func (customerRepository *CustomerRepository) GetByMetaUserId(ctx context.Context, userId int32, bsuid string) (*dao_customer.Customer, error) {
 	var customer *dao_customer.Customer
-	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND bsuid = ?", userId, bsuid).First(&customer)
+	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND meta_user_id = ?", userId, bsuid).First(&customer)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			customerRepository.logger.ErrorFunction(result.Error, userId, bsuid)
@@ -64,6 +64,25 @@ func (customerRepository *CustomerRepository) GetByMetaUserId(ctx context.Contex
 		return nil, result.Error
 	}
 	return customer, nil
+}
+
+func (customerRepository *CustomerRepository) GetByWAIdOrMetaUserId(ctx context.Context, userId int32, waId string, metaUserId string) (*dao_customer.Customer, error) {
+	var customer dao_customer.Customer
+	query := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ?", userId)
+	if waId != "" && metaUserId != "" {
+		query = query.Where("wa_id = ? OR meta_user_id = ?", waId, metaUserId)
+	} else if waId != "" {
+		query = query.Where("wa_id = ?", waId)
+	} else {
+		query = query.Where("meta_user_id = ?", metaUserId)
+	}
+	if err := query.First(&customer).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			customerRepository.logger.ErrorFunction(err, userId, waId, metaUserId)
+		}
+		return nil, err
+	}
+	return &customer, nil
 }
 
 func (customerRepository *CustomerRepository) ListByIds(ctx context.Context, userId int32, ids []int32) ([]dao_customer.Customer, error) {
@@ -83,6 +102,37 @@ func (customerRepository *CustomerRepository) ListByIds(ctx context.Context, use
 	return customers, nil
 }
 
+func (customerRepository *CustomerRepository) CountByIds(ctx context.Context, userId int32, ids []int32) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	var count int64
+	result := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("user_id = ? AND id IN ?", userId, ids).
+		Count(&count)
+	if result.Error != nil {
+		customerRepository.logger.ErrorFunction(result.Error, userId, ids)
+		return 0, result.Error
+	}
+	return int(count), nil
+}
+
+func (customerRepository *CustomerRepository) GetByImportedPhoneNumber(ctx context.Context, userId int32, importedPhoneNumber string) (*dao_customer.Customer, error) {
+	var customer dao_customer.Customer
+	result := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("user_id = ? AND imported_phone_number = ?", userId, importedPhoneNumber).
+		First(&customer)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			customerRepository.logger.ErrorFunction(result.Error, userId, importedPhoneNumber)
+		}
+		return nil, result.Error
+	}
+	return &customer, nil
+}
+
 func (customerRepository *CustomerRepository) GetDistinctTags(ctx context.Context, userId int32) ([]string, error) {
 	var tags []string
 	result := customerRepository.db.WithContext(ctx).
@@ -95,24 +145,38 @@ func (customerRepository *CustomerRepository) GetDistinctTags(ctx context.Contex
 	return tags, nil
 }
 
-func (customerRepository *CustomerRepository) List(ctx context.Context, userId int32, order types.OrderCustomersType, tags []string, page int, pageSize int) ([]dao_customer.Customer, error) {
-	var customers []dao_customer.Customer
-	offset := (page - 1) * pageSize
+func (customerRepository *CustomerRepository) List(ctx context.Context, userId int32, name string, phoneNumber string, order types.OrderCustomersType, status types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error) {
 	query := customerRepository.db.WithContext(ctx).
 		Model(&dao_customer.Customer{}).
 		Where("user_id = ?", userId)
+	if name != "" {
+		query = query.Where("display_name ILIKE ?", "%"+name+"%")
+	}
+	if phoneNumber != "" {
+		query = query.Where("phone_number ILIKE ?", "%"+phoneNumber+"%")
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
 	if len(tags) > 0 {
 		query = query.Where("tags && ?", pq.Array(tags))
 	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		customerRepository.logger.ErrorFunction(err, userId, name, phoneNumber, order, status, tags)
+		return nil, 0, 0, err
+	}
+	totalItems = int(count)
+	totalPages = (totalItems + pageSize - 1) / pageSize
 	if order == types.OrderCustomersTypeFromOld {
 		query = query.Order("id")
 	} else {
 		query = query.Order("id DESC")
 	}
-	result := query.Offset(offset).Limit(pageSize).Find(&customers)
+	result := query.Offset((page - 1) * pageSize).Limit(pageSize).Find(&customers)
 	if result.Error != nil {
-		customerRepository.logger.ErrorFunction(result.Error, userId, order, tags, page, pageSize)
-		return nil, result.Error
+		customerRepository.logger.ErrorFunction(result.Error, userId, name, phoneNumber, order, status, tags, page, pageSize)
+		return nil, 0, 0, result.Error
 	}
-	return customers, nil
+	return customers, totalItems, totalPages, nil
 }

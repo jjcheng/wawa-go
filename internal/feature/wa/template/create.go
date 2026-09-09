@@ -37,7 +37,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	metaWABAId := businessAccount.MetaWABAId
 	template, err := dependencies.Whatsapp.CreateTemplate(ctx, metaWABAId, create.Payload(), businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}
 	return dto.NewSuccessResponse(template)
 }

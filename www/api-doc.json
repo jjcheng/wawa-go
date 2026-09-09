@@ -92,6 +92,12 @@
                         },
                         "type": {
                           "type": "string"
+                        },
+                        "wa_activated": {
+                          "type": "boolean"
+                        },
+                        "wa_activation_error": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -468,6 +474,12 @@
                         },
                         "type": {
                           "type": "string"
+                        },
+                        "wa_activated": {
+                          "type": "boolean"
+                        },
+                        "wa_activation_error": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -795,6 +807,12 @@
                           "type": "string"
                         },
                         "type": {
+                          "type": "string"
+                        },
+                        "wa_activated": {
+                          "type": "boolean"
+                        },
+                        "wa_activation_error": {
                           "type": "string"
                         }
                       },
@@ -1131,6 +1149,12 @@
                         },
                         "type": {
                           "type": "string"
+                        },
+                        "wa_activated": {
+                          "type": "boolean"
+                        },
+                        "wa_activation_error": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -1336,6 +1360,213 @@
       }
     },
     "/v1/customers": {
+      "delete": {
+        "description": "Deletes customers for the authenticated user.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authorized to delete one or more customers, unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authorized to delete one or more customers, unauthorized access"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Delete customers",
+        "tags": [
+          "Customer"
+        ]
+      },
       "get": {
         "description": "Lists customers for the authenticated user.",
         "parameters": [
@@ -1350,12 +1581,36 @@
           {
             "example": "",
             "in": "query",
+            "name": "name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "example": "",
+            "in": "query",
+            "name": "phone_number",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "example": "",
+            "in": "query",
             "name": "tags",
             "schema": {
               "items": {
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "example": "",
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -1395,6 +1650,12 @@
                         "items": {
                           "items": {
                             "properties": {
+                              "additional_data": {
+                                "additionalProperties": {
+                                  "type": "object"
+                                },
+                                "type": "object"
+                              },
                               "country_code": {
                                 "type": "string"
                               },
@@ -1411,6 +1672,9 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
+                              "imported_phone_number": {
+                                "type": "string"
+                              },
                               "last_update": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
@@ -1422,6 +1686,12 @@
                               "phone_number": {
                                 "type": "string"
                               },
+                              "remarks": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
                               "tags": {
                                 "items": {
                                   "type": "string"
@@ -1429,8 +1699,6 @@
                                 "type": "array"
                               },
                               "wa_id": {
-                                "description": "country_code + phone_number",
-                                "example": "6590909090",
                                 "type": "string"
                               }
                             },
@@ -1680,6 +1948,11 @@
                     "description": "customer phone number",
                     "type": "string"
                   },
+                  "remarks": {
+                    "description": "for your own reference",
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "tags": {
                     "description": "tags of the customer",
                     "items": {
@@ -1687,6 +1960,11 @@
                     },
                     "nullable": true,
                     "type": "array"
+                  },
+                  "wa_id": {
+                    "description": "given by Meta",
+                    "nullable": true,
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -1709,6 +1987,12 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "additional_data": {
+                          "additionalProperties": {
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -1725,6 +2009,9 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "imported_phone_number": {
+                          "type": "string"
+                        },
                         "last_update": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
@@ -1736,6 +2023,12 @@
                         "phone_number": {
                           "type": "string"
                         },
+                        "remarks": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
                         "tags": {
                           "items": {
                             "type": "string"
@@ -1743,8 +2036,6 @@
                           "type": "array"
                         },
                         "wa_id": {
-                          "description": "country_code + phone_number",
-                          "example": "6590909090",
                           "type": "string"
                         }
                       },
@@ -2030,6 +2321,12 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "additional_data": {
+                          "additionalProperties": {
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -2046,6 +2343,9 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "imported_phone_number": {
+                          "type": "string"
+                        },
                         "last_update": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
@@ -2057,6 +2357,12 @@
                         "phone_number": {
                           "type": "string"
                         },
+                        "remarks": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
                         "tags": {
                           "items": {
                             "type": "string"
@@ -2064,8 +2370,6 @@
                           "type": "array"
                         },
                         "wa_id": {
-                          "description": "country_code + phone_number",
-                          "example": "6590909090",
                           "type": "string"
                         }
                       },
@@ -2362,6 +2666,679 @@
         ]
       }
     },
+    "/v1/customers/import": {
+      "post": {
+        "description": "Imports contacts and stores profile details in additional data.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "contacts": {
+                    "description": "contacts to import",
+                    "items": {
+                      "properties": {
+                        "address": {
+                          "type": "string"
+                        },
+                        "anniversary": {
+                          "type": "string"
+                        },
+                        "birthday": {
+                          "type": "string"
+                        },
+                        "categories": {
+                          "type": "string"
+                        },
+                        "display_name": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "gender": {
+                          "type": "string"
+                        },
+                        "job_title": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "type": "string"
+                        },
+                        "organization": {
+                          "type": "string"
+                        },
+                        "phone_number": {
+                          "type": "string"
+                        },
+                        "photo": {
+                          "type": "string"
+                        },
+                        "skip_reason": {
+                          "type": "string"
+                        },
+                        "skipped": {
+                          "type": "boolean"
+                        },
+                        "time_zone": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "contacts"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "properties": {
+                        "imported_count": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "skipped": {
+                          "items": {
+                            "properties": {
+                              "address": {
+                                "type": "string"
+                              },
+                              "anniversary": {
+                                "type": "string"
+                              },
+                              "birthday": {
+                                "type": "string"
+                              },
+                              "categories": {
+                                "type": "string"
+                              },
+                              "display_name": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "type": "string"
+                              },
+                              "gender": {
+                                "type": "string"
+                              },
+                              "job_title": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "organization": {
+                                "type": "string"
+                              },
+                              "phone_number": {
+                                "type": "string"
+                              },
+                              "photo": {
+                                "type": "string"
+                              },
+                              "skip_reason": {
+                                "type": "string"
+                              },
+                              "skipped": {
+                                "type": "boolean"
+                              },
+                              "time_zone": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Import customers",
+        "tags": [
+          "Customer"
+        ]
+      }
+    },
+    "/v1/customers/status": {
+      "patch": {
+        "description": "Updates the status of customers owned by the authenticated user.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "ids": {
+                    "description": "id of the customers",
+                    "items": {
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "type": "array"
+                  },
+                  "status": {
+                    "description": "status of the customers",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids",
+                  "status"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authorized to update one or more customers, unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authorized to update one or more customers, unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Set customer status",
+        "tags": [
+          "Customer"
+        ]
+      }
+    },
     "/v1/customers/tags": {
       "get": {
         "description": "Lists distinct customer tags for the authenticated user.",
@@ -2578,15 +3555,15 @@
         ]
       }
     },
-    "/v1/customers/{id}": {
-      "delete": {
-        "description": "Deletes a customer for the authenticated user.",
+    "/v1/customers/{customer_id}": {
+      "patch": {
+        "description": "Updates a customer for the authenticated user.",
         "parameters": [
           {
-            "description": "id of the customer to delete",
+            "description": "id of the customer in our db",
             "example": "",
             "in": "path",
-            "name": "id",
+            "name": "customer_id",
             "required": true,
             "schema": {
               "format": "int32",
@@ -2594,12 +3571,129 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "additional_data": {
+                    "additionalProperties": {
+                      "type": "object"
+                    },
+                    "description": "other profile data like bd",
+                    "nullable": true,
+                    "type": "object"
+                  },
+                  "country_code": {
+                    "description": "country code if in db it's .",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "display_name": {
+                    "description": "display name of the customer",
+                    "type": "string"
+                  },
+                  "phone_number": {
+                    "description": "if country code is . in db",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "remarks": {
+                    "description": "for your own reference",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "status": {
+                    "description": "status of the customer",
+                    "type": "string"
+                  },
+                  "tags": {
+                    "description": "tags of the customer",
+                    "items": {
+                      "type": "string"
+                    },
+                    "nullable": true,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "display_name",
+                  "status"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
                   "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "properties": {
+                        "additional_data": {
+                          "additionalProperties": {
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
+                        "country_code": {
+                          "type": "string"
+                        },
+                        "display_name": {
+                          "type": "string"
+                        },
+                        "entry_date": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "example": 1,
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "imported_phone_number": {
+                          "type": "string"
+                        },
+                        "last_update": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "meta_user_id": {
+                          "type": "string"
+                        },
+                        "phone_number": {
+                          "type": "string"
+                        },
+                        "remarks": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "tags": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "wa_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "entry_date",
+                        "last_update"
+                      ],
+                      "type": "object"
+                    },
                     "request_id": {
                       "description": "request correlation id",
                       "type": "string"
@@ -2742,6 +3836,49 @@
             },
             "description": "unauthorized access"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -2784,6 +3921,49 @@
               }
             },
             "description": "customer not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "customer already exists",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 409,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "customer already exists"
           },
           "500": {
             "content": {
@@ -2837,7 +4017,7 @@
             "apiKey": []
           }
         ],
-        "summary": "Delete customer",
+        "summary": "Update customer",
         "tags": [
           "Customer"
         ]
@@ -2949,6 +4129,12 @@
                           "type": "string"
                         },
                         "type": {
+                          "type": "string"
+                        },
+                        "wa_activated": {
+                          "type": "boolean"
+                        },
+                        "wa_activation_error": {
                           "type": "string"
                         }
                       },
@@ -3700,6 +4886,12 @@
                               "customers": {
                                 "items": {
                                   "properties": {
+                                    "additional_data": {
+                                      "additionalProperties": {
+                                        "type": "object"
+                                      },
+                                      "type": "object"
+                                    },
                                     "country_code": {
                                       "type": "string"
                                     },
@@ -3716,6 +4908,9 @@
                                       "format": "int32",
                                       "type": "integer"
                                     },
+                                    "imported_phone_number": {
+                                      "type": "string"
+                                    },
                                     "last_update": {
                                       "example": "2025-10-01T08:08:00Z",
                                       "format": "date-time",
@@ -3727,6 +4922,12 @@
                                     "phone_number": {
                                       "type": "string"
                                     },
+                                    "remarks": {
+                                      "type": "string"
+                                    },
+                                    "status": {
+                                      "type": "string"
+                                    },
                                     "tags": {
                                       "items": {
                                         "type": "string"
@@ -3734,8 +4935,6 @@
                                       "type": "array"
                                     },
                                     "wa_id": {
-                                      "description": "country_code + phone_number",
-                                      "example": "6590909090",
                                       "type": "string"
                                     }
                                   },
@@ -4130,6 +5329,12 @@
                         "customers": {
                           "items": {
                             "properties": {
+                              "additional_data": {
+                                "additionalProperties": {
+                                  "type": "object"
+                                },
+                                "type": "object"
+                              },
                               "country_code": {
                                 "type": "string"
                               },
@@ -4146,6 +5351,9 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
+                              "imported_phone_number": {
+                                "type": "string"
+                              },
                               "last_update": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
@@ -4157,6 +5365,12 @@
                               "phone_number": {
                                 "type": "string"
                               },
+                              "remarks": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
                               "tags": {
                                 "items": {
                                   "type": "string"
@@ -4164,8 +5378,6 @@
                                 "type": "array"
                               },
                               "wa_id": {
-                                "description": "country_code + phone_number",
-                                "example": "6590909090",
                                 "type": "string"
                               }
                             },
@@ -4499,6 +5711,12 @@
                         "customers": {
                           "items": {
                             "properties": {
+                              "additional_data": {
+                                "additionalProperties": {
+                                  "type": "object"
+                                },
+                                "type": "object"
+                              },
                               "country_code": {
                                 "type": "string"
                               },
@@ -4515,6 +5733,9 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
+                              "imported_phone_number": {
+                                "type": "string"
+                              },
                               "last_update": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
@@ -4526,6 +5747,12 @@
                               "phone_number": {
                                 "type": "string"
                               },
+                              "remarks": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
                               "tags": {
                                 "items": {
                                   "type": "string"
@@ -4533,8 +5760,6 @@
                                 "type": "array"
                               },
                               "wa_id": {
-                                "description": "country_code + phone_number",
-                                "example": "6590909090",
                                 "type": "string"
                               }
                             },
@@ -10795,6 +12020,16 @@
                 "type": "string"
               },
               "type": "array"
+            }
+          },
+          {
+            "description": "analytics granularity: HALF_HOUR, DAY, or MONTH",
+            "example": "",
+            "in": "query",
+            "name": "granularity",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
         ],

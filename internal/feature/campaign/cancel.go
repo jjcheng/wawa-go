@@ -1,4 +1,4 @@
-package feature_wa_campaign
+package feature_campaign
 
 import (
 	"context"
@@ -42,11 +42,11 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	if campaign.UserId != user.Id {
 		return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
 	}
-	if campaign.Status != types.WACampaignStatusPending {
+	if campaign.Status != types.CampaignStatusPending {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "only pending campaigns can be cancelled")
 	}
 	if err := dependencies.UnitOfWork.WACampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{
-		"status": types.WACampaignStatusCancelled,
+		"status": types.CampaignStatusCancelled,
 	}); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -59,7 +59,7 @@ func (Cancel) APISettings() feature.APISettings {
 		"Cancels a pending campaign belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
 		http.MethodPatch,
-		"/v1/wa/campaigns/:id/cancel",
+		"/v1/campaigns/:id/cancel",
 		true,
 		true,
 		types.APITagWA,

@@ -1,10 +1,14 @@
 package helper
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/types"
+	"github.com/nyaruka/phonenumbers"
 )
 
 func NormalizeWAId(phoneNumber string) string {
@@ -20,6 +24,21 @@ func GetChatChannelName(phoneNumberId string, customerWAId string, customerMetaU
 		customerId = customerMetaUserId
 	}
 	return fmt.Sprintf("chat:%s:%s", phoneNumberId, customerId)
+}
+
+// take X-Hub-Signature-256 from header
+func VerifyWhatsAppWebhookSignature(signature string, body []byte, appSecret string) bool {
+	signature = strings.TrimPrefix(strings.TrimSpace(signature), "sha256=")
+	if signature == "" || strings.TrimSpace(appSecret) == "" {
+		return false
+	}
+	providedSignature, err := hex.DecodeString(signature)
+	if err != nil {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(appSecret))
+	_, _ = mac.Write(body)
+	return hmac.Equal(providedSignature, mac.Sum(nil))
 }
 
 func CanTransitionWAMessageStatus(current types.WAMessageStatus, next types.WAMessageStatus) bool {
@@ -55,4 +74,13 @@ func waMessageStatusRank(status types.WAMessageStatus) int {
 	default:
 		return 0
 	}
+}
+
+// waid = 6590000000
+func GetCountryCodeAndPhoneNumberFromWAId(waID string) (string, string, error) {
+	phoneNumber, err := phonenumbers.Parse("+"+waID, "")
+	if err != nil || !phonenumbers.IsValidNumber(phoneNumber) {
+		return "", "", fmt.Errorf("invalid WhatsApp ID %q", waID)
+	}
+	return fmt.Sprintf("%d", phoneNumber.GetCountryCode()), phonenumbers.GetNationalSignificantNumber(phoneNumber), nil
 }

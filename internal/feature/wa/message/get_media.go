@@ -77,7 +77,7 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	}
 	content, contentType, err := dependencies.Whatsapp.DownloadMedia(ctx, getMedia.WAMediaID, businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*Media](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error())
 	}
 	filename := getMedia.WAMediaID
 	if contentTypeParts := strings.SplitN(contentType, "/", 2); len(contentTypeParts) == 2 && contentTypeParts[1] != "" {

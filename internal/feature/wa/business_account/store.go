@@ -53,7 +53,7 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 	}
 	waba, err := dependencies.Whatsapp.GetWABA(ctx, store.MetaWABAId, businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, err.Error())
 	}
 	var businessAccount dao_wa.BusinessAccount
 	if existing != nil {

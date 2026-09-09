@@ -1,4 +1,4 @@
-package feature_wa_campaign
+package feature_campaign
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
@@ -59,19 +59,19 @@ func (create *Create) Validate() []exception.InputException {
 	return inputErrors
 }
 
-func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Campaign] {
+func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Campaign] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusForbidden, "you are not authenticated")
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[*dto_wa.Campaign](inputErrors)
+		return dto.NewInvalidInputResponse[*dto_customer.Campaign](inputErrors)
 	}
 	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, create.CustomerIds)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if len(customers) != len(create.CustomerIds) {
-		return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusBadRequest, "one or more customers were not found")
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "one or more customers were not found")
 	}
 	// campaign := dao_wa.Campaign{
 	// 	MessageBase: dao_wa.MessageBase{
@@ -103,7 +103,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	// }
 	// result := dto_wa.NewCampaign(campaign, nil)
 	// return dto.NewSuccessResponse(&result)
-	return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusNotImplemented, "")
+	return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusNotImplemented, "")
 }
 
 func (Create) APISettings() feature.APISettings {
@@ -112,7 +112,7 @@ func (Create) APISettings() feature.APISettings {
 		"Start a pending campaign by the authenticated user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
-		"/v1/wa/campaigns",
+		"/v1/campaigns",
 		true,
 		true,
 		types.APITagWA,

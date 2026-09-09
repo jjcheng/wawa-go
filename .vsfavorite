@@ -48,6 +48,14 @@
     {
       "filePath": "internal/feature/wa/embedded-signup.go",
       "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/wa/webhook/receive.go",
+      "group": "Default"
+    },
+    {
+      "filePath": "internal/feature/wa/webhook/verify.go",
+      "group": "Default"
     }
   ],
   "groups": [

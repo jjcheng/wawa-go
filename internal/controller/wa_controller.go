@@ -12,13 +12,13 @@ import (
 	feature_wa_account "github.com/jjcheng/wawa-go/internal/feature/wa/account"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
-	feature_wa_campaign "github.com/jjcheng/wawa-go/internal/feature/wa/campaign"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
 	feature_wa_sample_template "github.com/jjcheng/wawa-go/internal/feature/wa/sample_template"
 	feature_wa_template "github.com/jjcheng/wawa-go/internal/feature/wa/template"
 	feature_wa_user_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/user_phone_number"
 	feature_wa_webhook "github.com/jjcheng/wawa-go/internal/feature/wa/webhook"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/middleware"
 	"github.com/jjcheng/wawa-go/internal/service"
 
@@ -26,7 +26,7 @@ import (
 )
 
 func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
-	// verify endpoint
+	// verify endpoint during configuration
 	routerGroup.GET(feature_wa_webhook.Verify{}.APISettings().Path, middleware.BindRequest[string, feature_wa_webhook.Verify](), func(ctx *gin.Context) {
 		requestObject := ctx.MustGet(cfg.Default().Site.HTTPRequestItemKey).(feature_wa_webhook.Verify)
 		responseObject := requestObject.Handle(ctx.Request.Context(), nil, dependencies)
@@ -36,11 +36,15 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 		}
 		ctx.String(responseObject.StatusCode, responseObject.Data)
 	})
-	// receive something, can be messages, status etc...
+	// webhook to receive incoming content, can be messages, status, history etc...
 	routerGroup.POST(feature_wa_webhook.Receive{}.APISettings().Path, func(ctx *gin.Context) {
 		rawBody, err := ctx.GetRawData()
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "failed to read raw body"})
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, dto.NewFailedResponse[any](http.StatusUnauthorized, "failed to read raw body"))
+			return
+		}
+		if !helper.VerifyWhatsAppWebhookSignature(ctx.GetHeader("X-Hub-Signature-256"), rawBody, cfg.Default().WhatsApp.AppSecret) {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid WhatsApp webhook signature"))
 			return
 		}
 		requestObject := feature_wa_webhook.Receive{RawBody: string(rawBody)}
@@ -81,12 +85,6 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.MessageAnalytics, feature_wa_phone_number.GetUsage](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetUsage](routerGroup, dependencies, apiGenerator)
-	// campaigns
-	registerRoute[*dto.ListResponse[dto_wa.Campaign], feature_wa_campaign.List](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.Campaign, feature_wa_campaign.Get](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.Campaign, feature_wa_campaign.Create](routerGroup, dependencies, apiGenerator)
-	registerRoute[any, feature_wa_campaign.Archive](routerGroup, dependencies, apiGenerator)
-	registerRoute[any, feature_wa_campaign.Cancel](routerGroup, dependencies, apiGenerator)
 }
 
 func registerWAMediaUploadRoute(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {

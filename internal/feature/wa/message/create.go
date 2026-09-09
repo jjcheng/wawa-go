@@ -246,7 +246,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	response, err := dependencies.Whatsapp.SendMessage(ctx, create.PhoneNumberID, create, businessPortfolio.AccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, err.Error())
 	}
 	if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, "WhatsApp did not return a message ID")

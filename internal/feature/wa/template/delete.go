@@ -46,7 +46,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	metaWABAId := businessAccount.MetaWABAId
 	if err := dependencies.Whatsapp.DeleteTemplate(ctx, metaWABAId, delete.Name, delete.Id, businessPortfolio.AccessToken); err != nil {
-		return dto.NewFailedResponse[any](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }

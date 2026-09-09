@@ -25,7 +25,7 @@ type UnitOfWork struct {
 	waMessageRepository            repository.WAMessageRepository
 	waMessageStatusEventRepository repository.WAMessageStatusEventRepository
 	waSampleTemplateRepository     repository.WASampleTemplateRepository
-	waCampaignRepository           repository.WACampaignRepository
+	waCampaignRepository           repository.CampaignRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -107,7 +107,7 @@ func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTe
 	return unitOfWork.waSampleTemplateRepository
 }
 
-func (unitOfWork *UnitOfWork) WACampaignRepository() repository.WACampaignRepository {
+func (unitOfWork *UnitOfWork) WACampaignRepository() repository.CampaignRepository {
 	return unitOfWork.waCampaignRepository
 }
 

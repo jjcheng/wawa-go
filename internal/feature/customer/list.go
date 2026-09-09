@@ -15,13 +15,18 @@ import (
 )
 
 type List struct {
-	Order    types.OrderCustomersType `form:"order"`
-	Tags     []string                 `form:"tags"`
-	Page     int                      `form:"page"`
-	PageSize int                      `form:"page_size"`
+	Order       types.OrderCustomersType `form:"order"`
+	Name        string                   `form:"name"`
+	PhoneNumber string                   `form:"phone_number"`
+	Tags        []string                 `form:"tags"`
+	Status      types.CustomerStatus     `form:"status"`
+	Page        int                      `form:"page"`
+	PageSize    int                      `form:"page_size"`
 }
 
 func (list *List) Validate() []exception.InputException {
+	list.Name = strings.TrimSpace(list.Name)
+	list.PhoneNumber = strings.TrimSpace(list.PhoneNumber)
 	if list.Order == "" {
 		list.Order = types.OrderCustomersTypeFromNew
 	}
@@ -38,8 +43,11 @@ func (list *List) Validate() []exception.InputException {
 	if list.Order != types.OrderCustomersTypeFromNew && list.Order != types.OrderCustomersTypeFromOld {
 		inputErrors = append(inputErrors, exception.NewInputException("order", "invalid order"))
 	}
-	if list.PageSize > 100 {
-		inputErrors = append(inputErrors, exception.NewInputException("page_size", "page size must be less than or equal to 100"))
+	if list.PageSize > 500 {
+		inputErrors = append(inputErrors, exception.NewInputException("page_size", "page size must be less than or equal to 500"))
+	}
+	if list.Status == "" {
+		list.Status = types.CustomerStatusActive
 	}
 	return inputErrors
 }
@@ -48,7 +56,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.Customer]](inputErrors)
 	}
-	customers, err := dependencies.UnitOfWork.CustomerRepository().List(ctx, user.Id, list.Order, list.Tags, list.Page, list.PageSize)
+	customers, totalItems, totalPages, err := dependencies.UnitOfWork.CustomerRepository().List(ctx, user.Id, list.Name, list.PhoneNumber, list.Order, list.Status, list.Tags, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -56,11 +64,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	for _, customer := range customers {
 		items = append(items, dto_customer.NewCustomer(customer))
 	}
-	var nextPageOffset any
-	if len(items) == list.PageSize {
-		nextPageOffset = list.Page + 1
-	}
-	response := dto.NewOffsetListResponse(items, nextPageOffset, nil)
+	response := dto.NewPagedListResponse(items, totalPages, totalItems)
 	return dto.NewSuccessResponse(&response)
 }
 

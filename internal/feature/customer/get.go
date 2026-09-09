@@ -47,7 +47,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		mapped := dto_customer.NewCustomer(*item)
 		customer = &mapped
 	} else {
-		item, err := dependencies.UnitOfWork.CustomerRepository().GetByMetaWAId(ctx, user.Id, get.WAId)
+		item, err := dependencies.UnitOfWork.CustomerRepository().GetByWAId(ctx, user.Id, get.WAId)
 		if err != nil {
 			return customerGetError(err)
 		}

@@ -22,7 +22,9 @@ type Create struct {
 	CountryCode string   `json:"country_code" val:"required" description:"customer country code"`
 	PhoneNumber string   `json:"phone_number" val:"required" description:"customer phone number"`
 	MetaUserId  string   `json:"meta_user_id" description:"a string given by Meta"`
+	WAId        string   `json:"wa_id" description:"given by Meta"`
 	Tags        []string `json:"tags" description:"tags of the customer"`
+	Remarks     string   `json:"remarks" description:"for your own reference"`
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -33,8 +35,15 @@ func (create *Create) Validate() []exception.InputException {
 	create.PhoneNumber = strings.ReplaceAll(create.PhoneNumber, " ", "")
 	create.PhoneNumber = strings.ReplaceAll(create.PhoneNumber, "-", "")
 	create.MetaUserId = strings.TrimSpace(create.MetaUserId)
-	for i := range create.Tags {
-		create.Tags[i] = strings.TrimSpace(create.Tags[i])
+	create.WAId = strings.TrimSpace(create.WAId)
+	create.Remarks = strings.TrimSpace(create.Remarks)
+	if create.Tags == nil {
+		// without this will have postgres error
+		create.Tags = []string{}
+	} else {
+		for i := range create.Tags {
+			create.Tags[i] = strings.TrimSpace(create.Tags[i])
+		}
 	}
 	errors := []exception.InputException{}
 	if create.DisplayName == "" {
@@ -47,6 +56,9 @@ func (create *Create) Validate() []exception.InputException {
 		}
 		if create.PhoneNumber == "" {
 			errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
+		}
+		if create.WAId == "" {
+			errors = append(errors, exception.NewInputException("wa_id", "missing WA ID"))
 		}
 	}
 	return errors
@@ -75,12 +87,16 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 	}
 	customer := dao_customer.Customer{
-		DisplayName: create.DisplayName,
-		CountryCode: create.CountryCode,
-		PhoneNumber: create.PhoneNumber,
-		MetaUserId:  create.MetaUserId,
-		Tags:        create.Tags,
-		UserId:      user.Id,
+		DisplayName:         create.DisplayName,
+		CountryCode:         create.CountryCode,
+		PhoneNumber:         create.PhoneNumber,
+		MetaUserId:          create.MetaUserId,
+		Tags:                create.Tags,
+		UserId:              user.Id,
+		WAId:                create.WAId,
+		Status:              types.CustomerStatusActive,
+		Remarks:             create.Remarks,
+		ImportedPhoneNumber: create.WAId,
 	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

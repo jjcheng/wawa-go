@@ -18,6 +18,9 @@ type User struct {
 	Status            types.UserStatus `json:"status"`
 	AccessToken       string           `json:"access_token,omitempty"`
 	AccessTokenExpiry *time.Time       `json:"access_token_expiry,omitempty" description:"access token expiry time"`
+	// only used in embedded signup if the activate meta function failed
+	WAActivated       bool   `json:"wa_activated"`
+	WAActivationError string `json:"wa_activation_error,omitempty"`
 }
 
 func NewUser(user dao_account.User) User {

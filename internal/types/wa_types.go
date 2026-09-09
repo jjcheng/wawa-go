@@ -80,16 +80,6 @@ const (
 	WAAttachmentTypeDocument WAAttachmentType = "DOCUMENT"
 )
 
-type WACampaignStatus string
-
-const (
-	WACampaignStatusPending    WACampaignStatus = "PENDING"
-	WACampaignStatusCompleted  WACampaignStatus = "COMPLETED"
-	WACampaignStatusProcessing WACampaignStatus = "PROCESSING"
-	WACampaignStatusFailed     WACampaignStatus = "FAILED"
-	WACampaignStatusCancelled  WACampaignStatus = "CANCELLED"
-)
-
 type WAMessageStatus string
 
 const (

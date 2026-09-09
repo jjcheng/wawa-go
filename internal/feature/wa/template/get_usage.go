@@ -52,6 +52,10 @@ func (getUsage *GetUsage) Validate() []exception.InputException {
 			break
 		}
 	}
+	if getUsage.Granularity == "DAY" {
+		// somehow template analytics uses different
+		getUsage.Granularity = "DAILY"
+	}
 	return inputErrors
 }
 
@@ -69,8 +73,7 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	metaWABAId := businessAccount.MetaWABAId
 	analytics, err := dependencies.Whatsapp.GetTemplateUsage(ctx, metaWABAId, getUsage.Start, getUsage.End, getUsage.TemplateIds, getUsage.Granularity, businessPortfolio.AccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, metaWABAId, getUsage.TemplateIds)
-		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusBadGateway, types.ExceptionMessageBadGateway)
+		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusBadGateway, err.Error())
 	}
 	return dto.NewSuccessResponse(analytics)
 }
