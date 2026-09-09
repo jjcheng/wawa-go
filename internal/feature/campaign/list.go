@@ -14,7 +14,6 @@ import (
 )
 
 type List struct {
-	Archived bool                 `form:"archived" description:"filter by archived"`
 	Status   types.CampaignStatus `form:"status" description:"filter campaigns by status"`
 	Page     int                  `form:"page" description:"page number from 1"`
 	PageSize int                  `form:"page_size" description:"number per page"`
@@ -37,7 +36,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if errors := list.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.Campaign]](errors)
 	}
-	campaigns, err := dependencies.UnitOfWork.WACampaignRepository().ListByUserId(ctx, user.Id, list.Archived, list.Status, list.Page, list.PageSize)
+	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByUserId(ctx, user.Id, list.Status, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Campaign]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

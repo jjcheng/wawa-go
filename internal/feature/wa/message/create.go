@@ -104,10 +104,10 @@ type TemplateLanguage struct {
 }
 
 type TemplateComponent struct {
-	Type       string           `json:"type"`
-	SubType    string           `json:"sub_type,omitempty"`
-	Index      string           `json:"index,omitempty"`
-	Parameters []map[string]any `json:"parameters,omitempty"`
+	Type       string           `json:"type"`                 // header, body, or button
+	SubType    string           `json:"sub_type,omitempty"`   // button only: url, quick_reply, copy_code, or voice_call
+	Index      string           `json:"index,omitempty"`      // button only: zero-based position in the template, for example "0"
+	Parameters []map[string]any `json:"parameters,omitempty"` // header/body: text, image, video, or document; button: text (url), payload (quick_reply), or coupon_code (copy_code)
 }
 
 type InteractiveBody struct {

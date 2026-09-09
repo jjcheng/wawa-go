@@ -26,11 +26,11 @@ func NewWACampaignRepository(db *gorm.DB, logger *service.Logger) repository.Cam
 	}
 }
 
-func (campaignRepository *WACampaignRepository) ListByUserId(ctx context.Context, userId int32, archived bool, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error) {
+func (campaignRepository *WACampaignRepository) ListByUserId(ctx context.Context, userId int32, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error) {
 	var campaigns []dao_customer.Campaign
 	query := campaignRepository.db.WithContext(ctx).
 		Model(&dao_customer.Campaign{}).
-		Where("archived = ? AND user_id = ?", archived, userId)
+		Where("user_id = ?", userId)
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
@@ -47,4 +47,17 @@ func (campaignRepository *WACampaignRepository) ListByUserId(ctx context.Context
 	numberOfPages := int(math.Ceil(float64(numberOfItems) / float64(pageSize)))
 	result := dto.NewPagedListResponse(campaigns, numberOfPages, int(numberOfItems))
 	return &result, nil
+}
+
+func (campaignRepository *WACampaignRepository) CheckNameExist(ctx context.Context, userId int32, name string) (bool, error) {
+	var count int64
+	err := campaignRepository.db.WithContext(ctx).
+		Model(&dao_customer.Campaign{}).
+		Where("user_id = ? AND name = ?", userId, name).
+		Count(&count).Error
+	if err != nil {
+		campaignRepository.logger.ErrorFunction(err, userId, name)
+		return false, err
+	}
+	return count > 0, nil
 }

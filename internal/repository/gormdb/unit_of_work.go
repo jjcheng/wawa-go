@@ -16,6 +16,7 @@ type UnitOfWork struct {
 	accountSessionRepository repository.AccountSessionRepository
 	// customer
 	customerRepository repository.CustomerRepository
+	campaignRepository repository.CampaignRepository
 	// wa
 	waBusinessPortfolioRepository  repository.WABusinessPortfolioRepository
 	waBusinessAccountRepository    repository.WABusinessAccountRepository
@@ -25,7 +26,6 @@ type UnitOfWork struct {
 	waMessageRepository            repository.WAMessageRepository
 	waMessageStatusEventRepository repository.WAMessageStatusEventRepository
 	waSampleTemplateRepository     repository.WASampleTemplateRepository
-	waCampaignRepository           repository.CampaignRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -39,6 +39,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.accountSessionRepository = NewAccountSessionRepository(db, logger)
 	// customer
 	unitOfWork.customerRepository = NewCustomerRepository(db, logger)
+	unitOfWork.campaignRepository = NewWACampaignRepository(db, logger)
 	// wa
 	unitOfWork.waBusinessPortfolioRepository = NewWABusinessPortfolioRepository(db, logger)
 	unitOfWork.waBusinessAccountRepository = NewWABusinessAccountRepository(db, logger)
@@ -48,7 +49,6 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waMessageRepository = NewWAMessageRepository(db, logger)
 	unitOfWork.waMessageStatusEventRepository = NewWAMessageStatusEventRepository(db, logger)
 	unitOfWork.waSampleTemplateRepository = NewWASampleTemplateRepository(db, logger)
-	unitOfWork.waCampaignRepository = NewWACampaignRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -72,6 +72,10 @@ func (unitOfWork *UnitOfWork) AccountSessionRepository() repository.AccountSessi
 // customer
 func (unitOfWork *UnitOfWork) CustomerRepository() repository.CustomerRepository {
 	return unitOfWork.customerRepository
+}
+
+func (unitOfWork *UnitOfWork) CampaignRepository() repository.CampaignRepository {
+	return unitOfWork.campaignRepository
 }
 
 // wa
@@ -105,10 +109,6 @@ func (unitOfWork *UnitOfWork) WAMessageStatusEventRepository() repository.WAMess
 
 func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTemplateRepository {
 	return unitOfWork.waSampleTemplateRepository
-}
-
-func (unitOfWork *UnitOfWork) WACampaignRepository() repository.CampaignRepository {
-	return unitOfWork.waCampaignRepository
 }
 
 // transaction

@@ -28,10 +28,11 @@ type TemplateBase struct {
 	ParameterFormat types.WATemplateParameterFormat `json:"parameter_format,omitempty"`
 	Components      []TemplateComponent             `json:"components,omitempty"`
 	// lazy loaded
-	PreviewHTML     string `json:"preview_html,omitempty"`
-	RawHTML         string `json:"raw_html,omitempty"`
-	PreviewDarkHTML string `json:"preview_dark_html,omitempty"`
-	RawDarkHTML     string `json:"raw_dark_html,omitempty"`
+	PreviewHTML     string                  `json:"preview_html,omitempty"`
+	RawHTML         string                  `json:"raw_html,omitempty"`
+	PreviewDarkHTML string                  `json:"preview_dark_html,omitempty"`
+	RawDarkHTML     string                  `json:"raw_dark_html,omitempty"`
+	SendComponents  []SendTemplateComponent `json:"send_components"`
 }
 
 func (templateBase *TemplateBase) Validate() []exception.InputException {
@@ -394,3 +395,156 @@ func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (s
 }
 
 // #endregion
+
+// for front end to know how to send
+
+type SendTemplateComponent struct {
+	Type       string                  `json:"type"`               // header, body, button
+	SubType    string                  `json:"sub_type,omitempty"` // only if type is button; url, quick_reply, copy_code, flow
+	Index      string                  `json:"index,omitempty"`    // only if type is button; zero-based position of the button "0", "1"
+	Parameters []SendTemplateParameter `json:"parameters,omitempty"`
+}
+
+type SendTemplateParameter struct {
+	Type string `json:"type"` // text, image, video, document, location, payload, coupon_code, or action
+	// component.type = header, body, button, they are the variables not full text
+	Text *SendTemplateParameterText `json:"text,omitempty"` // type = text or component.sub_type = url
+	// component.type = header, audio is not supported
+	Image    *SendTemplateParameterImage    `json:"image,omitempty"`    // type = image
+	Video    *SendTemplateParameterVideo    `json:"video,omitempty"`    // type = video
+	Document *SendTemplateParameterDocument `json:"document,omitempty"` // type = document
+	Location *SendTemplateParameterLocation `json:"location,omitempty"` // type = location
+	// component.type = body
+	Currency *SendTemplateParameterCurrency `json:"currency,omitempty"`  // type = currency
+	DateTime *SendTemplateParameterDateTime `json:"date_time,omitempty"` // type = date_time
+	// component.type = button
+	Payload    string                     `json:"payload,omitempty"`     // component.sub_type = quick_reply, type = payload
+	CouponCode string                     `json:"coupon_code,omitempty"` // component.sub_type = copy_code, type = coupon_code
+	Action     *SendTemplateParameterFlow `json:"action,omitempty"`      // component.sub_type = flow, type = "action"
+}
+
+type SendTemplateParameterText struct {
+	ParameterName string `json:"parameter_name,omitempty"` // only need if parameter_format is NAMED
+	Text          string `json:"text,omitempty"`           // if it's static text, only this is needed
+	Source        string `json:"source,omitempty"`         // if it's dynamic like: customer.name, customer.additional_data.birthday; will be computed and put in text, not to send to Meta
+}
+
+type SendTemplateParameterImage struct {
+	Link string `json:"link,omitempty"` // if it's an url, only 1 is needed
+	Id   string `json:"id,omitempty"`   // Meta media ID
+}
+
+type SendTemplateParameterVideo struct {
+	Link string `json:"link,omitempty"` // if it's an url, only 1 is needed
+	Id   string `json:"id,omitempty"`   // Meta media ID
+}
+
+type SendTemplateParameterDocument struct {
+	Link     string `json:"link,omitempty"` // if it's an url, only 1 is needed
+	Id       string `json:"id,omitempty"`   // Meta media ID
+	FileName string `json:"filename"`
+}
+
+type SendTemplateParameterLocation struct {
+	Latitude  float32 `json:"latitude"`
+	Longitude float32 `json:"longitude"`
+	Name      string  `json:"name"`
+	Address   string  `json:"address"`
+}
+
+type SendTemplateParameterCurrency struct {
+	FallbackValue string `json:"fallback_value" example:"S$25.00"`
+	Code          string `json:"code" example:"SGD"`
+	Amount1000    int64  `json:"amount_1000" example:"25000"`
+}
+
+type SendTemplateParameterDateTime struct {
+	FallbackValue string `json:"fallback_value" example:"9 September 2026, 10:30 AM"`
+	Year          int64  `json:"year" example:"2026"`
+	Month         int64  `json:"month" example:"9"`
+	DayOfMonth    int64  `json:"day_of_month" example:"10"`
+	Hour          int64  `json:"hour" example:"10"`
+	Minute        int64  `json:"minute" example:"30"`
+}
+
+type SendTemplateParameterFlow struct {
+	FlowToken       string         `json:"flow_token"`
+	FloatActionData map[string]any `json:"flow_action_data,omitempty"`
+}
+
+func (template *Template) GetSendComponents() []SendTemplateComponent {
+	if template == nil {
+		return nil
+	}
+	components := make([]SendTemplateComponent, 0)
+	for _, component := range template.Components {
+		switch component.Type {
+		case types.WATemplateComponentTypeHeader:
+			parameters := []SendTemplateParameter{}
+			switch component.Format {
+			case types.WATemplateComponentFormatText:
+				parameters = templateTextSendParameters(component.Text, template.ParameterFormat)
+			case types.WATemplateComponentFormatImage, types.WATemplateComponentFormatVideo, types.WATemplateComponentFormatDocument, types.WATemplateComponentFormatLocation:
+				parameters = append(parameters, SendTemplateParameter{Type: strings.ToLower(string(component.Format))})
+			}
+			if len(parameters) > 0 {
+				components = append(components, SendTemplateComponent{Type: "header", Parameters: parameters})
+			}
+		case types.WATemplateComponentTypeBody:
+			if parameters := templateTextSendParameters(component.Text, template.ParameterFormat); len(parameters) > 0 {
+				components = append(components, SendTemplateComponent{Type: "body", Parameters: parameters})
+			}
+		case types.WATemplateComponentTypeButtons:
+			for index, button := range component.Buttons {
+				parameter := SendTemplateParameter{}
+				switch button.Type {
+				case types.WATemplateButtonTypeURL:
+					if !strings.Contains(button.Url, "{{") {
+						continue
+					}
+					parameter.Type = "text"
+					parameter.Text = &SendTemplateParameterText{}
+				case types.WATemplateButtonTypeQuickReply:
+					parameter.Type = "payload"
+				case types.WATemplateButtonTypeCopyCode:
+					parameter.Type = "coupon_code"
+				case types.WATemplateButtonTypeFlow:
+					parameter.Type = "action"
+				default:
+					continue
+				}
+				components = append(components, SendTemplateComponent{
+					Type:       "button",
+					SubType:    strings.ToLower(string(button.Type)),
+					Index:      fmt.Sprint(index),
+					Parameters: []SendTemplateParameter{parameter},
+				})
+			}
+		}
+	}
+	return components
+}
+
+func templateTextSendParameters(text string, parameterFormat types.WATemplateParameterFormat) []SendTemplateParameter {
+	parameters := []SendTemplateParameter{}
+	for remainingText := text; ; {
+		start := strings.Index(remainingText, "{{")
+		if start < 0 {
+			break
+		}
+		end := strings.Index(remainingText[start+2:], "}}")
+		if end < 0 {
+			break
+		}
+		parameterName := strings.TrimSpace(remainingText[start+2 : start+2+end])
+		if parameterName != "" {
+			parameter := SendTemplateParameter{Type: "text", Text: &SendTemplateParameterText{}}
+			if parameterFormat == types.WATemplateParameterFormatNamed {
+				parameter.Text.ParameterName = parameterName
+			}
+			parameters = append(parameters, parameter)
+		}
+		remainingText = remainingText[start+2+end+2:]
+	}
+	return parameters
+}

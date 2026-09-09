@@ -33,7 +33,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Campaign](errors)
 	}
-	campaign, err := dependencies.UnitOfWork.WACampaignRepository().GetById(ctx, get.Id)
+	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, get.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusNotFound, "campaign not found")
@@ -43,7 +43,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if campaign.UserId != user.Id {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusNotFound, "campaign not found")
 	}
-	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, campaign.CustomerIds)
+	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, []int32(campaign.CustomerIds))
 	if err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -52,7 +52,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		customersById[customer.Id] = dto_customer.NewCustomer(customer)
 	}
 	orderedCustomers := make([]dto_customer.Customer, 0, len(customers))
-	for _, customerId := range campaign.CustomerIds {
+	for _, customerId := range []int32(campaign.CustomerIds) {
 		if customer, ok := customersById[customerId]; ok {
 			orderedCustomers = append(orderedCustomers, customer)
 		}

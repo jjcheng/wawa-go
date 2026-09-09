@@ -33,7 +33,7 @@ func (archive Archive) Handle(ctx context.Context, user *dto_account.User, depen
 	if errors := archive.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	campaign, err := dependencies.UnitOfWork.WACampaignRepository().GetById(ctx, archive.Id)
+	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, archive.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
@@ -47,7 +47,7 @@ func (archive Archive) Handle(ctx context.Context, user *dto_account.User, depen
 	if campaign.Status == types.CampaignStatusPending || campaign.Status == types.CampaignStatusProcessing {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "campaign status cannot be pending or processing")
 	}
-	if err := dependencies.UnitOfWork.WACampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{"archived": archive}); err != nil {
+	if err := dependencies.UnitOfWork.CampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{"archived": archive}); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)

@@ -2,26 +2,30 @@ package feature_campaign
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Create struct {
-	Name         string                                 `json:"name"`
-	SendDate     *time.Time                             `json:"send_date"`
-	WATemplateId string                                 `json:"wa_template_id"`
-	Components   []feature_wa_message.TemplateComponent `json:"components"`
-	CustomerIds  []int32                                `json:"customer_ids"`
+	Name         string                         `json:"name"`
+	SendDate     *time.Time                     `json:"send_date"`
+	WATemplateId string                         `json:"wa_template_id"`
+	Components   []dto_wa.SendTemplateComponent `json:"components"`
+	CustomerIds  []int32                        `json:"customer_ids"`
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -66,6 +70,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Campaign](inputErrors)
 	}
+	exist, err := dependencies.UnitOfWork.CampaignRepository().CheckNameExist(ctx, user.Id, create.Name)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	if exist {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "this campaign name is already used")
+	}
 	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, create.CustomerIds)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
@@ -73,51 +84,62 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if len(customers) != len(create.CustomerIds) {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "one or more customers were not found")
 	}
-	// campaign := dao_wa.Campaign{
-	// 	MessageBase: dao_wa.MessageBase{
-	// 		AttachmentUrl:     create.AttachmentUrl,
-	// 		AttachmentType:    create.AttachmentType,
-	// 		LocationName:      create.LocationName,
-	// 		LocationAddress:   create.LocationAddress,
-	// 		LocationLatitude:  create.LocationLatitude,
-	// 		LocationLongitude: create.LocationLongitude,
-	// 		HeaderText:        create.HeaderText,
-	// 		BodyText:          create.BodyText,
-	// 		FooterText:        create.FooterText,
-	// 	},
-	// 	Name:         create.Name,
-	// 	WATemplateId: create.WATemplateId,
-	// 	CustomerIds:  create.CustomerIds,
-	// 	UserId:       user.Id,
-	// 	Status:       types.WACampaignStatusPending,
-	// 	Archived:     false,
-	// }
-	// if create.SendDate != nil {
-	// 	campaign.SendDate = sql.NullTime{
-	// 		Time:  *create.SendDate,
-	// 		Valid: true,
-	// 	}
-	// }
-	// if err := dependencies.UnitOfWork.WACampaignRepository().Insert(ctx, &campaign); err != nil {
-	// 	return dto.NewFailedResponse[*dto_wa.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	// }
-	// result := dto_wa.NewCampaign(campaign, nil)
-	// return dto.NewSuccessResponse(&result)
-	return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusNotImplemented, "")
+	businessPortfolio, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to access this business account")
+		}
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	template, err := dependencies.Whatsapp.GetTemplate(ctx, create.WATemplateId, businessPortfolio.AccessToken)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template not found")
+	}
+	if template.Status != types.WATemplateStatusApproved {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template is not approved")
+	}
+	campaign := dao_customer.Campaign{
+		Name:         create.Name,
+		WATemplateId: create.WATemplateId,
+		CustomerIds:  dao_customer.CustomerIDs(create.CustomerIds),
+		UserId:       user.Id,
+		Status:       types.CampaignStatusPending,
+		Payload: map[string]any{
+			"template": map[string]any{
+				"name": template.Name,
+				"language": map[string]string{
+					"code": template.Language,
+				},
+				"components": create.Components,
+			},
+		},
+	}
+	if create.SendDate != nil {
+		campaign.SendDate = sql.NullTime{Time: *create.SendDate, Valid: true}
+	}
+	if err := dependencies.UnitOfWork.CampaignRepository().Insert(ctx, &campaign); err != nil {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	result := dto_customer.NewCampaign(campaign, nil)
+	return dto.NewSuccessResponse(&result)
 }
 
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Start WhatsApp campaign",
+		"Start a campaign",
 		"Start a pending campaign by the authenticated user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/campaigns",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagCustomer,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("one or more customers were not found", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("this campaign name is already used", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("whatsapp template not found", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("whatsapp template is not approved", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this business account", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

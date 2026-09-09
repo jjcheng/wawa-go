@@ -32,7 +32,7 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := cancel.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	campaign, err := dependencies.UnitOfWork.WACampaignRepository().GetById(ctx, cancel.Id)
+	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, cancel.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
@@ -45,7 +45,7 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	if campaign.Status != types.CampaignStatusPending {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "only pending campaigns can be cancelled")
 	}
-	if err := dependencies.UnitOfWork.WACampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{
+	if err := dependencies.UnitOfWork.CampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{
 		"status": types.CampaignStatusCancelled,
 	}); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

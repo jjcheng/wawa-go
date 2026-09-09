@@ -16,6 +16,7 @@ type Campaign struct {
 	CustomerIds  []int32              `json:"customer_ids"`
 	UserId       int32                `json:"user_id"`
 	Status       types.CampaignStatus `json:"status"`
+	Payload      map[string]any       `json:"payload"`
 	// lazy loaded
 	Customers []Customer `json:"customers"`
 }
@@ -29,9 +30,10 @@ func NewCampaign(campaign dao_customer.Campaign, customers []Customer) Campaign 
 		},
 		Name:         campaign.Name,
 		WATemplateId: campaign.WATemplateId,
-		CustomerIds:  campaign.CustomerIds,
+		CustomerIds:  []int32(campaign.CustomerIds),
 		Status:       campaign.Status,
 		Customers:    customers,
+		Payload:      campaign.Payload,
 	}
 	if campaign.SendDate.Valid {
 		c.SendDate = &campaign.SendDate.Time

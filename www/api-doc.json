@@ -1364,15 +1364,6 @@
         "description": "Lists campaigns belonging to the authenticated user.",
         "parameters": [
           {
-            "description": "filter by archived",
-            "example": "",
-            "in": "query",
-            "name": "archived",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
             "description": "filter campaigns by status",
             "example": "",
             "in": "query",
@@ -1508,6 +1499,12 @@
                               },
                               "name": {
                                 "type": "string"
+                              },
+                              "payload": {
+                                "additionalProperties": {
+                                  "type": "object"
+                                },
+                                "type": "object"
                               },
                               "send_date": {
                                 "format": "date-time",
@@ -1804,8 +1801,151 @@
                         },
                         "parameters": {
                           "items": {
-                            "additionalProperties": {
-                              "type": "object"
+                            "properties": {
+                              "action": {
+                                "properties": {
+                                  "flow_action_data": {
+                                    "additionalProperties": {
+                                      "type": "object"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "flow_token": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "coupon_code": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "properties": {
+                                  "amount_1000": {
+                                    "example": 25000,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "code": {
+                                    "example": "SGD",
+                                    "type": "string"
+                                  },
+                                  "fallback_value": {
+                                    "example": "S$25.00",
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "date_time": {
+                                "properties": {
+                                  "day_of_month": {
+                                    "example": 10,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "fallback_value": {
+                                    "example": "9 September 2026, 10:30 AM",
+                                    "type": "string"
+                                  },
+                                  "hour": {
+                                    "example": 10,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "minute": {
+                                    "example": 30,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "month": {
+                                    "example": 9,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "year": {
+                                    "example": 2026,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "document": {
+                                "properties": {
+                                  "filename": {
+                                    "type": "string"
+                                  },
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "image": {
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "location": {
+                                "properties": {
+                                  "address": {
+                                    "type": "string"
+                                  },
+                                  "latitude": {
+                                    "format": "float",
+                                    "type": "number"
+                                  },
+                                  "longitude": {
+                                    "format": "float",
+                                    "type": "number"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "payload": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "properties": {
+                                  "parameter_name": {
+                                    "type": "string"
+                                  },
+                                  "source": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "video": {
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              }
                             },
                             "type": "object"
                           },
@@ -1949,6 +2089,12 @@
                         "name": {
                           "type": "string"
                         },
+                        "payload": {
+                          "additionalProperties": {
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
                         "send_date": {
                           "format": "date-time",
                           "type": "string"
@@ -2034,7 +2180,7 @@
                     },
                     "message": {
                       "description": "error message if not success",
-                      "example": "one or more customers were not found, invalid input",
+                      "example": "one or more customers were not found, this campaign name is already used, whatsapp template not found, whatsapp template is not approved, invalid input",
                       "type": "string"
                     },
                     "request_id": {
@@ -2068,7 +2214,7 @@
                 }
               }
             },
-            "description": "one or more customers were not found, invalid input"
+            "description": "one or more customers were not found, this campaign name is already used, whatsapp template not found, whatsapp template is not approved, invalid input"
           },
           "401": {
             "content": {
@@ -2077,7 +2223,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "unauthorized access",
+                      "example": "you are not authorized to access this business account, unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -2111,7 +2257,7 @@
                 }
               }
             },
-            "description": "unauthorized access"
+            "description": "you are not authorized to access this business account, unauthorized access"
           },
           "403": {
             "content": {
@@ -2208,9 +2354,9 @@
             "apiKey": []
           }
         ],
-        "summary": "Start WhatsApp campaign",
+        "summary": "Start a campaign",
         "tags": [
-          "WA"
+          "Customer"
         ]
       }
     },
@@ -2327,6 +2473,12 @@
                         },
                         "name": {
                           "type": "string"
+                        },
+                        "payload": {
+                          "additionalProperties": {
+                            "type": "object"
+                          },
+                          "type": "object"
                         },
                         "send_date": {
                           "format": "date-time",
@@ -9237,6 +9389,175 @@
                           },
                           "raw_html": {
                             "type": "string"
+                          },
+                          "send_components": {
+                            "items": {
+                              "properties": {
+                                "index": {
+                                  "type": "string"
+                                },
+                                "parameters": {
+                                  "items": {
+                                    "properties": {
+                                      "action": {
+                                        "properties": {
+                                          "flow_action_data": {
+                                            "additionalProperties": {
+                                              "type": "object"
+                                            },
+                                            "type": "object"
+                                          },
+                                          "flow_token": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "coupon_code": {
+                                        "type": "string"
+                                      },
+                                      "currency": {
+                                        "properties": {
+                                          "amount_1000": {
+                                            "example": 25000,
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          "code": {
+                                            "example": "SGD",
+                                            "type": "string"
+                                          },
+                                          "fallback_value": {
+                                            "example": "S$25.00",
+                                            "type": "string"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "date_time": {
+                                        "properties": {
+                                          "day_of_month": {
+                                            "example": 10,
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          "fallback_value": {
+                                            "example": "9 September 2026, 10:30 AM",
+                                            "type": "string"
+                                          },
+                                          "hour": {
+                                            "example": 10,
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          "minute": {
+                                            "example": 30,
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          "month": {
+                                            "example": 9,
+                                            "format": "int64",
+                                            "type": "integer"
+                                          },
+                                          "year": {
+                                            "example": 2026,
+                                            "format": "int64",
+                                            "type": "integer"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "document": {
+                                        "properties": {
+                                          "filename": {
+                                            "type": "string"
+                                          },
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "link": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "image": {
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "link": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "location": {
+                                        "properties": {
+                                          "address": {
+                                            "type": "string"
+                                          },
+                                          "latitude": {
+                                            "format": "float",
+                                            "type": "number"
+                                          },
+                                          "longitude": {
+                                            "format": "float",
+                                            "type": "number"
+                                          },
+                                          "name": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "payload": {
+                                        "type": "string"
+                                      },
+                                      "text": {
+                                        "properties": {
+                                          "parameter_name": {
+                                            "type": "string"
+                                          },
+                                          "source": {
+                                            "type": "string"
+                                          },
+                                          "text": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "type": {
+                                        "type": "string"
+                                      },
+                                      "video": {
+                                        "properties": {
+                                          "id": {
+                                            "type": "string"
+                                          },
+                                          "link": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "type": "object"
+                                      }
+                                    },
+                                    "type": "object"
+                                  },
+                                  "type": "array"
+                                },
+                                "sub_type": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
                           }
                         },
                         "required": [
@@ -9622,6 +9943,176 @@
                   "raw_html": {
                     "nullable": true,
                     "type": "string"
+                  },
+                  "send_components": {
+                    "items": {
+                      "properties": {
+                        "index": {
+                          "type": "string"
+                        },
+                        "parameters": {
+                          "items": {
+                            "properties": {
+                              "action": {
+                                "properties": {
+                                  "flow_action_data": {
+                                    "additionalProperties": {
+                                      "type": "object"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "flow_token": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "coupon_code": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "properties": {
+                                  "amount_1000": {
+                                    "example": 25000,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "code": {
+                                    "example": "SGD",
+                                    "type": "string"
+                                  },
+                                  "fallback_value": {
+                                    "example": "S$25.00",
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "date_time": {
+                                "properties": {
+                                  "day_of_month": {
+                                    "example": 10,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "fallback_value": {
+                                    "example": "9 September 2026, 10:30 AM",
+                                    "type": "string"
+                                  },
+                                  "hour": {
+                                    "example": 10,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "minute": {
+                                    "example": 30,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "month": {
+                                    "example": 9,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "year": {
+                                    "example": 2026,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "document": {
+                                "properties": {
+                                  "filename": {
+                                    "type": "string"
+                                  },
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "image": {
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "location": {
+                                "properties": {
+                                  "address": {
+                                    "type": "string"
+                                  },
+                                  "latitude": {
+                                    "format": "float",
+                                    "type": "number"
+                                  },
+                                  "longitude": {
+                                    "format": "float",
+                                    "type": "number"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "payload": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "properties": {
+                                  "parameter_name": {
+                                    "type": "string"
+                                  },
+                                  "source": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "video": {
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "sub_type": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "nullable": true,
+                    "type": "array"
                   }
                 },
                 "type": "object"
@@ -9813,6 +10304,175 @@
                         },
                         "raw_html": {
                           "type": "string"
+                        },
+                        "send_components": {
+                          "items": {
+                            "properties": {
+                              "index": {
+                                "type": "string"
+                              },
+                              "parameters": {
+                                "items": {
+                                  "properties": {
+                                    "action": {
+                                      "properties": {
+                                        "flow_action_data": {
+                                          "additionalProperties": {
+                                            "type": "object"
+                                          },
+                                          "type": "object"
+                                        },
+                                        "flow_token": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "coupon_code": {
+                                      "type": "string"
+                                    },
+                                    "currency": {
+                                      "properties": {
+                                        "amount_1000": {
+                                          "example": 25000,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "code": {
+                                          "example": "SGD",
+                                          "type": "string"
+                                        },
+                                        "fallback_value": {
+                                          "example": "S$25.00",
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "date_time": {
+                                      "properties": {
+                                        "day_of_month": {
+                                          "example": 10,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "fallback_value": {
+                                          "example": "9 September 2026, 10:30 AM",
+                                          "type": "string"
+                                        },
+                                        "hour": {
+                                          "example": 10,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "minute": {
+                                          "example": 30,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "month": {
+                                          "example": 9,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "year": {
+                                          "example": 2026,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "document": {
+                                      "properties": {
+                                        "filename": {
+                                          "type": "string"
+                                        },
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "image": {
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "location": {
+                                      "properties": {
+                                        "address": {
+                                          "type": "string"
+                                        },
+                                        "latitude": {
+                                          "format": "float",
+                                          "type": "number"
+                                        },
+                                        "longitude": {
+                                          "format": "float",
+                                          "type": "number"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "payload": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "properties": {
+                                        "parameter_name": {
+                                          "type": "string"
+                                        },
+                                        "source": {
+                                          "type": "string"
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "video": {
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "sub_type": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
                         }
                       },
                       "required": [
@@ -10546,6 +11206,175 @@
                               "rejected_reason": {
                                 "type": "string"
                               },
+                              "send_components": {
+                                "items": {
+                                  "properties": {
+                                    "index": {
+                                      "type": "string"
+                                    },
+                                    "parameters": {
+                                      "items": {
+                                        "properties": {
+                                          "action": {
+                                            "properties": {
+                                              "flow_action_data": {
+                                                "additionalProperties": {
+                                                  "type": "object"
+                                                },
+                                                "type": "object"
+                                              },
+                                              "flow_token": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "type": "object"
+                                          },
+                                          "coupon_code": {
+                                            "type": "string"
+                                          },
+                                          "currency": {
+                                            "properties": {
+                                              "amount_1000": {
+                                                "example": 25000,
+                                                "format": "int64",
+                                                "type": "integer"
+                                              },
+                                              "code": {
+                                                "example": "SGD",
+                                                "type": "string"
+                                              },
+                                              "fallback_value": {
+                                                "example": "S$25.00",
+                                                "type": "string"
+                                              }
+                                            },
+                                            "type": "object"
+                                          },
+                                          "date_time": {
+                                            "properties": {
+                                              "day_of_month": {
+                                                "example": 10,
+                                                "format": "int64",
+                                                "type": "integer"
+                                              },
+                                              "fallback_value": {
+                                                "example": "9 September 2026, 10:30 AM",
+                                                "type": "string"
+                                              },
+                                              "hour": {
+                                                "example": 10,
+                                                "format": "int64",
+                                                "type": "integer"
+                                              },
+                                              "minute": {
+                                                "example": 30,
+                                                "format": "int64",
+                                                "type": "integer"
+                                              },
+                                              "month": {
+                                                "example": 9,
+                                                "format": "int64",
+                                                "type": "integer"
+                                              },
+                                              "year": {
+                                                "example": 2026,
+                                                "format": "int64",
+                                                "type": "integer"
+                                              }
+                                            },
+                                            "type": "object"
+                                          },
+                                          "document": {
+                                            "properties": {
+                                              "filename": {
+                                                "type": "string"
+                                              },
+                                              "id": {
+                                                "type": "string"
+                                              },
+                                              "link": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "type": "object"
+                                          },
+                                          "image": {
+                                            "properties": {
+                                              "id": {
+                                                "type": "string"
+                                              },
+                                              "link": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "type": "object"
+                                          },
+                                          "location": {
+                                            "properties": {
+                                              "address": {
+                                                "type": "string"
+                                              },
+                                              "latitude": {
+                                                "format": "float",
+                                                "type": "number"
+                                              },
+                                              "longitude": {
+                                                "format": "float",
+                                                "type": "number"
+                                              },
+                                              "name": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "type": "object"
+                                          },
+                                          "payload": {
+                                            "type": "string"
+                                          },
+                                          "text": {
+                                            "properties": {
+                                              "parameter_name": {
+                                                "type": "string"
+                                              },
+                                              "source": {
+                                                "type": "string"
+                                              },
+                                              "text": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "type": "object"
+                                          },
+                                          "type": {
+                                            "type": "string"
+                                          },
+                                          "video": {
+                                            "properties": {
+                                              "id": {
+                                                "type": "string"
+                                              },
+                                              "link": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "type": "object"
+                                          }
+                                        },
+                                        "type": "object"
+                                      },
+                                      "type": "array"
+                                    },
+                                    "sub_type": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
                               "status": {
                                 "type": "string"
                               }
@@ -11028,6 +11857,176 @@
                   "raw_html": {
                     "nullable": true,
                     "type": "string"
+                  },
+                  "send_components": {
+                    "items": {
+                      "properties": {
+                        "index": {
+                          "type": "string"
+                        },
+                        "parameters": {
+                          "items": {
+                            "properties": {
+                              "action": {
+                                "properties": {
+                                  "flow_action_data": {
+                                    "additionalProperties": {
+                                      "type": "object"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "flow_token": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "coupon_code": {
+                                "type": "string"
+                              },
+                              "currency": {
+                                "properties": {
+                                  "amount_1000": {
+                                    "example": 25000,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "code": {
+                                    "example": "SGD",
+                                    "type": "string"
+                                  },
+                                  "fallback_value": {
+                                    "example": "S$25.00",
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "date_time": {
+                                "properties": {
+                                  "day_of_month": {
+                                    "example": 10,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "fallback_value": {
+                                    "example": "9 September 2026, 10:30 AM",
+                                    "type": "string"
+                                  },
+                                  "hour": {
+                                    "example": 10,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "minute": {
+                                    "example": 30,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "month": {
+                                    "example": 9,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "year": {
+                                    "example": 2026,
+                                    "format": "int64",
+                                    "type": "integer"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "document": {
+                                "properties": {
+                                  "filename": {
+                                    "type": "string"
+                                  },
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "image": {
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "location": {
+                                "properties": {
+                                  "address": {
+                                    "type": "string"
+                                  },
+                                  "latitude": {
+                                    "format": "float",
+                                    "type": "number"
+                                  },
+                                  "longitude": {
+                                    "format": "float",
+                                    "type": "number"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "payload": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "properties": {
+                                  "parameter_name": {
+                                    "type": "string"
+                                  },
+                                  "source": {
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": {
+                                "type": "string"
+                              },
+                              "video": {
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "link": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "sub_type": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "nullable": true,
+                    "type": "array"
                   }
                 },
                 "type": "object"
@@ -11222,6 +12221,175 @@
                         },
                         "rejected_reason": {
                           "type": "string"
+                        },
+                        "send_components": {
+                          "items": {
+                            "properties": {
+                              "index": {
+                                "type": "string"
+                              },
+                              "parameters": {
+                                "items": {
+                                  "properties": {
+                                    "action": {
+                                      "properties": {
+                                        "flow_action_data": {
+                                          "additionalProperties": {
+                                            "type": "object"
+                                          },
+                                          "type": "object"
+                                        },
+                                        "flow_token": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "coupon_code": {
+                                      "type": "string"
+                                    },
+                                    "currency": {
+                                      "properties": {
+                                        "amount_1000": {
+                                          "example": 25000,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "code": {
+                                          "example": "SGD",
+                                          "type": "string"
+                                        },
+                                        "fallback_value": {
+                                          "example": "S$25.00",
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "date_time": {
+                                      "properties": {
+                                        "day_of_month": {
+                                          "example": 10,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "fallback_value": {
+                                          "example": "9 September 2026, 10:30 AM",
+                                          "type": "string"
+                                        },
+                                        "hour": {
+                                          "example": 10,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "minute": {
+                                          "example": 30,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "month": {
+                                          "example": 9,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "year": {
+                                          "example": 2026,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "document": {
+                                      "properties": {
+                                        "filename": {
+                                          "type": "string"
+                                        },
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "image": {
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "location": {
+                                      "properties": {
+                                        "address": {
+                                          "type": "string"
+                                        },
+                                        "latitude": {
+                                          "format": "float",
+                                          "type": "number"
+                                        },
+                                        "longitude": {
+                                          "format": "float",
+                                          "type": "number"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "payload": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "properties": {
+                                        "parameter_name": {
+                                          "type": "string"
+                                        },
+                                        "source": {
+                                          "type": "string"
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "video": {
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "sub_type": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         "status": {
                           "type": "string"
@@ -11729,6 +12897,175 @@
                         },
                         "rejected_reason": {
                           "type": "string"
+                        },
+                        "send_components": {
+                          "items": {
+                            "properties": {
+                              "index": {
+                                "type": "string"
+                              },
+                              "parameters": {
+                                "items": {
+                                  "properties": {
+                                    "action": {
+                                      "properties": {
+                                        "flow_action_data": {
+                                          "additionalProperties": {
+                                            "type": "object"
+                                          },
+                                          "type": "object"
+                                        },
+                                        "flow_token": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "coupon_code": {
+                                      "type": "string"
+                                    },
+                                    "currency": {
+                                      "properties": {
+                                        "amount_1000": {
+                                          "example": 25000,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "code": {
+                                          "example": "SGD",
+                                          "type": "string"
+                                        },
+                                        "fallback_value": {
+                                          "example": "S$25.00",
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "date_time": {
+                                      "properties": {
+                                        "day_of_month": {
+                                          "example": 10,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "fallback_value": {
+                                          "example": "9 September 2026, 10:30 AM",
+                                          "type": "string"
+                                        },
+                                        "hour": {
+                                          "example": 10,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "minute": {
+                                          "example": 30,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "month": {
+                                          "example": 9,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "year": {
+                                          "example": 2026,
+                                          "format": "int64",
+                                          "type": "integer"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "document": {
+                                      "properties": {
+                                        "filename": {
+                                          "type": "string"
+                                        },
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "image": {
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "location": {
+                                      "properties": {
+                                        "address": {
+                                          "type": "string"
+                                        },
+                                        "latitude": {
+                                          "format": "float",
+                                          "type": "number"
+                                        },
+                                        "longitude": {
+                                          "format": "float",
+                                          "type": "number"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "payload": {
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "properties": {
+                                        "parameter_name": {
+                                          "type": "string"
+                                        },
+                                        "source": {
+                                          "type": "string"
+                                        },
+                                        "text": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "type": {
+                                      "type": "string"
+                                    },
+                                    "video": {
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "link": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "sub_type": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
                         },
                         "status": {
                           "type": "string"

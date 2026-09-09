@@ -40,6 +40,7 @@ func NewSampleTemplate(sampleTemplate dao_wa.SampleTemplate) (*SampleTemplate, e
 		d.TemplateBase.RawHTML = template.HTML(false, false)
 		d.TemplateBase.PreviewDarkHTML = template.HTML(true, true)
 		d.TemplateBase.RawDarkHTML = template.HTML(false, true)
+		d.TemplateBase.SendComponents = template.GetSendComponents()
 	}
 	return &d, nil
 }

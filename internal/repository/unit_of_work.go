@@ -15,6 +15,7 @@ type UnitOfWork interface {
 	AccountSessionRepository() AccountSessionRepository
 	// customer
 	CustomerRepository() CustomerRepository
+	CampaignRepository() CampaignRepository
 	// wa
 	WABusinessPortfolioRepository() WABusinessPortfolioRepository
 	WABusinessAccountRepository() WABusinessAccountRepository
@@ -24,5 +25,4 @@ type UnitOfWork interface {
 	WAMessageRepository() WAMessageRepository
 	WAMessageStatusEventRepository() WAMessageStatusEventRepository
 	WASampleTemplateRepository() WASampleTemplateRepository
-	WACampaignRepository() CampaignRepository
 }

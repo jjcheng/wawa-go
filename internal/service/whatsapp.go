@@ -708,8 +708,30 @@ func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, name
 		response.Data[i].RawHTML = response.Data[i].HTML(false, false)
 		response.Data[i].PreviewDarkHTML = response.Data[i].HTML(true, true)
 		response.Data[i].RawDarkHTML = response.Data[i].HTML(false, true)
+		response.Data[i].SendComponents = response.Data[i].GetSendComponents()
 	}
 	return response.Data, response.Paging, nil
+}
+
+func (whatsapp *Whatsapp) GetTemplate(ctx context.Context, templateID string, businessAccessToken string) (*dto_wa.Template, error) {
+	templateID = strings.TrimSpace(templateID)
+	if templateID == "" {
+		return nil, fmt.Errorf("templateID is required")
+	}
+	query := url.Values{}
+	query.Set("fields", "id,name,status,category,language,parameter_format,components,quality_score,rejected_reason,previous_category")
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(templateID), query.Encode())
+	var template dto_wa.Template
+	if err := whatsapp.doJSONRequest(ctx, "get_template", http.MethodGet, endpoint, nil, &template, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, templateID)
+		return nil, err
+	}
+	template.PreviewHTML = template.HTML(true, false)
+	template.RawHTML = template.HTML(false, false)
+	template.PreviewDarkHTML = template.HTML(true, true)
+	template.RawDarkHTML = template.HTML(false, true)
+	template.SendComponents = template.GetSendComponents()
+	return &template, nil
 }
 
 func (whatsapp *Whatsapp) EnableTemplateInsights(ctx context.Context, wabaId string, businessAccessToken string) error {

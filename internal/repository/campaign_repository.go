@@ -10,5 +10,6 @@ import (
 
 type CampaignRepository interface {
 	Repository[dao_customer.Campaign]
-	ListByUserId(ctx context.Context, userId int32, archived bool, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error)
+	ListByUserId(ctx context.Context, userId int32, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error)
+	CheckNameExist(ctx context.Context, userId int32, name string) (bool, error)
 }
