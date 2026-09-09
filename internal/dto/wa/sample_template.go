@@ -35,8 +35,11 @@ func NewSampleTemplate(sampleTemplate dao_wa.SampleTemplate) (*SampleTemplate, e
 			return nil, err
 		}
 		d.TemplateBase.Components = d.Components
-		d.TemplateBase.PreviewHTML = (&Template{TemplateBase: d.TemplateBase}).HTML(true)
-		d.TemplateBase.RawHTML = (&Template{TemplateBase: d.TemplateBase}).HTML(false)
+		template := Template{TemplateBase: d.TemplateBase}
+		d.TemplateBase.PreviewHTML = template.HTML(true, false)
+		d.TemplateBase.RawHTML = template.HTML(false, false)
+		d.TemplateBase.PreviewDarkHTML = template.HTML(true, true)
+		d.TemplateBase.RawDarkHTML = template.HTML(false, true)
 	}
 	return &d, nil
 }

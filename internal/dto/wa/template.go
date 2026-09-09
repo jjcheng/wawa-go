@@ -28,8 +28,10 @@ type TemplateBase struct {
 	ParameterFormat types.WATemplateParameterFormat `json:"parameter_format,omitempty"`
 	Components      []TemplateComponent             `json:"components,omitempty"`
 	// lazy loaded
-	PreviewHTML string `json:"preview_html,omitempty"`
-	RawHTML     string `json:"raw_html,omitempty"`
+	PreviewHTML     string `json:"preview_html,omitempty"`
+	RawHTML         string `json:"raw_html,omitempty"`
+	PreviewDarkHTML string `json:"preview_dark_html,omitempty"`
+	RawDarkHTML     string `json:"raw_dark_html,omitempty"`
 }
 
 func (templateBase *TemplateBase) Validate() []exception.InputException {
@@ -60,17 +62,57 @@ func (templateBase TemplateBase) Payload() map[string]any {
 	}
 }
 
-func (template *Template) HTML(withExample bool) string {
+type templateTheme struct {
+	CanvasBackground string
+	CardBackground   string
+	CardBorder       string
+	TextPrimary      string
+	TextSecondary    string
+	MutedBackground  string
+	ActionBackground string
+	ActionText       string
+	ActionBorder     string
+}
+
+func whatsappTemplateTheme(dark bool) templateTheme {
+	if dark {
+		return templateTheme{
+			CanvasBackground: "#0b141a",
+			CardBackground:   "#1f2c34",
+			CardBorder:       "#374248",
+			TextPrimary:      "#e9edef",
+			TextSecondary:    "#8696a0",
+			MutedBackground:  "#2a3942",
+			ActionBackground: "#202c33",
+			ActionText:       "#53bdeb",
+			ActionBorder:     "#374248",
+		}
+	}
+	return templateTheme{
+		CanvasBackground: "#efeae2",
+		CardBackground:   "#ffffff",
+		CardBorder:       "#d9dbe1",
+		TextPrimary:      "#111b21",
+		TextSecondary:    "#667781",
+		MutedBackground:  "#f0f2f5",
+		ActionBackground: "#ffffff",
+		ActionText:       "#00a884",
+		ActionBorder:     "#e9edef",
+	}
+}
+
+func (template *Template) HTML(withExample bool, dark bool) string {
+	theme := whatsappTemplateTheme(dark)
 	var html strings.Builder
 	for _, component := range template.Components {
-		componentHtml, err := component.HTML(withExample)
+		componentHtml, err := component.HTML(withExample, dark)
 		if err != nil {
 			fmt.Fprintf(&html, "%s ERROR: %s", component.Type, err.Error())
 		} else {
 			html.WriteString(componentHtml)
 		}
 	}
-	return fmt.Sprintf("<div style='box-sizing:border-box;width:100%%;max-width:360px;padding:12px 12px 20px;background:#efeae2;font-family:Arial,sans-serif;'><div style='position:relative;overflow:hidden;width:100%%;max-width:330px;background:#ffffff;border:1px solid #d9dbe1;border-radius:8px;color:#111b21;'>%s</div></div>", html.String())
+	return fmt.Sprintf("<div style='box-sizing:border-box;width:100%%;max-width:360px;padding:12px 12px 20px;background:%s;font-family:Arial,sans-serif;'><div style='position:relative;overflow:hidden;width:100%%;max-width:330px;background:%s;border:1px solid %s;border-radius:8px;color:%s;'>%s</div></div>", theme.CanvasBackground, theme.CardBackground, theme.CardBorder, theme.TextPrimary, html.String())
 }
 
 // #end region
@@ -248,7 +290,8 @@ func formatWhatsAppText(text string) string {
 	return formatted.String()
 }
 
-func (templateComponent *TemplateComponent) HTML(withExample bool) (string, error) {
+func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (string, error) {
+	theme := whatsappTemplateTheme(dark)
 	switch templateComponent.Type {
 	case types.WATemplateComponentTypeHeader:
 		switch templateComponent.Format {
@@ -271,7 +314,7 @@ func (templateComponent *TemplateComponent) HTML(withExample bool) (string, erro
 					return "", errors.New("no header_text or header_text_named_params in example")
 				}
 			}
-			return fmt.Sprintf("<div style='padding:8px 9px 0;font-size:14.2px;font-weight:600;color:#111b21;line-height:19px;'>%s</div>", formatWhatsAppText(headerText)), nil
+			return fmt.Sprintf("<div style='padding:8px 9px 0;font-size:14.2px;font-weight:600;color:%s;line-height:19px;'>%s</div>", theme.TextPrimary, formatWhatsAppText(headerText)), nil
 		case types.WATemplateComponentFormatImage:
 			if templateComponent.Example == nil || len(templateComponent.Example.HeaderHandle) == 0 {
 				return "", errors.New("no example or no header_handle")
@@ -288,13 +331,13 @@ func (templateComponent *TemplateComponent) HTML(withExample bool) (string, erro
 			}
 			documentURL := templateComponent.Example.HeaderHandle[0]
 			if strings.HasSuffix(strings.ToLower(documentURL), ".pdf") {
-				return fmt.Sprintf("<div style='padding:0;'><iframe src='%s' title='PDF preview' loading='lazy' style='display:block;width:100%%;height:220px;border:0;border-radius:6px;background:#f0f2f5;'></iframe><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:8px;margin-top:2px;padding:9px 10px;border-radius:4px;background:#f0f2f5;color:#111b21;text-decoration:none;font-size:13px;'><span style='font-size:20px;'>📄</span><span>Open PDF</span></a></div>", documentURL, documentURL), nil
+				return fmt.Sprintf("<div style='padding:0;'><iframe src='%s' title='PDF preview' loading='lazy' style='display:block;width:100%%;height:220px;border:0;border-radius:6px;background:%s;'></iframe><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:8px;margin-top:2px;padding:9px 10px;border-radius:4px;background:%s;color:%s;text-decoration:none;font-size:13px;'><span style='font-size:20px;'>📄</span><span>Open PDF</span></a></div>", documentURL, theme.MutedBackground, documentURL, theme.MutedBackground, theme.TextPrimary), nil
 			}
 			documentType := classifyDocumentType(documentURL)
 			documentIcon := documentIconForType(documentType)
-			return fmt.Sprintf("<div style='padding:0;'><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:10px;padding:12px;border-radius:6px;background:#f0f2f5;color:#111b21;text-decoration:none;font-size:13px;'><span style='font-size:26px;line-height:1;'>%s</span><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>%s document</span></a></div>", documentURL, documentIcon, strings.ToUpper(documentType)), nil
+			return fmt.Sprintf("<div style='padding:0;'><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:10px;padding:12px;border-radius:6px;background:%s;color:%s;text-decoration:none;font-size:13px;'><span style='font-size:26px;line-height:1;'>%s</span><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>%s document</span></a></div>", documentURL, theme.MutedBackground, theme.TextPrimary, documentIcon, strings.ToUpper(documentType)), nil
 		default:
-			return fmt.Sprintf("<div style='padding:0;'><img src='%s' alt='Location map' style='display:block;width:100%%;height:170px;object-fit:cover;border-radius:6px 6px 0 0;'><div style='padding:8px 9px;background:#f0f2f5;border-radius:0 0 6px 6px;'><div style='font-weight:600;font-size:13.5px;line-height:18px;color:#111b21;'>%s</div><div style='margin-top:2px;font-size:12px;line-height:16px;color:#667781;'>%s</div></div></div>", "https://www.onemap.gov.sg/api/staticmap/getStaticImage?layerchosen=default&zoom=15&height=450&width=450&lat=1.3521&lng=103.844", "Location Name", "Location Address"), nil
+			return fmt.Sprintf("<div style='padding:0;'><img src='%s' alt='Location map' style='display:block;width:100%%;height:170px;object-fit:cover;border-radius:6px 6px 0 0;'><div style='padding:8px 9px;background:%s;border-radius:0 0 6px 6px;'><div style='font-weight:600;font-size:13.5px;line-height:18px;color:%s;'>%s</div><div style='margin-top:2px;font-size:12px;line-height:16px;color:%s;'>%s</div></div></div>", "https://www.onemap.gov.sg/api/staticmap/getStaticImage?layerchosen=default&zoom=15&height=450&width=450&lat=1.3521&lng=103.844", theme.MutedBackground, theme.TextPrimary, "Location Name", theme.TextSecondary, "Location Address"), nil
 		}
 
 	case types.WATemplateComponentTypeBody:
@@ -316,33 +359,34 @@ func (templateComponent *TemplateComponent) HTML(withExample bool) (string, erro
 				return "", errors.New("no body_text or body_text_named_params in example")
 			}
 		}
-		return fmt.Sprintf("<div style='padding:6px 9px 8px;color:#111b21;font-size:14.2px;line-height:19px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", formatWhatsAppText(bodyText)), nil
+		return fmt.Sprintf("<div style='padding:6px 9px 8px;color:%s;font-size:14.2px;line-height:19px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", theme.TextPrimary, formatWhatsAppText(bodyText)), nil
 	case types.WATemplateComponentTypeFooter:
-		return fmt.Sprintf("<div style='padding:4px 9px 7px;color:#667781;font-size:12px;line-height:16px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", formatWhatsAppText(templateComponent.Text)), nil
+		return fmt.Sprintf("<div style='padding:4px 9px 7px;color:%s;font-size:12px;line-height:16px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", theme.TextSecondary, formatWhatsAppText(templateComponent.Text)), nil
 	case types.WATemplateComponentTypeButtons:
 		if len(templateComponent.Buttons) == 0 {
 			return "", errors.New("no buttons in component")
 		}
+		buttonStyle := fmt.Sprintf("display:block;width:100%%;padding:10px 12px;border:0;border-top:1px solid %s;background:%s;color:%s;font-size:14px;font-weight:500;line-height:20px;text-align:center;", theme.ActionBorder, theme.ActionBackground, theme.ActionText)
 		var buttonHTML []string
 		for _, button := range templateComponent.Buttons {
 			switch button.Type {
 			case types.WATemplateButtonTypeURL:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='%s' target='_blank' rel='noopener noreferrer' style='display:block;padding:10px 12px;color:#00a884;text-decoration:none;font-size:14px;font-weight:500;line-height:20px;text-align:center;border-top:1px solid #e9edef;background:#ffffff;'>↗&nbsp; %s</a>", button.Url, button.Text))
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='%s' target='_blank' rel='noopener noreferrer' style='%s'>↗&nbsp; %s</a>", button.Url, buttonStyle, button.Text))
 			case types.WATemplateButtonTypePhoneNumber:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='tel:%s' style='display:block;padding:10px 12px;color:#00a884;text-decoration:none;font-size:14px;font-weight:500;line-height:20px;text-align:center;border-top:1px solid #e9edef;background:#ffffff;'>☎&nbsp; %s</a>", button.PhoneNumber, button.Text))
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='tel:%s' style='%s'>☎&nbsp; %s</a>", button.PhoneNumber, buttonStyle, button.Text))
 			case types.WATemplateButtonTypeQuickReply:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='display:block;width:100%%;padding:10px 12px;border:0;border-top:1px solid #e9edef;background:#ffffff;color:#00a884;font-size:14px;font-weight:500;line-height:20px;text-align:center;cursor:pointer;'>↩&nbsp; %s</button>", button.Text))
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>↩&nbsp; %s</button>", buttonStyle, button.Text))
 			case types.WATemplateButtonTypeVoiceCall:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='display:block;width:100%%;padding:10px 12px;border:0;border-top:1px solid #e9edef;background:#ffffff;color:#00a884;font-size:14px;font-weight:500;line-height:20px;text-align:center;cursor:pointer;'>☎&nbsp; %s</button>", button.Text))
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>☎&nbsp; %s</button>", buttonStyle, button.Text))
 			case types.WATemplateButtonTypeCopyCode:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='display:block;width:100%%;padding:10px 12px;border:0;border-top:1px solid #e9edef;background:#ffffff;color:#00a884;font-size:14px;font-weight:500;line-height:20px;text-align:center;cursor:pointer;'>⧉&nbsp; %s</button>", button.Text))
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>⧉&nbsp; %s</button>", buttonStyle, button.Text))
 			default:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='display:block;width:100%%;padding:10px 12px;border:0;border-top:1px solid #e9edef;background:#ffffff;color:#00a884;font-size:14px;font-weight:500;line-height:20px;text-align:center;cursor:pointer;'>%s</button>", button.Text))
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>%s</button>", buttonStyle, button.Text))
 			}
 		}
-		return fmt.Sprintf("<div style='margin-top:3px;background:#ffffff;'>%s</div>", strings.Join(buttonHTML, "")), nil
+		return fmt.Sprintf("<div style='margin-top:3px;background:%s;'>%s</div>", theme.ActionBackground, strings.Join(buttonHTML, "")), nil
 	case types.WATemplateComponentTypeCallPermissionRequest:
-		return "<div style='margin:9px 9px 0;padding:16px;background:#f0f0f0;display:flex;align-items:flex-start;gap:12px;'><div style='box-sizing:border-box;flex:0 0 58px;width:58px;height:58px;border-radius:50%;background:#ffffff;display:flex;align-items:center;justify-content:center;color:#263640;'><svg viewBox='0 0 24 24' width='25' height='25' aria-hidden='true' style='display:block;fill:currentColor;'><path d='M6.62 10.79a15.5 15.5 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2Z'></path></svg></div><div style='min-width:0;flex:1;padding-top:2px;'><div style='color:#1f2c34;font-size:16px;font-weight:700;line-height:21px;'>Can {BIZ_NAME} call you?</div><div style='margin-top:3px;color:#667781;font-size:15px;font-weight:400;line-height:22px;'>You can update your<br>preference at any time<br>in the business profile. <span style='display:inline-block;margin-left:8px;font-size:12px;line-height:16px;white-space:nowrap;'>04:18</span></div></div></div><div style='height:54px;display:flex;align-items:center;justify-content:center;gap:12px;background:#ffffff;color:#0b57d0;font-size:15px;font-weight:500;line-height:20px;border-top:1px solid #f5f6f6;'>Choose preference<span aria-hidden='true' style='display:inline-block;width:10px;height:10px;border-right:2px solid #0b57d0;border-bottom:2px solid #0b57d0;transform:rotate(45deg) translateY(-3px);'></span></div>", nil
+		return fmt.Sprintf("<div style='margin:9px 9px 0;padding:16px;background:%s;display:flex;align-items:flex-start;gap:12px;'><div style='box-sizing:border-box;flex:0 0 58px;width:58px;height:58px;border-radius:50%%;background:%s;display:flex;align-items:center;justify-content:center;color:%s;'><svg viewBox='0 0 24 24' width='25' height='25' aria-hidden='true' style='display:block;fill:currentColor;'><path d='M6.62 10.79a15.5 15.5 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2Z'></path></svg></div><div style='min-width:0;flex:1;padding-top:2px;'><div style='color:%s;font-size:16px;font-weight:700;line-height:21px;'>Can {BIZ_NAME} call you?</div><div style='margin-top:3px;color:%s;font-size:15px;font-weight:400;line-height:22px;'>You can update your<br>preference at any time<br>in the business profile. <span style='display:inline-block;margin-left:8px;font-size:12px;line-height:16px;white-space:nowrap;'>04:18</span></div></div></div><div style='height:54px;display:flex;align-items:center;justify-content:center;gap:12px;background:%s;color:%s;font-size:15px;font-weight:500;line-height:20px;border-top:1px solid %s;'>Choose preference<span aria-hidden='true' style='display:inline-block;width:10px;height:10px;border-right:2px solid %s;border-bottom:2px solid %s;transform:rotate(45deg) translateY(-3px);'></span></div>", theme.MutedBackground, theme.ActionBackground, theme.TextPrimary, theme.TextPrimary, theme.TextSecondary, theme.ActionBackground, theme.ActionText, theme.ActionBorder, theme.ActionText, theme.ActionText), nil
 
 	default:
 		return "", errors.New("unsupported template component type")

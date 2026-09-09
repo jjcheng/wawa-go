@@ -704,8 +704,10 @@ func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, name
 		return nil, nil, err
 	}
 	for i := range response.Data {
-		response.Data[i].PreviewHTML = response.Data[i].HTML(true)
-		response.Data[i].RawHTML = response.Data[i].HTML(false)
+		response.Data[i].PreviewHTML = response.Data[i].HTML(true, false)
+		response.Data[i].RawHTML = response.Data[i].HTML(false, false)
+		response.Data[i].PreviewDarkHTML = response.Data[i].HTML(true, true)
+		response.Data[i].RawDarkHTML = response.Data[i].HTML(false, true)
 	}
 	return response.Data, response.Paging, nil
 }

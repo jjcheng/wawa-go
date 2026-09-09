@@ -1359,6 +1359,1909 @@
         ]
       }
     },
+    "/v1/campaigns": {
+      "get": {
+        "description": "Lists campaigns belonging to the authenticated user.",
+        "parameters": [
+          {
+            "description": "filter by archived",
+            "example": "",
+            "in": "query",
+            "name": "archived",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "filter campaigns by status",
+            "example": "",
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "page number from 1",
+            "example": "",
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "number per page",
+            "example": "",
+            "in": "query",
+            "name": "page_size",
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "properties": {
+                        "additional_data": {
+                          "additionalProperties": {
+                            "type": "object"
+                          },
+                          "type": "object"
+                        },
+                        "items": {
+                          "items": {
+                            "properties": {
+                              "customer_ids": {
+                                "items": {
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                "type": "array"
+                              },
+                              "customers": {
+                                "items": {
+                                  "properties": {
+                                    "additional_data": {
+                                      "additionalProperties": {
+                                        "type": "object"
+                                      },
+                                      "type": "object"
+                                    },
+                                    "country_code": {
+                                      "type": "string"
+                                    },
+                                    "display_name": {
+                                      "type": "string"
+                                    },
+                                    "entry_date": {
+                                      "example": "2025-10-01T08:08:00Z",
+                                      "format": "date-time",
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "example": 1,
+                                      "format": "int32",
+                                      "type": "integer"
+                                    },
+                                    "imported_phone_number": {
+                                      "type": "string"
+                                    },
+                                    "last_update": {
+                                      "example": "2025-10-01T08:08:00Z",
+                                      "format": "date-time",
+                                      "type": "string"
+                                    },
+                                    "meta_user_id": {
+                                      "type": "string"
+                                    },
+                                    "phone_number": {
+                                      "type": "string"
+                                    },
+                                    "remarks": {
+                                      "type": "string"
+                                    },
+                                    "status": {
+                                      "type": "string"
+                                    },
+                                    "tags": {
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "type": "array"
+                                    },
+                                    "wa_id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "entry_date",
+                                    "last_update"
+                                  ],
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              },
+                              "entry_date": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "id": {
+                                "example": 1,
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              "last_update": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "send_date": {
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "user_id": {
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              "wa_template_id": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entry_date",
+                              "last_update"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "next_page_offset": {
+                          "type": "object"
+                        },
+                        "number_of_items": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "number_of_pages": {
+                          "format": "int32",
+                          "type": "integer"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "List WhatsApp campaigns",
+        "tags": [
+          "WA"
+        ]
+      },
+      "post": {
+        "description": "Start a pending campaign by the authenticated user.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "components": {
+                    "items": {
+                      "properties": {
+                        "index": {
+                          "type": "string"
+                        },
+                        "parameters": {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "object"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "sub_type": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "nullable": true,
+                    "type": "array"
+                  },
+                  "customer_ids": {
+                    "items": {
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "nullable": true,
+                    "type": "array"
+                  },
+                  "name": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "send_date": {
+                    "format": "date-time",
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "wa_template_id": {
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "properties": {
+                        "customer_ids": {
+                          "items": {
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "type": "array"
+                        },
+                        "customers": {
+                          "items": {
+                            "properties": {
+                              "additional_data": {
+                                "additionalProperties": {
+                                  "type": "object"
+                                },
+                                "type": "object"
+                              },
+                              "country_code": {
+                                "type": "string"
+                              },
+                              "display_name": {
+                                "type": "string"
+                              },
+                              "entry_date": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "id": {
+                                "example": 1,
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              "imported_phone_number": {
+                                "type": "string"
+                              },
+                              "last_update": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "meta_user_id": {
+                                "type": "string"
+                              },
+                              "phone_number": {
+                                "type": "string"
+                              },
+                              "remarks": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "tags": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              },
+                              "wa_id": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entry_date",
+                              "last_update"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "entry_date": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "example": 1,
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "last_update": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "send_date": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "user_id": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "wa_template_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "entry_date",
+                        "last_update"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "one or more customers were not found, invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "one or more customers were not found, invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Start WhatsApp campaign",
+        "tags": [
+          "WA"
+        ]
+      }
+    },
+    "/v1/campaigns/{id}": {
+      "get": {
+        "description": "Gets a campaign belonging to the authenticated user.",
+        "parameters": [
+          {
+            "description": "id of the campaign",
+            "example": "",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "properties": {
+                        "customer_ids": {
+                          "items": {
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "type": "array"
+                        },
+                        "customers": {
+                          "items": {
+                            "properties": {
+                              "additional_data": {
+                                "additionalProperties": {
+                                  "type": "object"
+                                },
+                                "type": "object"
+                              },
+                              "country_code": {
+                                "type": "string"
+                              },
+                              "display_name": {
+                                "type": "string"
+                              },
+                              "entry_date": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "id": {
+                                "example": 1,
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              "imported_phone_number": {
+                                "type": "string"
+                              },
+                              "last_update": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "meta_user_id": {
+                                "type": "string"
+                              },
+                              "phone_number": {
+                                "type": "string"
+                              },
+                              "remarks": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "tags": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
+                              },
+                              "wa_id": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entry_date",
+                              "last_update"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "entry_date": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "example": 1,
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "last_update": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "send_date": {
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "user_id": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "wa_template_id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "entry_date",
+                        "last_update"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "campaign not found",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 404,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "campaign not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Get WhatsApp campaign",
+        "tags": [
+          "WA"
+        ]
+      }
+    },
+    "/v1/campaigns/{id}/archive": {
+      "patch": {
+        "description": "Archive or unarchive a campaign belonging to the authenticated user.",
+        "parameters": [
+          {
+            "description": "id of the campaign",
+            "example": "",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "archived or not",
+            "example": "",
+            "in": "query",
+            "name": "archived",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "campaign status cannot be pending or processing, invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "campaign status cannot be pending or processing, invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "campaign not found",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 404,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "campaign not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Archive WhatsApp campaign",
+        "tags": [
+          "WA"
+        ]
+      }
+    },
+    "/v1/campaigns/{id}/cancel": {
+      "patch": {
+        "description": "Cancels a pending campaign belonging to the authenticated user.",
+        "parameters": [
+          {
+            "description": "id of the campaign to cancel",
+            "example": "",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "only pending campaigns can be cancelled, invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "only pending campaigns can be cancelled, invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "campaign not found",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 404,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "campaign not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Cancel WhatsApp campaign",
+        "tags": [
+          "WA"
+        ]
+      }
+    },
     "/v1/customers": {
       "delete": {
         "description": "Deletes customers for the authenticated user.",
@@ -4812,1918 +6715,6 @@
         ]
       }
     },
-    "/v1/wa/campaigns": {
-      "get": {
-        "description": "Lists campaigns belonging to the authenticated user.",
-        "parameters": [
-          {
-            "description": "filter by archived",
-            "example": "",
-            "in": "query",
-            "name": "archived",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "description": "filter campaigns by status",
-            "example": "",
-            "in": "query",
-            "name": "status",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "page number from 1",
-            "example": "",
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "format": "int32",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "number per page",
-            "example": "",
-            "in": "query",
-            "name": "page_size",
-            "schema": {
-              "format": "int32",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "description": "the actual API returned data, empty if not success",
-                      "properties": {
-                        "additional_data": {
-                          "additionalProperties": {
-                            "type": "object"
-                          },
-                          "type": "object"
-                        },
-                        "items": {
-                          "items": {
-                            "properties": {
-                              "archived": {
-                                "type": "boolean"
-                              },
-                              "customer_ids": {
-                                "items": {
-                                  "format": "int32",
-                                  "type": "integer"
-                                },
-                                "type": "array"
-                              },
-                              "customers": {
-                                "items": {
-                                  "properties": {
-                                    "additional_data": {
-                                      "additionalProperties": {
-                                        "type": "object"
-                                      },
-                                      "type": "object"
-                                    },
-                                    "country_code": {
-                                      "type": "string"
-                                    },
-                                    "display_name": {
-                                      "type": "string"
-                                    },
-                                    "entry_date": {
-                                      "example": "2025-10-01T08:08:00Z",
-                                      "format": "date-time",
-                                      "type": "string"
-                                    },
-                                    "id": {
-                                      "example": 1,
-                                      "format": "int32",
-                                      "type": "integer"
-                                    },
-                                    "imported_phone_number": {
-                                      "type": "string"
-                                    },
-                                    "last_update": {
-                                      "example": "2025-10-01T08:08:00Z",
-                                      "format": "date-time",
-                                      "type": "string"
-                                    },
-                                    "meta_user_id": {
-                                      "type": "string"
-                                    },
-                                    "phone_number": {
-                                      "type": "string"
-                                    },
-                                    "remarks": {
-                                      "type": "string"
-                                    },
-                                    "status": {
-                                      "type": "string"
-                                    },
-                                    "tags": {
-                                      "items": {
-                                        "type": "string"
-                                      },
-                                      "type": "array"
-                                    },
-                                    "wa_id": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "required": [
-                                    "id",
-                                    "entry_date",
-                                    "last_update"
-                                  ],
-                                  "type": "object"
-                                },
-                                "type": "array"
-                              },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "id": {
-                                "example": 1,
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              "last_update": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "name": {
-                                "type": "string"
-                              },
-                              "send_date": {
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "status": {
-                                "type": "string"
-                              },
-                              "user_id": {
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              "wa_template_id": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "entry_date",
-                              "last_update"
-                            ],
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        "next_page_offset": {
-                          "type": "object"
-                        },
-                        "number_of_items": {
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "number_of_pages": {
-                          "format": "int32",
-                          "type": "integer"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 200,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": true,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "input_errors": {
-                      "description": "list of input violations with details if any",
-                      "items": {
-                        "properties": {
-                          "field": {
-                            "description": "name of the input field",
-                            "example": "name of the input field",
-                            "type": "string"
-                          },
-                          "message": {
-                            "description": "description of the error",
-                            "example": "description of the error",
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "field",
-                          "message"
-                        ],
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "invalid input",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 400,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "invalid input"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "unauthorized access",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 401,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "unauthorized access"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "you are not authenticated",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 403,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "you are not authenticated"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "Sorry, something is wrong with our server., internal server error",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 500,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Sorry, something is wrong with our server., internal server error"
-          },
-          "default": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "apiKey": []
-          }
-        ],
-        "summary": "List WhatsApp campaigns",
-        "tags": [
-          "WA"
-        ]
-      },
-      "post": {
-        "description": "Start a pending campaign by the authenticated user.",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "components": {
-                    "items": {
-                      "properties": {
-                        "index": {
-                          "type": "string"
-                        },
-                        "parameters": {
-                          "items": {
-                            "additionalProperties": {
-                              "type": "object"
-                            },
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        "sub_type": {
-                          "type": "string"
-                        },
-                        "type": {
-                          "type": "string"
-                        }
-                      },
-                      "type": "object"
-                    },
-                    "nullable": true,
-                    "type": "array"
-                  },
-                  "customer_ids": {
-                    "items": {
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "nullable": true,
-                    "type": "array"
-                  },
-                  "name": {
-                    "nullable": true,
-                    "type": "string"
-                  },
-                  "send_date": {
-                    "format": "date-time",
-                    "nullable": true,
-                    "type": "string"
-                  },
-                  "wa_template_id": {
-                    "nullable": true,
-                    "type": "string"
-                  }
-                },
-                "type": "object"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "description": "the actual API returned data, empty if not success",
-                      "properties": {
-                        "archived": {
-                          "type": "boolean"
-                        },
-                        "customer_ids": {
-                          "items": {
-                            "format": "int32",
-                            "type": "integer"
-                          },
-                          "type": "array"
-                        },
-                        "customers": {
-                          "items": {
-                            "properties": {
-                              "additional_data": {
-                                "additionalProperties": {
-                                  "type": "object"
-                                },
-                                "type": "object"
-                              },
-                              "country_code": {
-                                "type": "string"
-                              },
-                              "display_name": {
-                                "type": "string"
-                              },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "id": {
-                                "example": 1,
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              "imported_phone_number": {
-                                "type": "string"
-                              },
-                              "last_update": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "meta_user_id": {
-                                "type": "string"
-                              },
-                              "phone_number": {
-                                "type": "string"
-                              },
-                              "remarks": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "type": "string"
-                              },
-                              "tags": {
-                                "items": {
-                                  "type": "string"
-                                },
-                                "type": "array"
-                              },
-                              "wa_id": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "entry_date",
-                              "last_update"
-                            ],
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
-                        "id": {
-                          "example": 1,
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "last_update": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
-                        "name": {
-                          "type": "string"
-                        },
-                        "send_date": {
-                          "format": "date-time",
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "string"
-                        },
-                        "user_id": {
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "wa_template_id": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "entry_date",
-                        "last_update"
-                      ],
-                      "type": "object"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 200,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": true,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "input_errors": {
-                      "description": "list of input violations with details if any",
-                      "items": {
-                        "properties": {
-                          "field": {
-                            "description": "name of the input field",
-                            "example": "name of the input field",
-                            "type": "string"
-                          },
-                          "message": {
-                            "description": "description of the error",
-                            "example": "description of the error",
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "field",
-                          "message"
-                        ],
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "one or more customers were not found, invalid input",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 400,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "one or more customers were not found, invalid input"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "unauthorized access",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 401,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "unauthorized access"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "you are not authenticated",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 403,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "you are not authenticated"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "Sorry, something is wrong with our server., internal server error",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 500,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Sorry, something is wrong with our server., internal server error"
-          },
-          "default": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "apiKey": []
-          }
-        ],
-        "summary": "Start WhatsApp campaign",
-        "tags": [
-          "WA"
-        ]
-      }
-    },
-    "/v1/wa/campaigns/{id}": {
-      "get": {
-        "description": "Gets a campaign belonging to the authenticated user.",
-        "parameters": [
-          {
-            "description": "id of the campaign",
-            "example": "",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "int32",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "data": {
-                      "description": "the actual API returned data, empty if not success",
-                      "properties": {
-                        "archived": {
-                          "type": "boolean"
-                        },
-                        "customer_ids": {
-                          "items": {
-                            "format": "int32",
-                            "type": "integer"
-                          },
-                          "type": "array"
-                        },
-                        "customers": {
-                          "items": {
-                            "properties": {
-                              "additional_data": {
-                                "additionalProperties": {
-                                  "type": "object"
-                                },
-                                "type": "object"
-                              },
-                              "country_code": {
-                                "type": "string"
-                              },
-                              "display_name": {
-                                "type": "string"
-                              },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "id": {
-                                "example": 1,
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              "imported_phone_number": {
-                                "type": "string"
-                              },
-                              "last_update": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "meta_user_id": {
-                                "type": "string"
-                              },
-                              "phone_number": {
-                                "type": "string"
-                              },
-                              "remarks": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "type": "string"
-                              },
-                              "tags": {
-                                "items": {
-                                  "type": "string"
-                                },
-                                "type": "array"
-                              },
-                              "wa_id": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "entry_date",
-                              "last_update"
-                            ],
-                            "type": "object"
-                          },
-                          "type": "array"
-                        },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
-                        "id": {
-                          "example": 1,
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "last_update": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
-                        "name": {
-                          "type": "string"
-                        },
-                        "send_date": {
-                          "format": "date-time",
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "string"
-                        },
-                        "user_id": {
-                          "format": "int32",
-                          "type": "integer"
-                        },
-                        "wa_template_id": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "entry_date",
-                        "last_update"
-                      ],
-                      "type": "object"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 200,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": true,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "input_errors": {
-                      "description": "list of input violations with details if any",
-                      "items": {
-                        "properties": {
-                          "field": {
-                            "description": "name of the input field",
-                            "example": "name of the input field",
-                            "type": "string"
-                          },
-                          "message": {
-                            "description": "description of the error",
-                            "example": "description of the error",
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "field",
-                          "message"
-                        ],
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "invalid input",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 400,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "invalid input"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "unauthorized access",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 401,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "unauthorized access"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "you are not authenticated",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 403,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "you are not authenticated"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "campaign not found",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 404,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "campaign not found"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "Sorry, something is wrong with our server., internal server error",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 500,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Sorry, something is wrong with our server., internal server error"
-          },
-          "default": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "apiKey": []
-          }
-        ],
-        "summary": "Get WhatsApp campaign",
-        "tags": [
-          "WA"
-        ]
-      }
-    },
-    "/v1/wa/campaigns/{id}/archive": {
-      "patch": {
-        "description": "Archive or unarchive a campaign belonging to the authenticated user.",
-        "parameters": [
-          {
-            "description": "id of the campaign",
-            "example": "",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "int32",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "archived or not",
-            "example": "",
-            "in": "query",
-            "name": "archived",
-            "required": true,
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 200,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": true,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "input_errors": {
-                      "description": "list of input violations with details if any",
-                      "items": {
-                        "properties": {
-                          "field": {
-                            "description": "name of the input field",
-                            "example": "name of the input field",
-                            "type": "string"
-                          },
-                          "message": {
-                            "description": "description of the error",
-                            "example": "description of the error",
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "field",
-                          "message"
-                        ],
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "campaign status cannot be pending or processing, invalid input",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 400,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "campaign status cannot be pending or processing, invalid input"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "unauthorized access",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 401,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "unauthorized access"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "you are not authenticated",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 403,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "you are not authenticated"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "campaign not found",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 404,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "campaign not found"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "Sorry, something is wrong with our server., internal server error",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 500,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Sorry, something is wrong with our server., internal server error"
-          },
-          "default": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "apiKey": []
-          }
-        ],
-        "summary": "Archive WhatsApp campaign",
-        "tags": [
-          "WA"
-        ]
-      }
-    },
-    "/v1/wa/campaigns/{id}/cancel": {
-      "patch": {
-        "description": "Cancels a pending campaign belonging to the authenticated user.",
-        "parameters": [
-          {
-            "description": "id of the campaign to cancel",
-            "example": "",
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "format": "int32",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 200,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": true,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful response"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "input_errors": {
-                      "description": "list of input violations with details if any",
-                      "items": {
-                        "properties": {
-                          "field": {
-                            "description": "name of the input field",
-                            "example": "name of the input field",
-                            "type": "string"
-                          },
-                          "message": {
-                            "description": "description of the error",
-                            "example": "description of the error",
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "field",
-                          "message"
-                        ],
-                        "type": "object"
-                      },
-                      "type": "array"
-                    },
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "only pending campaigns can be cancelled, invalid input",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 400,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "only pending campaigns can be cancelled, invalid input"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "unauthorized access",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 401,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "unauthorized access"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "you are not authenticated",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 403,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "you are not authenticated"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "campaign not found",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 404,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "campaign not found"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "Sorry, something is wrong with our server., internal server error",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 500,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Sorry, something is wrong with our server., internal server error"
-          },
-          "default": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "apiKey": []
-          }
-        ],
-        "summary": "Cancel WhatsApp campaign",
-        "tags": [
-          "WA"
-        ]
-      }
-    },
     "/v1/wa/media": {
       "get": {
         "description": "Downloads WhatsApp media, persists it and returns its permanent URL.",
@@ -9235,7 +9226,13 @@
                           "parameter_format": {
                             "type": "string"
                           },
+                          "preview_dark_html": {
+                            "type": "string"
+                          },
                           "preview_html": {
+                            "type": "string"
+                          },
+                          "raw_dark_html": {
                             "type": "string"
                           },
                           "raw_html": {
@@ -9610,7 +9607,15 @@
                     "nullable": true,
                     "type": "string"
                   },
+                  "preview_dark_html": {
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "preview_html": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "raw_dark_html": {
                     "nullable": true,
                     "type": "string"
                   },
@@ -9797,7 +9802,13 @@
                         "parameter_format": {
                           "type": "string"
                         },
+                        "preview_dark_html": {
+                          "type": "string"
+                        },
                         "preview_html": {
+                          "type": "string"
+                        },
+                        "raw_dark_html": {
                           "type": "string"
                         },
                         "raw_html": {
@@ -10511,6 +10522,9 @@
                               "parameter_format": {
                                 "type": "string"
                               },
+                              "preview_dark_html": {
+                                "type": "string"
+                              },
                               "preview_html": {
                                 "type": "string"
                               },
@@ -10522,6 +10536,9 @@
                                   "type": "object"
                                 },
                                 "type": "object"
+                              },
+                              "raw_dark_html": {
+                                "type": "string"
                               },
                               "raw_html": {
                                 "type": "string"
@@ -10996,7 +11013,15 @@
                     "nullable": true,
                     "type": "string"
                   },
+                  "preview_dark_html": {
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "preview_html": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "raw_dark_html": {
                     "nullable": true,
                     "type": "string"
                   },
@@ -11174,6 +11199,9 @@
                         "parameter_format": {
                           "type": "string"
                         },
+                        "preview_dark_html": {
+                          "type": "string"
+                        },
                         "preview_html": {
                           "type": "string"
                         },
@@ -11185,6 +11213,9 @@
                             "type": "object"
                           },
                           "type": "object"
+                        },
+                        "raw_dark_html": {
+                          "type": "string"
                         },
                         "raw_html": {
                           "type": "string"
@@ -11675,6 +11706,9 @@
                         "parameter_format": {
                           "type": "string"
                         },
+                        "preview_dark_html": {
+                          "type": "string"
+                        },
                         "preview_html": {
                           "type": "string"
                         },
@@ -11686,6 +11720,9 @@
                             "type": "object"
                           },
                           "type": "object"
+                        },
+                        "raw_dark_html": {
+                          "type": "string"
                         },
                         "raw_html": {
                           "type": "string"
