@@ -39,6 +39,18 @@ func DefaultIfEmpty(val string, fallback string) string {
 	return val
 }
 
+func IsDigitsOnly(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, character := range value {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func ConcatMultipleSlices[T any](slices [][]T) []T {
 	var totalLen int
 	for _, s := range slices {

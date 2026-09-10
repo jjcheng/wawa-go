@@ -2,6 +2,7 @@ package feature_wa_message
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -14,9 +15,12 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
+// this feature is not called directly, it's redirected from wa_controller.registerWAMediaUploadRoute, any new parameter need to be binded there
 type UploadMedia struct {
+	ToMeta      bool   `form:"to_meta" description:"indicate to upload to Meta or OSS"`
 	Filename    string `form:"filename" val:"required" description:"Original media filename" example:"photo.jpeg"`
 	ContentType string `form:"content_type" val:"required" description:"Media MIME type" example:"image/jpeg"`
 	Content     []byte `json:"-"`
@@ -46,6 +50,27 @@ func (upload UploadMedia) Handle(ctx context.Context, user *dto_account.User, de
 		return dto.NewInvalidInputResponse[*Media](inputErrors)
 	}
 	filename := strings.ReplaceAll(uuid.NewString(), "-", "") + filepath.Ext(upload.Filename)
+	if upload.ToMeta {
+		phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 1)
+		if err != nil {
+			return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		if len(phoneNumbers) == 0 {
+			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
+		}
+		businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, phoneNumbers[0].MetaPhoneNumberId)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
+			}
+			return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		mediaID, err := dependencies.Whatsapp.UploadMedia(ctx, phoneNumbers[0].MetaPhoneNumberId, filename, upload.ContentType, upload.Content, businessPortfolio.AccessToken)
+		if err != nil {
+			return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error())
+		}
+		return dto.NewSuccessResponse(&Media{ID: mediaID})
+	}
 	url, err := dependencies.File.UploadFile(upload.Content, "media", filename, types.StorageClassCool)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, upload.Filename, upload.ContentType)
@@ -57,7 +82,7 @@ func (upload UploadMedia) Handle(ctx context.Context, user *dto_account.User, de
 func (UploadMedia) APISettings() feature.APISettings {
 	return feature.NewBinaryAPISettings(
 		"Upload WhatsApp media",
-		"Uploads raw media bytes to OSS and returns a permanent URL for use in a WhatsApp media message.",
+		"Uploads raw media bytes to OSS or Meta. Meta uploads return a media ID; OSS uploads return a permanent URL.",
 		types.HttpRequestTypeQuery,
 		http.MethodPost,
 		"/v1/wa/media",
@@ -66,6 +91,8 @@ func (UploadMedia) APISettings() feature.APISettings {
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized to use a WhatsApp phone number", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

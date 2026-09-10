@@ -1,8 +1,8 @@
 package dao_customer
 
 import (
-	"database/sql"
 	"database/sql/driver"
+	"time"
 
 	"github.com/jjcheng/wawa-go/internal/dao"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -34,12 +34,13 @@ func (customerIDs *CustomerIDs) Scan(source any) error {
 type Campaign struct {
 	dao.DAOBase
 	Name         string               `gorm:"column:name"`
-	SendDate     sql.NullTime         `gorm:"column:send_date"`
+	SendDate     time.Time            `gorm:"column:send_date"`
 	WATemplateId string               `gorm:"column:wa_template_id"`
 	CustomerIds  CustomerIDs          `gorm:"column:customer_ids;type:integer[]"`
 	UserId       int32                `gorm:"column:user_id"`
 	Status       types.CampaignStatus `gorm:"column:status"`
-	Payload      map[string]any       `gorm:"column:payload;type:jsonb;serializer:json"`
+	Token        string               `gorm:"column:token"` // used to identify the campaign
+	SendTemplate map[string]any       `gorm:"column:send_template;type:jsonb;serializer:json"`
 }
 
 func (Campaign) TableName() string {

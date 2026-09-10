@@ -45,6 +45,9 @@ func StartQueueListener(ctx context.Context, dependencies *service.Dependencies)
 			if ctx.Err() != nil {
 				return
 			}
+			if errors.Is(err, context.DeadlineExceeded) {
+				continue
+			}
 			dependencies.Logger.ErrorFunction(err)
 			select {
 			case <-ctx.Done():

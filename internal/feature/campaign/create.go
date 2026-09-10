@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -21,11 +23,11 @@ import (
 )
 
 type Create struct {
-	Name         string                         `json:"name"`
-	SendDate     *time.Time                     `json:"send_date"`
-	WATemplateId string                         `json:"wa_template_id"`
-	Components   []dto_wa.SendTemplateComponent `json:"components"`
-	CustomerIds  []int32                        `json:"customer_ids"`
+	Name         string              `json:"name"`
+	SendDate     *time.Time          `json:"send_date"`
+	WATemplateId string              `json:"wa_template_id"`
+	SendTemplate dto_wa.SendTemplate `json:"sent_template"`
+	CustomerIds  []int32             `json:"customer_ids"`
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -84,6 +86,12 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if len(customers) != len(create.CustomerIds) {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "one or more customers were not found")
 	}
+	// check each customer, they all must have WAId
+	for _, customer := range customers {
+		if strings.TrimSpace(customer.WAId) == "" {
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "one or more customers do not have a valid country code and phone number, please edit them")
+		}
+	}
 	businessPortfolio, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -98,28 +106,70 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if template.Status != types.WATemplateStatusApproved {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template is not approved")
 	}
+	// convert create.SendTemplate to map
+	sendTemplateMap := map[string]any{
+		"components": create.SendTemplate.Components,
+	}
+	// for flow and quick_reply button, supply the campaign token
+	campaignToken := fmt.Sprintf("campaign_%s", strings.ReplaceAll(uuid.NewString(), "-", ""))
+	// now generate a list of final payloads to send to meta
+	var payloads []map[string]any
+	for _, customer := range customers {
+		payload, err := create.SendTemplate.FinalPayload(template, customer, campaignToken)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, create)
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		payloads = append(payloads, payload)
+	}
+	// start a transaction
+	// store each payload as a CampaignRecipient, use bulk insert
 	campaign := dao_customer.Campaign{
 		Name:         create.Name,
 		WATemplateId: create.WATemplateId,
 		CustomerIds:  dao_customer.CustomerIDs(create.CustomerIds),
 		UserId:       user.Id,
 		Status:       types.CampaignStatusPending,
-		Payload: map[string]any{
-			"template": map[string]any{
-				"name": template.Name,
-				"language": map[string]string{
-					"code": template.Language,
-				},
-				"components": create.Components,
-			},
-		},
+		Token:        campaignToken,
+		SendTemplate: sendTemplateMap,
 	}
 	if create.SendDate != nil {
-		campaign.SendDate = sql.NullTime{Time: *create.SendDate, Valid: true}
+		campaign.SendDate = *create.SendDate
+	} else {
+		// add 5 minute to current time to allow user to cancel
+		campaign.SendDate = time.Now().UTC().Add(5 * time.Minute)
 	}
-	if err := dependencies.UnitOfWork.CampaignRepository().Insert(ctx, &campaign); err != nil {
+	transaction := dependencies.UnitOfWork.BeginTransaction()
+	committed := false
+	defer func() {
+		if !committed {
+			transaction.Rollback()
+		}
+	}()
+	if err := transaction.CampaignRepository().Insert(ctx, &campaign); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	recipients := make([]dao_customer.CampaignRecipient, 0, len(customers))
+	for index, customer := range customers {
+		recipients = append(recipients, dao_customer.CampaignRecipient{
+			CustomerName:       customer.DisplayName,
+			CustomerWAId:       customer.WAId,
+			CustomerMetaUserId: customer.MetaUserId,
+			CampaignId:         campaign.Id,
+			CustomerId:         customer.Id,
+			UserId:             user.Id,
+			Payload:            payloads[index],
+			Status:             types.CampaignRecipientStatusPending,
+			NextAttemptAt:      sql.NullTime{Time: campaign.SendDate, Valid: true},
+		})
+	}
+	if err := transaction.CampaignRecipientRepository().InsertBulk(ctx, recipients); err != nil {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	if err := transaction.CommitTransaction(); err != nil {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	committed = true
 	result := dto_customer.NewCampaign(campaign, nil)
 	return dto.NewSuccessResponse(&result)
 }
@@ -135,7 +185,9 @@ func (Create) APISettings() feature.APISettings {
 		true,
 		types.APITagCustomer,
 		[]feature.APIError{
+			feature.NewAPIError(*exception.NewCustomException("error seralizing template data", http.StatusInternalServerError)),
 			feature.NewAPIError(*exception.NewCustomException("one or more customers were not found", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("one or more customers do not have a WhatsApp ID", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("this campaign name is already used", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("whatsapp template not found", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("whatsapp template is not approved", http.StatusBadRequest)),

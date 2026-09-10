@@ -26,13 +26,16 @@ func NewWACampaignRepository(db *gorm.DB, logger *service.Logger) repository.Cam
 	}
 }
 
-func (campaignRepository *WACampaignRepository) ListByUserId(ctx context.Context, userId int32, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error) {
+func (campaignRepository *WACampaignRepository) ListByUserId(ctx context.Context, userId int32, name string, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error) {
 	var campaigns []dao_customer.Campaign
 	query := campaignRepository.db.WithContext(ctx).
 		Model(&dao_customer.Campaign{}).
 		Where("user_id = ?", userId)
 	if status != "" {
 		query = query.Where("status = ?", status)
+	}
+	if name != "" {
+		query = query.Where("name ILIKE ?", "%"+name+"%")
 	}
 	var numberOfItems int64
 	if err := query.Count(&numberOfItems).Error; err != nil {

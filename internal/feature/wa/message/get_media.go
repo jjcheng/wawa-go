@@ -21,6 +21,7 @@ type GetMedia struct {
 }
 
 type Media struct {
+	ID  string `json:"id,omitempty" description:"if to_meta is true, will return media ID"`
 	URL string `json:"url" description:"Permanent OSS URL for the WhatsApp media"`
 }
 

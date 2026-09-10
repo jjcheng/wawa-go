@@ -97,6 +97,7 @@ func registerWAMediaUploadRoute(routerGroup *gin.RouterGroup, dependencies *serv
 			return
 		}
 		request := feature_wa_message.NewUploadMedia(ctx.Query("filename"), ctx.GetHeader("Content-Type"), content)
+		request.ToMeta = ctx.Query("to_meta") == "true"
 		var user *dto_account.User
 		if userValue, exists := ctx.Get(cfg.Default().Site.HTTPRequestUserKey); exists {
 			user = userValue.(*dto_account.User)

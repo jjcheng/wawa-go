@@ -45,11 +45,26 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	if campaign.Status != types.CampaignStatusPending {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "only pending campaigns can be cancelled")
 	}
-	if err := dependencies.UnitOfWork.CampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{
+	// start a transaction to also cancel all campaign_recipients
+	transaction := dependencies.UnitOfWork.BeginTransaction()
+	committed := false
+	defer func() {
+		if !committed {
+			transaction.Rollback()
+		}
+	}()
+	if err := transaction.CampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{
 		"status": types.CampaignStatusCancelled,
 	}); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	if err := transaction.CampaignRecipientRepository().CancelByCampaignId(ctx, campaign.Id); err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	if err := transaction.CommitTransaction(); err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	committed = true
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 

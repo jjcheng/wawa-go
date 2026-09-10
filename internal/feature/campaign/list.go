@@ -3,6 +3,7 @@ package feature_campaign
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -14,17 +15,19 @@ import (
 )
 
 type List struct {
+	Name     string               `form:"name" description:"filter campaigns by name"`
 	Status   types.CampaignStatus `form:"status" description:"filter campaigns by status"`
 	Page     int                  `form:"page" description:"page number from 1"`
 	PageSize int                  `form:"page_size" description:"number per page"`
 }
 
 func (list *List) Validate() []exception.InputException {
+	list.Name = strings.TrimSpace(list.Name)
 	if list.Page <= 0 {
 		list.Page = 1
 	}
 	if list.PageSize <= 0 {
-		list.PageSize = 10
+		list.PageSize = 25
 	}
 	return nil
 }
@@ -36,7 +39,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if errors := list.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.Campaign]](errors)
 	}
-	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByUserId(ctx, user.Id, list.Status, list.Page, list.PageSize)
+	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByUserId(ctx, user.Id, list.Name, list.Status, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Campaign]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

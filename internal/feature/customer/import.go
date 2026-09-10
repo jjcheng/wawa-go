@@ -123,6 +123,16 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 			AdditionalData:      contact.AdditionalData(),
 			ImportedPhoneNumber: contact.ImportedPhoneNumber,
 		}
+		// if countrycode and phone number both are numbers, set WAId = countryCode+phoneNumber
+		if helper.IsDigitsOnly(countryCode) && helper.IsDigitsOnly(phoneNumber) {
+			customer.WAId = countryCode + phoneNumber
+		}
+		// for sg only
+		if len(contact.PhoneNumber) == 8 && (strings.HasPrefix(contact.PhoneNumber, "8") || strings.HasPrefix(contact.PhoneNumber, "9")) {
+			customer.WAId = "65" + contact.PhoneNumber
+			customer.CountryCode = "65"
+			customer.PhoneNumber = contact.PhoneNumber
+		}
 		customers = append(customers, customer)
 		result.ImportedCount++
 	}

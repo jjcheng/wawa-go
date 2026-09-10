@@ -27,7 +27,7 @@ func (list *List) Validate() []exception.InputException {
 		list.Page = 1
 	}
 	if list.PageSize <= 0 {
-		list.PageSize = 10
+		list.PageSize = 25
 	}
 	inputErrors := []exception.InputException{}
 	return inputErrors

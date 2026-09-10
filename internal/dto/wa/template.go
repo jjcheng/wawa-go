@@ -1,12 +1,16 @@
 package dto_wa
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
 	"strings"
 
+	"github.com/jjcheng/wawa-go/internal/cfg"
+	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/exception"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
@@ -398,6 +402,92 @@ func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (s
 
 // for front end to know how to send
 
+type SendTemplate struct {
+	Components []SendTemplateComponent `json:"components"`
+}
+
+// to payload to be sent to Meta
+func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_customer.Customer, campaignToken string) (map[string]any, error) {
+	// load customer data
+	for _, component := range sendTemplate.Components {
+		for i, parameter := range component.Parameters {
+			if parameter.Source == "customer.name" {
+				component.Parameters[i].Text = customer.DisplayName
+			}
+		}
+	}
+	// add additional buttons for flow and quick_reply
+	var additionalButtons []SendTemplateComponent
+	for _, component := range template.Components {
+		for i, button := range component.Buttons {
+			// both these 2 are not added to SendTemplate, so we can safely add them here
+			parameter := SendTemplateParameter{}
+			additionalButton := SendTemplateComponent{
+				Type: "button",
+			}
+			switch button.Type {
+			case "FLOW":
+				parameter.Type = "action"
+				parameter.Action = &SendTemplateParameterAction{
+					FlowToken: campaignToken,
+				}
+				additionalButton.Type = string(button.Type)
+				additionalButton.Index = fmt.Sprint(i + 1)
+				additionalButton.Parameters = []SendTemplateParameter{
+					parameter,
+				}
+				additionalButtons = append(additionalButtons, additionalButton)
+			case "QUICK_REPLY":
+				parameter.Type = "payload"
+				parameter.Payload = campaignToken
+				additionalButton.Type = string(button.Type)
+				additionalButton.Index = fmt.Sprint(i + 1)
+				additionalButton.Parameters = []SendTemplateParameter{
+					parameter,
+				}
+				additionalButtons = append(additionalButtons, additionalButton)
+			}
+		}
+	}
+	if len(additionalButtons) > 0 {
+		sendTemplate.Components = append(sendTemplate.Components, additionalButtons...)
+	}
+	// clean up any component with no parameter
+	componentsWithParameters := make([]SendTemplateComponent, 0, len(sendTemplate.Components))
+	for _, component := range sendTemplate.Components {
+		if len(component.Parameters) > 0 {
+			componentsWithParameters = append(componentsWithParameters, component)
+		}
+	}
+	sendTemplate.Components = componentsWithParameters
+	// reset illegal parameters
+	for i, component := range sendTemplate.Components {
+		for ii := range component.Parameters {
+			sendTemplate.Components[i].Parameters[ii].InputIndex = 0
+			sendTemplate.Components[i].Parameters[ii].InputRequired = false
+			sendTemplate.Components[i].Parameters[ii].InputTitle = ""
+			sendTemplate.Components[i].Parameters[ii].Source = ""
+		}
+	}
+	payload := map[string]any{
+		"template": map[string]any{
+			"name": template.Name,
+			"language": map[string]string{
+				"code": template.Language,
+			},
+			"components": sendTemplate.Components,
+		},
+	}
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		sendTemplateData, err := json.Marshal(sendTemplate)
+		if err != nil {
+			return nil, err
+		}
+		helper.WriteToFile(string(sendTemplateData), "files/wa/send_template_payload.json")
+	}
+	return payload, nil
+}
+
 type SendTemplateComponent struct {
 	Type       string                  `json:"type"`               // header, body, button
 	SubType    string                  `json:"sub_type,omitempty"` // only if type is button; url, quick_reply, copy_code, flow
@@ -406,42 +496,36 @@ type SendTemplateComponent struct {
 }
 
 type SendTemplateParameter struct {
-	Type string `json:"type"` // text, image, video, document, location, payload, coupon_code, or action
+	Type string `json:"type"` // text, image, video, document, location, payload, coupon_code, action
 	// component.type = header, body, button, they are the variables not full text
-	Text *SendTemplateParameterText `json:"text,omitempty"` // type = text or component.sub_type = url
+	ParameterName string `json:"parameter_name,omitempty"` // only for text
+	Text          string `json:"text,omitempty"`           // only for text
+	Source        string `json:"source,omitempty"`         // campaign-only; strip before Meta, if it's dynamic like: customer.name, customer.additional_data.birthday; will be computed and put in text
 	// component.type = header, audio is not supported
-	Image    *SendTemplateParameterImage    `json:"image,omitempty"`    // type = image
-	Video    *SendTemplateParameterVideo    `json:"video,omitempty"`    // type = video
+	Image    *SendTemplateMedia             `json:"image,omitempty"`    // type = image
+	Video    *SendTemplateMedia             `json:"video,omitempty"`    // type = video
 	Document *SendTemplateParameterDocument `json:"document,omitempty"` // type = document
 	Location *SendTemplateParameterLocation `json:"location,omitempty"` // type = location
 	// component.type = body
 	Currency *SendTemplateParameterCurrency `json:"currency,omitempty"`  // type = currency
 	DateTime *SendTemplateParameterDateTime `json:"date_time,omitempty"` // type = date_time
 	// component.type = button
-	Payload    string                     `json:"payload,omitempty"`     // component.sub_type = quick_reply, type = payload
-	CouponCode string                     `json:"coupon_code,omitempty"` // component.sub_type = copy_code, type = coupon_code
-	Action     *SendTemplateParameterFlow `json:"action,omitempty"`      // component.sub_type = flow, type = "action"
+	Payload    string                       `json:"payload,omitempty"`     // component.sub_type = quick_reply, type = payload
+	CouponCode string                       `json:"coupon_code,omitempty"` // component.sub_type = copy_code, type = coupon_code
+	Action     *SendTemplateParameterAction `json:"action,omitempty"`      // component.sub_type = flow, type = "action"
+	// let user see, omitempty becuase it will be compiled to final payload to Meta
+	InputIndex    int    `json:"input_index,omitempty"`    // one-based variable position in this component
+	InputTitle    string `json:"input_title,omitempty"`    // Coupon Code, Quick Reply Payload etc...
+	InputRequired bool   `json:"input_required,omitempty"` // if an input is required from user
 }
 
-type SendTemplateParameterText struct {
-	ParameterName string `json:"parameter_name,omitempty"` // only need if parameter_format is NAMED
-	Text          string `json:"text,omitempty"`           // if it's static text, only this is needed
-	Source        string `json:"source,omitempty"`         // if it's dynamic like: customer.name, customer.additional_data.birthday; will be computed and put in text, not to send to Meta
-}
-
-type SendTemplateParameterImage struct {
-	Link string `json:"link,omitempty"` // if it's an url, only 1 is needed
-	Id   string `json:"id,omitempty"`   // Meta media ID
-}
-
-type SendTemplateParameterVideo struct {
+type SendTemplateMedia struct {
 	Link string `json:"link,omitempty"` // if it's an url, only 1 is needed
 	Id   string `json:"id,omitempty"`   // Meta media ID
 }
 
 type SendTemplateParameterDocument struct {
-	Link     string `json:"link,omitempty"` // if it's an url, only 1 is needed
-	Id       string `json:"id,omitempty"`   // Meta media ID
+	SendTemplateMedia
 	FileName string `json:"filename"`
 }
 
@@ -467,15 +551,12 @@ type SendTemplateParameterDateTime struct {
 	Minute        int64  `json:"minute" example:"30"`
 }
 
-type SendTemplateParameterFlow struct {
-	FlowToken       string         `json:"flow_token"`
-	FloatActionData map[string]any `json:"flow_action_data,omitempty"`
+type SendTemplateParameterAction struct {
+	FlowToken      string         `json:"flow_token"`
+	FlowActionData map[string]any `json:"flow_action_data,omitempty"`
 }
 
 func (template *Template) GetSendComponents() []SendTemplateComponent {
-	if template == nil {
-		return nil
-	}
 	components := make([]SendTemplateComponent, 0)
 	for _, component := range template.Components {
 		switch component.Type {
@@ -503,13 +584,11 @@ func (template *Template) GetSendComponents() []SendTemplateComponent {
 						continue
 					}
 					parameter.Type = "text"
-					parameter.Text = &SendTemplateParameterText{}
-				case types.WATemplateButtonTypeQuickReply:
-					parameter.Type = "payload"
+					parameter.InputRequired = true
+					parameter.InputTitle = "URL"
 				case types.WATemplateButtonTypeCopyCode:
 					parameter.Type = "coupon_code"
-				case types.WATemplateButtonTypeFlow:
-					parameter.Type = "action"
+					parameter.InputTitle = "Conpon Code"
 				default:
 					continue
 				}
@@ -538,10 +617,21 @@ func templateTextSendParameters(text string, parameterFormat types.WATemplatePar
 		}
 		parameterName := strings.TrimSpace(remainingText[start+2 : start+2+end])
 		if parameterName != "" {
-			parameter := SendTemplateParameter{Type: "text", Text: &SendTemplateParameterText{}}
+			inputIndex := len(parameters) + 1
+			var parameter SendTemplateParameter
 			if parameterFormat == types.WATemplateParameterFormatNamed {
-				parameter.Text.ParameterName = parameterName
+				parameter = SendTemplateParameter{
+					ParameterName: parameterName,
+					InputTitle:    fmt.Sprintf("{{%s}}", parameterName),
+				}
+			} else {
+				parameter = SendTemplateParameter{
+					InputIndex: inputIndex,
+					InputTitle: fmt.Sprintf("{{%d}}", inputIndex),
+				}
 			}
+			parameter.Type = "text"
+			parameter.InputRequired = true
 			parameters = append(parameters, parameter)
 		}
 		remainingText = remainingText[start+2+end+2:]

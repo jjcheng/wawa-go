@@ -16,6 +16,7 @@ type UnitOfWork interface {
 	// customer
 	CustomerRepository() CustomerRepository
 	CampaignRepository() CampaignRepository
+	CampaignRecipientRepository() CampaignRecipientRepository
 	// wa
 	WABusinessPortfolioRepository() WABusinessPortfolioRepository
 	WABusinessAccountRepository() WABusinessAccountRepository

@@ -14,26 +14,25 @@ import (
 	"gorm.io/gorm"
 )
 
-type Archive struct {
-	Id       int32 `uri:"id" val:"required" description:"id of the campaign"`
-	Archived bool  `form:"archived" val:"required" description:"archived or not"`
+type Delete struct {
+	Id int32 `uri:"id" val:"required" description:"id of the campaign to delete"`
 }
 
-func (archive *Archive) Validate() []exception.InputException {
-	if archive.Id <= 0 {
+func (delete *Delete) Validate() []exception.InputException {
+	if delete.Id <= 0 {
 		return []exception.InputException{exception.NewInputException("id", "invalid campaign id")}
 	}
 	return nil
 }
 
-func (archive Archive) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
 	}
-	if errors := archive.Validate(); len(errors) > 0 {
-		return dto.NewInvalidInputResponse[any](errors)
+	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
+		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, archive.Id)
+	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, delete.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
@@ -43,30 +42,29 @@ func (archive Archive) Handle(ctx context.Context, user *dto_account.User, depen
 	if campaign.UserId != user.Id {
 		return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
 	}
-	// status must not be pending
-	if campaign.Status == types.CampaignStatusPending || campaign.Status == types.CampaignStatusProcessing {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "campaign status cannot be pending or processing")
+	if campaign.Status != types.CampaignStatusCancelled {
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "only cancelled campaigns can be deleted")
 	}
-	if err := dependencies.UnitOfWork.CampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{"archived": archive}); err != nil {
+	if err := dependencies.UnitOfWork.CampaignRepository().DeleteById(ctx, campaign.Id); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 
-func (Archive) APISettings() feature.APISettings {
+func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Archive WhatsApp campaign",
-		"Archive or unarchive a campaign belonging to the authenticated user.",
+		"Delete WhatsApp campaign",
+		"Deletes a cancelled campaign belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
-		http.MethodPatch,
-		"/v1/campaigns/:id/archive",
+		http.MethodDelete,
+		"/v1/campaigns/:id",
 		true,
 		true,
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("campaign not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("only cancelled campaigns can be deleted", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("campaign status cannot be pending or processing", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

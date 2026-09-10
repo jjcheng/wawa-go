@@ -11,12 +11,13 @@ import (
 type Campaign struct {
 	dto.DTOBase
 	Name         string               `json:"name"`
-	SendDate     *time.Time           `json:"send_date"`
+	SendDate     time.Time            `json:"send_date"`
 	WATemplateId string               `json:"wa_template_id"`
 	CustomerIds  []int32              `json:"customer_ids"`
 	UserId       int32                `json:"user_id"`
 	Status       types.CampaignStatus `json:"status"`
-	Payload      map[string]any       `json:"payload"`
+	Token        string               `json:"token"`
+	SendTemplate map[string]any       `json:"send_template"`
 	// lazy loaded
 	Customers []Customer `json:"customers"`
 }
@@ -32,11 +33,10 @@ func NewCampaign(campaign dao_customer.Campaign, customers []Customer) Campaign 
 		WATemplateId: campaign.WATemplateId,
 		CustomerIds:  []int32(campaign.CustomerIds),
 		Status:       campaign.Status,
+		Token:        campaign.Token,
 		Customers:    customers,
-		Payload:      campaign.Payload,
-	}
-	if campaign.SendDate.Valid {
-		c.SendDate = &campaign.SendDate.Time
+		SendTemplate: campaign.SendTemplate,
+		SendDate:     campaign.SendDate,
 	}
 	return c
 }
