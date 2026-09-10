@@ -77,6 +77,30 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByPhoneNumberId(ctx con
 	return phoneNumber, nil
 }
 
+func (phoneNumberRepository *WAPhoneNumberRepository) CountByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) (int, error) {
+	var count int64
+	if err := phoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.PhoneNumber{}).
+		Where("meta_business_portfolio_id = ?", metaBusinessPortfolioId).
+		Count(&count).Error; err != nil {
+		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessPortfolioId)
+		return 0, err
+	}
+	return int(count), nil
+}
+
+func (phoneNumberRepository *WAPhoneNumberRepository) CountByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string) (int, error) {
+	var count int64
+	if err := phoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.PhoneNumber{}).
+		Where("meta_waba_id = ?", metaBusinessAccountId).
+		Count(&count).Error; err != nil {
+		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		return 0, err
+	}
+	return int(count), nil
+}
+
 func (phoneNumberRepository *WAPhoneNumberRepository) ListByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) ([]dao_wa.PhoneNumber, error) {
 	var phoneNumbers []dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_business_portfolio_id = ?", metaBusinessPortfolioId).Order("id").Find(&phoneNumbers)

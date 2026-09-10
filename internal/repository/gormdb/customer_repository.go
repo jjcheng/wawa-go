@@ -27,6 +27,33 @@ func NewCustomerRepository(db *gorm.DB, logger *service.Logger) repository.Custo
 	}
 }
 
+func (customerRepository *CustomerRepository) CountActiveByUserId(ctx context.Context, userId int32) (int, error) {
+	var count int64
+	if err := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("user_id = ? AND status = ?", userId, types.CustomerStatusActive).
+		Count(&count).Error; err != nil {
+		customerRepository.logger.ErrorFunction(err, userId)
+		return 0, err
+	}
+	return int(count), nil
+}
+
+func (customerRepository *CustomerRepository) CountActiveByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string) (int, error) {
+	var count int64
+	if err := customerRepository.db.WithContext(ctx).
+		Table("customer.customers").
+		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.user_id = customer.customers.user_id").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.id = wa.user_phone_numbers.phone_number_id").
+		Where("wa.phone_numbers.meta_waba_id = ? AND customer.customers.status = ?", metaBusinessAccountId, types.CustomerStatusActive).
+		Distinct("customer.customers.id").
+		Count(&count).Error; err != nil {
+		customerRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		return 0, err
+	}
+	return int(count), nil
+}
+
 func (customerRepository *CustomerRepository) GetByCountryCodePhoneNumber(ctx context.Context, userId int32, countryCode string, phoneNumber string) (*dao_customer.Customer, error) {
 	var customer *dao_customer.Customer
 	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND country_code = ? AND phone_number = ?", userId, countryCode, phoneNumber).First(&customer)

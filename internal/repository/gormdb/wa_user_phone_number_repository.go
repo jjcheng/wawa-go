@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"errors"
+	"strings"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -24,6 +25,18 @@ func NewWAUserPhoneNumberRepository(db *gorm.DB, logger *service.Logger) reposit
 	}
 }
 
+func (userPhoneNumberRepository *WAUserPhoneNumberRepository) CountPhoneNumbersByUserId(ctx context.Context, userId int32) (int, error) {
+	var count int64
+	if err := userPhoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.UserPhoneNumber{}).
+		Where("user_id = ?", userId).
+		Count(&count).Error; err != nil {
+		userPhoneNumberRepository.logger.ErrorFunction(err, userId)
+		return 0, err
+	}
+	return int(count), nil
+}
+
 func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersByUserId(ctx context.Context, userId int32, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
 	query := userPhoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers").
@@ -42,6 +55,31 @@ func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersBy
 		return nil, 0, 0, list.Error
 	}
 	return phoneNumbers, totalCount, totalPages, nil
+}
+
+func (userPhoneNumberRepository *WAUserPhoneNumberRepository) ListPhoneNumbersByUserIdAndWAIds(ctx context.Context, userId int32, waIDs []string) ([]dao_wa.PhoneNumber, error) {
+	filteredWAIDs := make([]string, 0, len(waIDs))
+	for _, waID := range waIDs {
+		if waID = strings.TrimSpace(waID); waID != "" {
+			filteredWAIDs = append(filteredWAIDs, waID)
+		}
+	}
+	if len(filteredWAIDs) == 0 {
+		return []dao_wa.PhoneNumber{}, nil
+	}
+	var phoneNumbers []dao_wa.PhoneNumber
+	if err := userPhoneNumberRepository.db.WithContext(ctx).
+		Table("wa.phone_numbers").
+		Select("wa.phone_numbers.*").
+		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.phone_number_id = wa.phone_numbers.id").
+		Where("wa.user_phone_numbers.user_id = ? AND wa.phone_numbers.meta_phone_number_id IN ?", userId, filteredWAIDs).
+		Distinct().
+		Order("wa.phone_numbers.id").
+		Find(&phoneNumbers).Error; err != nil {
+		userPhoneNumberRepository.logger.ErrorFunction(err, userId, filteredWAIDs)
+		return nil, err
+	}
+	return phoneNumbers, nil
 }
 
 func (userPhoneNumberRepository *WAUserPhoneNumberRepository) GetByUserIdPhoneNumberId(ctx context.Context, userId int32, phoneNumberId int32) (*dao_wa.UserPhoneNumber, error) {

@@ -6,11 +6,13 @@ import (
 	"net/http"
 	"time"
 
+	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -49,6 +51,17 @@ func (getUsage *GetUsage) Validate() []exception.InputException {
 func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.MessageAnalytics] {
 	if user == nil {
 		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusForbidden, "you are not authenticated")
+	}
+	if user.Type != types.UserTypeMaster {
+		// in case user supplied WAIds which don't belong to him, use this to filter
+		phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserIdAndWAIds(ctx, user.Id, getUsage.WAIds)
+		if err != nil {
+			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		// assign back to WAIds
+		getUsage.WAIds = helper.Map(phoneNumbers, func(pn dao_wa.PhoneNumber) string {
+			return dto_wa.NewPhoneNumber(pn).WAId
+		})
 	}
 	if validationErrors := getUsage.Validate(); len(validationErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.MessageAnalytics](validationErrors)
