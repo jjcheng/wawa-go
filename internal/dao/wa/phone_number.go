@@ -9,6 +9,7 @@ type PhoneNumber struct {
 	MetaPhoneNumberId       string `gorm:"column:meta_phone_number_id"`
 	PhoneNumber             string `gorm:"column:phone_number"`
 	Name                    string `gorm:"column:name"`
+	UserId                  int32  `gorm:"column:user_id"`
 	// two-step verification PIN set at registration, required to re-register the number later
 	RegistrationPin string `gorm:"column:registration_pin"`
 }
