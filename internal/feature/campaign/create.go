@@ -99,6 +99,14 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	if len(phoneNumbers) == 0 {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
+	}
+	phoneNumberID := phoneNumbers[0].MetaPhoneNumberId
 	template, err := dependencies.Whatsapp.GetTemplate(ctx, create.WATemplateId, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template not found")
@@ -122,23 +130,27 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		payloads = append(payloads, payload)
 	}
+	// extract the attachment url if any
+	var attachmentUrl string
+	for _, component := range create.SendTemplate.Components {
+		if component.Type != "header" {
+			continue
+		}
+		for _, parameter := range component.Parameters {
+			if parameter.Image != nil {
+				attachmentUrl = parameter.Image.Link
+				break
+			} else if parameter.Video != nil {
+				attachmentUrl = parameter.Video.Link
+				break
+			} else if parameter.Document != nil {
+				attachmentUrl = parameter.Document.Link
+				break
+			}
+		}
+	}
 	// start a transaction
-	// store each payload as a CampaignRecipient, use bulk insert
-	campaign := dao_customer.Campaign{
-		Name:         create.Name,
-		WATemplateId: create.WATemplateId,
-		CustomerIds:  dao_customer.CustomerIDs(create.CustomerIds),
-		UserId:       user.Id,
-		Status:       types.CampaignStatusPending,
-		Token:        campaignToken,
-		SendTemplate: sendTemplateMap,
-	}
-	if create.SendDate != nil {
-		campaign.SendDate = *create.SendDate
-	} else {
-		// add 5 minute to current time to allow user to cancel
-		campaign.SendDate = time.Now().UTC().Add(5 * time.Minute)
-	}
+	// create a campaign first, get the campaign id
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	committed := false
 	defer func() {
@@ -146,9 +158,26 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			transaction.Rollback()
 		}
 	}()
+	campaign := dao_customer.Campaign{
+		Name:          create.Name,
+		WATemplateId:  create.WATemplateId,
+		CustomerIds:   dao_customer.CustomerIDs(create.CustomerIds),
+		UserId:        user.Id,
+		Status:        types.CampaignStatusPending,
+		Token:         campaignToken,
+		SendTemplate:  sendTemplateMap,
+		AttachmentURL: attachmentUrl,
+	}
+	if create.SendDate != nil {
+		campaign.SendDate = *create.SendDate
+	} else {
+		// add 5 minute to current time to allow user to cancel
+		campaign.SendDate = time.Now().UTC().Add(5 * time.Minute)
+	}
 	if err := transaction.CampaignRepository().Insert(ctx, &campaign); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	// store each payload as a CampaignRecipient, use bulk insert
 	recipients := make([]dao_customer.CampaignRecipient, 0, len(customers))
 	for index, customer := range customers {
 		recipients = append(recipients, dao_customer.CampaignRecipient{
@@ -171,6 +200,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	committed = true
 	result := dto_customer.NewCampaign(campaign, nil)
+	for _, recipient := range recipients {
+		if _, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumberID, recipient.Payload, businessPortfolio.AccessToken); err != nil {
+			dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, err)
+		}
+	}
 	return dto.NewSuccessResponse(&result)
 }
 

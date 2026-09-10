@@ -319,6 +319,264 @@ Only use this for an approved template configured with a Flow button. The values
 
 Buttons without runtime values, including standard phone-number buttons, need no component entry. Do not send a `voice_call` component unless Meta's template-specific documentation explicitly requires parameters for that approved template.
 
+## Full Valid Payload Matrix
+
+These are the valid template component shapes Meta accepts for outbound template sends. Use only the combinations that exist in the approved template.
+
+### 1) Template with no runtime values
+
+```json
+{
+  "to": "6590073708",
+  "type": "template",
+  "template": {
+    "name": "welcome_message",
+    "language": {
+      "code": "en_US"
+    }
+  }
+}
+```
+
+### 2) Header with text variable
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    { "type": "text", "text": "Jane" }
+  ]
+}
+```
+
+### 3) Header with image media by ID
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    {
+      "type": "image",
+      "image": {
+        "id": "META_MEDIA_ID"
+      }
+    }
+  ]
+}
+```
+
+### 4) Header with image media by URL
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    {
+      "type": "image",
+      "image": {
+        "link": "https://example.com/banner.jpg"
+      }
+    }
+  ]
+}
+```
+
+### 5) Header with video media by ID
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    {
+      "type": "video",
+      "video": {
+        "id": "META_MEDIA_ID"
+      }
+    }
+  ]
+}
+```
+
+### 6) Header with video media by URL
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    {
+      "type": "video",
+      "video": {
+        "link": "https://cdn.example.com/intro.mp4"
+      }
+    }
+  ]
+}
+```
+
+### 7) Header with document media by ID
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    {
+      "type": "document",
+      "document": {
+        "id": "META_MEDIA_ID",
+        "filename": "invoice.pdf"
+      }
+    }
+  ]
+}
+```
+
+### 8) Header with document media by URL
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    {
+      "type": "document",
+      "document": {
+        "link": "https://cdn.example.com/invoice.pdf",
+        "filename": "invoice.pdf"
+      }
+    }
+  ]
+}
+```
+
+### 9) Header with location
+
+```json
+{
+  "type": "header",
+  "parameters": [
+    {
+      "type": "location",
+      "location": {
+        "latitude": 1.3521,
+        "longitude": 103.8198,
+        "name": "Store name",
+        "address": "1 Example Street"
+      }
+    }
+  ]
+}
+```
+
+### 10) Body with text parameters
+
+```json
+{
+  "type": "body",
+  "parameters": [
+    { "type": "text", "text": "Jane" },
+    { "type": "text", "text": "ORD-12345" }
+  ]
+}
+```
+
+### 11) Body with currency parameter
+
+```json
+{
+  "type": "body",
+  "parameters": [
+    {
+      "type": "currency",
+      "currency": {
+        "fallback_value": "S$25.00",
+        "code": "SGD",
+        "amount_1000": 25000
+      }
+    }
+  ]
+}
+```
+
+### 12) Body with date_time parameter
+
+```json
+{
+  "type": "body",
+  "parameters": [
+    {
+      "type": "date_time",
+      "date_time": {
+        "fallback_value": "9 September 2026, 10:30 AM",
+        "year": 2026,
+        "month": 9,
+        "day_of_month": 9,
+        "hour": 10,
+        "minute": 30
+      }
+    }
+  ]
+}
+```
+
+### 13) Button with URL parameter
+
+```json
+{
+  "type": "button",
+  "sub_type": "url",
+  "index": "0",
+  "parameters": [
+    { "type": "text", "text": "ORD-12345" }
+  ]
+}
+```
+
+### 14) Button with quick_reply payload
+
+```json
+{
+  "type": "button",
+  "sub_type": "quick_reply",
+  "index": "0",
+  "parameters": [
+    { "type": "payload", "payload": "CONFIRM_ORDER:ORD-12345" }
+  ]
+}
+```
+
+### 15) Button with copy_code payload
+
+```json
+{
+  "type": "button",
+  "sub_type": "copy_code",
+  "index": "0",
+  "parameters": [
+    { "type": "coupon_code", "coupon_code": "SAVE20" }
+  ]
+}
+```
+
+### 16) Button with flow action
+
+```json
+{
+  "type": "button",
+  "sub_type": "flow",
+  "index": "0",
+  "parameters": [
+    {
+      "type": "action",
+      "action": {
+        "flow_token": "customer-123",
+        "flow_action_data": {
+          "order_id": "ORD-12345"
+        }
+      }
+    }
+  ]
+}
+```
+
 ## Complete Example
 
 ```json
@@ -383,3 +641,6 @@ Buttons without runtime values, including standard phone-number buttons, need no
 - A media object must contain either `id` or `link`; do not send both.
 - A URL used as media must be accessible to Meta over HTTPS. Use a signed OSS URL only when its expiry is long enough for Meta to fetch it.
 - Omit a component that has no runtime parameters.
+- Do not send a top-level `FLOW` or `QUICK_REPLY` component type. The valid Meta pattern is `"type": "button"` with a matching `sub_type`.
+- `index` values are strings, not integers.
+- `flow_action_data` is optional and only used when the Flow requires custom payload fields.

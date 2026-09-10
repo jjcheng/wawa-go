@@ -45,6 +45,10 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if campaign.Status != types.CampaignStatusCancelled {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "only cancelled campaigns can be deleted")
 	}
+	// delete any attachementurl
+	if campaign.AttachmentURL != "" {
+		dependencies.File.DeleteFile(campaign.AttachmentURL)
+	}
 	if err := dependencies.UnitOfWork.CampaignRepository().DeleteById(ctx, campaign.Id); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

@@ -406,13 +406,18 @@ type SendTemplate struct {
 	Components []SendTemplateComponent `json:"components"`
 }
 
-// to payload to be sent to Meta
-func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_customer.Customer, campaignToken string) (map[string]any, error) {
+// to payload to be sent to Meta, use concrete SendTemplate
+func (sendTemplate SendTemplate) FinalPayload(template *Template, customer dao_customer.Customer, campaignToken string) (map[string]any, error) {
 	// load customer data
 	for _, component := range sendTemplate.Components {
 		for i, parameter := range component.Parameters {
 			if parameter.Source == "customer.name" {
 				component.Parameters[i].Text = customer.DisplayName
+			} else if parameter.Type == "coupon_code" { // should do at front end, but just correct it here
+				if component.Parameters[i].CouponCode == "" {
+					component.Parameters[i].CouponCode = component.Parameters[i].Text
+				}
+				component.Parameters[i].Text = ""
 			}
 		}
 	}
@@ -431,8 +436,9 @@ func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_
 				parameter.Action = &SendTemplateParameterAction{
 					FlowToken: campaignToken,
 				}
-				additionalButton.Type = string(button.Type)
-				additionalButton.Index = fmt.Sprint(i + 1)
+				additionalButton.Type = "button"
+				additionalButton.SubType = "flow"
+				additionalButton.Index = fmt.Sprint(i)
 				additionalButton.Parameters = []SendTemplateParameter{
 					parameter,
 				}
@@ -440,8 +446,9 @@ func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_
 			case "QUICK_REPLY":
 				parameter.Type = "payload"
 				parameter.Payload = campaignToken
-				additionalButton.Type = string(button.Type)
-				additionalButton.Index = fmt.Sprint(i + 1)
+				additionalButton.Type = "button"
+				additionalButton.SubType = "quick_reply"
+				additionalButton.Index = fmt.Sprint(i)
 				additionalButton.Parameters = []SendTemplateParameter{
 					parameter,
 				}
@@ -470,6 +477,9 @@ func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_
 		}
 	}
 	payload := map[string]any{
+		"messaging_product": "whatsapp",
+		"to":                customer.WAId,
+		"type":              "template",
 		"template": map[string]any{
 			"name": template.Name,
 			"language": map[string]string{
@@ -589,6 +599,7 @@ func (template *Template) GetSendComponents() []SendTemplateComponent {
 				case types.WATemplateButtonTypeCopyCode:
 					parameter.Type = "coupon_code"
 					parameter.InputTitle = "Conpon Code"
+					parameter.InputRequired = true
 				default:
 					continue
 				}

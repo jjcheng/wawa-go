@@ -160,6 +160,21 @@ func (customerRepository *CustomerRepository) GetByImportedPhoneNumber(ctx conte
 	return &customer, nil
 }
 
+func (customerRepository *CustomerRepository) GetByToken(ctx context.Context, token string) (*dao_customer.Customer, error) {
+	var customer dao_customer.Customer
+	result := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("LOWER(token) = LOWER(?)", token).
+		First(&customer)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			customerRepository.logger.ErrorFunction(result.Error, token)
+		}
+		return nil, result.Error
+	}
+	return &customer, nil
+}
+
 func (customerRepository *CustomerRepository) GetDistinctTags(ctx context.Context, userId int32) ([]string, error) {
 	var tags []string
 	result := customerRepository.db.WithContext(ctx).

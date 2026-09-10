@@ -20,4 +20,5 @@ type CustomerRepository interface {
 	GetDistinctTags(ctx context.Context, userId int32) ([]string, error)
 	List(ctx context.Context, userId int32, name string, phoneNumber string, order types.OrderCustomersType, status types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error)
 	GetByImportedPhoneNumber(ctx context.Context, userId int32, importedPhoneNumber string) (*dao_customer.Customer, error)
+	GetByToken(ctx context.Context, token string) (*dao_customer.Customer, error)
 }
