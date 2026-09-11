@@ -29,21 +29,21 @@ func (update *Update) Validate() []exception.InputException {
 	return errors
 }
 
-func (update Update) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
+func (update Update) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
+	if user != nil && user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusUnauthorized, "your are not authorized")
+	}
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	existing, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, update.MetaWABAId)
+	// if user is authenticated, reset the wabaid
+	if user != nil {
+		update.MetaWABAId = user.WA.BusinessAccount.MetaWABAId
+	}
+	existing, businessPortfolio, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, update.MetaWABAId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
-		}
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	businessPortfolio, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetBusinessPortfolioByWABAId(ctx, update.MetaWABAId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business portfolio not found")
 		}
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -52,10 +52,20 @@ func (update Update) Handle(ctx context.Context, _ *dto_account.User, dependenci
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, err.Error())
 	}
 	existing.Name = waba.Name
+	existing.TimeZoneId = waba.TimezoneID
 	if err := dependencies.UnitOfWork.WABusinessAccountRepository().Update(ctx, existing); err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	// now update business portfolio
+	if businessPortfolio.Name != waba.OwnerBusinessInfo.Name {
+		businessPortfolio.Name = waba.OwnerBusinessInfo.Name
+		if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, businessPortfolio); err != nil {
+			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+	}
 	result := dto_wa.NewBusinessAccount(*existing)
+	result.MetaBusinessPortfolioName = waba.OwnerBusinessInfo.Name
+	result.MetaBusinessPortfolioId = waba.OwnerBusinessInfo.ID
 	return dto.NewSuccessResponse(&result)
 }
 

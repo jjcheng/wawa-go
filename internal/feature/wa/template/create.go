@@ -2,7 +2,6 @@ package feature_wa_template
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -12,7 +11,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type Create struct {
@@ -27,15 +25,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := create.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Template](errors)
 	}
-	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
-		}
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
 	}
-	metaWABAId := businessAccount.MetaWABAId
-	template, err := dependencies.Whatsapp.CreateTemplate(ctx, metaWABAId, create.Payload(), businessPortfolio.AccessToken)
+	metaWABAId := user.WA.BusinessAccount.MetaWABAId
+	template, err := dependencies.Whatsapp.CreateTemplate(ctx, metaWABAId, create.Payload(), user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}

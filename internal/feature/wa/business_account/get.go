@@ -2,7 +2,6 @@ package feature_wa_business_account
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -12,17 +11,12 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type Get struct {
-	//MetaWABAId string `uri:"meta_waba_id" description:"meta WABA id"`
 }
 
 func (get *Get) Validate() []exception.InputException {
-	// var errors []exception.InputException
-	// get.MetaWABAId = strings.TrimSpace(get.MetaWABAId)
-	// return errors
 	return nil
 }
 
@@ -33,15 +27,10 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	// get user's business account
-	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
-		}
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
 	}
-	result := dto_wa.NewBusinessAccount(*businessAccount)
+	result := *user.WA.BusinessAccount
 	return dto.NewSuccessResponse(&result)
 }
 

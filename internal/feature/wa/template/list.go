@@ -2,7 +2,6 @@ package feature_wa_template
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type List struct {
@@ -49,15 +47,11 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if errors := list.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.Template]](errors)
 	}
-	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusUnauthorized, "you are not authorized to access this business account")
-		}
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusUnauthorized, "you are not authorized to access this business account")
 	}
-	metaWABAId := businessAccount.MetaWABAId
-	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplates(ctx, metaWABAId, list.NameOrContent, list.Category, list.Language, list.Status, list.QualityScore, list.Before, list.After, list.Limit, businessPortfolio.AccessToken)
+	metaWABAId := user.WA.BusinessAccount.MetaWABAId
+	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplates(ctx, metaWABAId, list.NameOrContent, list.Category, list.Language, list.Status, list.QualityScore, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusBadGateway, err.Error())
 	}

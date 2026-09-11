@@ -9,6 +9,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -58,6 +59,20 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 				return
 			}
 			userDTO := dto_account.NewUser(*user)
+			// load wa reloated objects
+			phoneNumber, businessAccount, businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx.Request.Context(), user.Id)
+			if err == nil {
+				phoneNumberDTO := dto_wa.NewPhoneNumber(*phoneNumber)
+				phoneNumberDTO.UserName = userDTO.Name
+				businessAccountDTO := dto_wa.NewBusinessAccount(*businessAccount)
+				businessPortfolioDTO := dto_wa.NewBusinessPortfolio(*businessPortfolio, false)
+				userDTO.WA = &dto_account.UserWA{
+					PhoneNumber_:                 &phoneNumberDTO,
+					BusinessAccount:              &businessAccountDTO,
+					BusinessPortfolio:            &businessPortfolioDTO,
+					BusinessPortfolioAccessToken: businessPortfolio.AccessToken,
+				}
+			}
 			ctx.Set(cfg.Default().Site.HTTPRequestUserKey, &userDTO)
 		}
 		ctx.Next()

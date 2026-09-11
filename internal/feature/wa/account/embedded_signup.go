@@ -15,7 +15,6 @@ import (
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
-	feature_wa_user_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/user_phone_number"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -105,17 +104,6 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	if !createBusinessAccountResponse.Success {
 		return dto.NewFailedResponse[*dto_account.User](createBusinessAccountResponse.StatusCode, createBusinessAccountResponse.Message)
 	}
-	// Phone number — using the display number and verified name Meta reported.
-	createPhoneNumberResponse := (feature_wa_phone_number.Store{
-		MetaBusinessPortfolioId: embeddedSignup.Data.BusinessId,
-		MetaWABAId:              embeddedSignup.Data.WABAId,
-		MetaPhoneNumberId:       embeddedSignup.Data.PhoneNumberId,
-		PhoneNumber:             phoneNumberDetails.DisplayPhoneNumber,
-		Name:                    phoneNumberDetails.VerifiedName,
-	}).Handle(ctx, nil, &transactionDependencies)
-	if !createPhoneNumberResponse.Success {
-		return dto.NewFailedResponse[*dto_account.User](createPhoneNumberResponse.StatusCode, createPhoneNumberResponse.Message)
-	}
 	// User — the login account. Before creating it you ask the database "does this portfolio already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
 	hasMasterUser, err := transaction.AccountUserRepository().HasMasterUser(ctx, embeddedSignup.Data.BusinessId)
 	if err != nil {
@@ -124,15 +112,15 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	// create user
 	tmpPassword := uuid.NewString()
 	// extract country code and phone number
-	split := strings.Split(createPhoneNumberResponse.Data.PhoneNumber, " ")
+	split := strings.Split(phoneNumberDetails.DisplayPhoneNumber, " ")
 	countryCode := strings.ReplaceAll(split[0], "+", "")
 	countryCode = strings.TrimSpace(countryCode)
-	phoneNumber := strings.TrimPrefix(createPhoneNumberResponse.Data.PhoneNumber, split[0])
+	phoneNumber := strings.TrimPrefix(phoneNumberDetails.DisplayPhoneNumber, split[0])
 	phoneNumber = strings.ReplaceAll(phoneNumber, "-", "")
 	phoneNumber = strings.ReplaceAll(phoneNumber, " ", "")
 	phoneNumber = strings.TrimSpace(phoneNumber)
 	createUser := feature_account_user.Store{
-		Name:            createPhoneNumberResponse.Data.Name,
+		Name:            phoneNumberDetails.VerifiedName,
 		CountryCode:     countryCode,
 		PhoneNumber:     phoneNumber,
 		Type:            types.UserTypeOperator,
@@ -150,13 +138,17 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	if !createUserResponse.Success {
 		return createUserResponse
 	}
-	// User ↔ phone number link — this is what grants the user permission to that number.
-	createUserPhoneNumberResponse := (feature_wa_user_phone_number.Create{
-		UserId:        createUserResponse.Data.Id,
-		PhoneNumberId: createPhoneNumberResponse.Data.Id,
+	// Phone number — using the display number and verified name Meta reported.
+	createPhoneNumberResponse := (feature_wa_phone_number.Store{
+		MetaBusinessPortfolioId: embeddedSignup.Data.BusinessId,
+		MetaWABAId:              embeddedSignup.Data.WABAId,
+		MetaPhoneNumberId:       embeddedSignup.Data.PhoneNumberId,
+		PhoneNumber:             phoneNumberDetails.DisplayPhoneNumber,
+		Name:                    phoneNumberDetails.VerifiedName,
+		UserId:                  createUserResponse.Data.Id,
 	}).Handle(ctx, nil, &transactionDependencies)
-	if !createUserPhoneNumberResponse.Success {
-		return dto.NewFailedResponse[*dto_account.User](createUserPhoneNumberResponse.StatusCode, createUserPhoneNumberResponse.Message)
+	if !createPhoneNumberResponse.Success {
+		return dto.NewFailedResponse[*dto_account.User](createPhoneNumberResponse.StatusCode, createPhoneNumberResponse.Message)
 	}
 	// If any step fails, the deferred rollback throws away all of it. You never end up with half a tenant.
 	if exception := transaction.CommitTransaction(); exception != nil {
@@ -192,7 +184,7 @@ func (embeddedSignup EmbeddedSignup) verifyOwnership(ctx context.Context, access
 		return nil, nil, &forbidden
 	}
 	// List the WABA's phone numbers and confirm the submitted phone number ID is actually one of them.
-	phoneNumbers, err := dependencies.Whatsapp.GetAllPhoneNumbersByWABAId(ctx, embeddedSignup.Data.WABAId, accessToken)
+	phoneNumbers, err := dependencies.Whatsapp.ListPhoneNumbers(ctx, embeddedSignup.Data.WABAId, accessToken)
 	if err != nil {
 		failed := dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
 		return nil, nil, &failed

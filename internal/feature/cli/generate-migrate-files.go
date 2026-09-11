@@ -109,9 +109,6 @@ func migrateData(ctx context.Context, targetUnitOfWork repository.UnitOfWork, so
 		func() error {
 			return migrateTableData[dao_wa.PhoneNumber](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
 		},
-		func() error {
-			return migrateTableData[dao_wa.UserPhoneNumber](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
-		},
 	}
 	//run them now
 	for _, run := range dataRunners {

@@ -2,7 +2,6 @@ package feature_wa_template
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"strings"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type Delete struct {
@@ -37,15 +35,11 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to access this WABA")
-		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to access this WABA")
 	}
-	metaWABAId := businessAccount.MetaWABAId
-	if err := dependencies.Whatsapp.DeleteTemplate(ctx, metaWABAId, delete.Name, delete.Id, businessPortfolio.AccessToken); err != nil {
+	metaWABAId := user.WA.BusinessAccount.MetaWABAId
+	if err := dependencies.Whatsapp.DeleteTemplate(ctx, metaWABAId, delete.Name, delete.Id, user.WA.BusinessPortfolioAccessToken); err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)

@@ -2,24 +2,20 @@ package feature_wa_phone_number
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
-	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type GetUsage struct {
-	WAIds       []string                     `form:"wa_ids" val:"required" description:"up to 10 wa Ids"`
+	WAIds       []string                     `form:"wa_ids" val:"required" description:"up to 10 wa Ids, only if user is MASTER"`
 	Start       int64                        `form:"start" val:"required" description:"Unix timestamp for the analytics start"`
 	End         int64                        `form:"end" val:"required" description:"Unix timestamp for the analytics end"`
 	Granularity types.WAAnalyticsGranularity `form:"granularity" val:"required" description:"analytics granularity: HALF_HOUR, DAY, or MONTH"`
@@ -54,26 +50,19 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	}
 	if user.Type != types.UserTypeMaster {
 		// in case user supplied WAIds which don't belong to him, use this to filter
-		phoneNumbers, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserIdAndWAIds(ctx, user.Id, getUsage.WAIds)
-		if err != nil {
-			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		if user.WA == nil || user.WA.PhoneNumber_ == nil {
+			return dto.NewSuccessResponse(&dto_wa.MessageAnalytics{})
 		}
 		// assign back to WAIds
-		getUsage.WAIds = helper.Map(phoneNumbers, func(pn dao_wa.PhoneNumber) string {
-			return dto_wa.NewPhoneNumber(pn).WAId
-		})
+		getUsage.WAIds = []string{user.WA.PhoneNumber_.WAId}
 	}
 	if validationErrors := getUsage.Validate(); len(validationErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.MessageAnalytics](validationErrors)
 	}
-	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "you are not authorized to view this")
-		}
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "you are not authorized to view this")
 	}
-	analytics, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, businessAccount.MetaWABAId, getUsage.WAIds, getUsage.Start, getUsage.End, getUsage.Granularity, businessPortfolio.AccessToken)
+	analytics, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.MetaWABAId, getUsage.WAIds, getUsage.Start, getUsage.End, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error())
 	}

@@ -43,8 +43,7 @@ func (customerRepository *CustomerRepository) CountActiveByMetaBusinessAccountId
 	var count int64
 	if err := customerRepository.db.WithContext(ctx).
 		Table("customer.customers").
-		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.user_id = customer.customers.user_id").
-		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.id = wa.user_phone_numbers.phone_number_id").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = customer.customers.user_id").
 		Where("wa.phone_numbers.meta_waba_id = ? AND customer.customers.status = ?", metaBusinessAccountId, types.CustomerStatusActive).
 		Distinct("customer.customers.id").
 		Count(&count).Error; err != nil {

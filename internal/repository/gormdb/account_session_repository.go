@@ -45,6 +45,6 @@ func (accountSessionRepository *AccountSessionRepository) UpdateLastUsed(ctx con
 	return accountSessionRepository.UpdateFields(ctx, id, map[string]any{"last_used_at": time.Now()})
 }
 
-func (accountSessionRepository *AccountSessionRepository) Logout(ctx context.Context, id int32) error {
+func (accountSessionRepository *AccountSessionRepository) UpdateRevokedAt(ctx context.Context, id int32) error {
 	return accountSessionRepository.UpdateFields(ctx, id, map[string]any{"revoked_at": time.Now()})
 }

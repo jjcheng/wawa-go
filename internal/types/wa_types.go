@@ -100,3 +100,10 @@ const (
 	WAAnalyticsGranularityDay      WAAnalyticsGranularity = "DAY"
 	WAAnalyticsGranularityMonth    WAAnalyticsGranularity = "MONTH"
 )
+
+type WAPhoneNumberStatus string
+
+const (
+	WAPhoneNumberStatusConnected    WAPhoneNumberStatus = "CONNECTED"
+	WAPhoneNumberStatusDisconnected WAPhoneNumberStatus = "DISCONNECTED"
+)

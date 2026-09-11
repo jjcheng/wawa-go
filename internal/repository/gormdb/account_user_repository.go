@@ -43,8 +43,7 @@ func (accountUserRepository *AccountUserRepository) HasMasterUser(ctx context.Co
 	var count int64
 	result := accountUserRepository.db.WithContext(ctx).
 		Table("account.users").
-		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.user_id = account.users.id").
-		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.id = wa.user_phone_numbers.phone_number_id").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = account.users.id").
 		Where("wa.phone_numbers.meta_business_portfolio_id = ? AND account.users.type = ?", metaBusinessPortfolioId, types.UserTypeMaster).
 		Count(&count)
 	if result.Error != nil {

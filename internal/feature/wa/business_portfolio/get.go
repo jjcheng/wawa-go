@@ -2,7 +2,6 @@ package feature_wa_business_portfolio
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -12,7 +11,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type Get struct {
@@ -33,6 +31,11 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessPortfolio](errors)
 	}
+	if user.WA == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusNotFound, "business portfolio not found")
+	}
+	result := *user.WA.BusinessPortfolio
+	return dto.NewSuccessResponse(&result)
 	// if get.MetaBusinessPortfolioId != "" {
 	// 	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, get.MetaBusinessPortfolioId)
 	// 	if err != nil {
@@ -44,15 +47,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	// 	result := dto_wa.NewBusinessPortfolio(*businessPortfolio, false)
 	// 	return dto.NewSuccessResponse(&result)
 	// } else {
-	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusNotFound, "business portfolio not found")
-		}
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	result := dto_wa.NewBusinessPortfolio(*businessPortfolio, false)
-	return dto.NewSuccessResponse(&result)
+	// unreachable legacy lookup retained below for reference
 	//}
 }
 

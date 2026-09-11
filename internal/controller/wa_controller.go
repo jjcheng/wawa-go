@@ -16,7 +16,6 @@ import (
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
 	feature_wa_sample_template "github.com/jjcheng/wawa-go/internal/feature/wa/sample_template"
 	feature_wa_template "github.com/jjcheng/wawa-go/internal/feature/wa/template"
-	feature_wa_user_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/user_phone_number"
 	feature_wa_webhook "github.com/jjcheng/wawa-go/internal/feature/wa/webhook"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/middleware"
@@ -59,13 +58,14 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*dto_account.User, feature_wa_account.EmbeddedSignup](routerGroup, dependencies, apiGenerator)
 	// business portfolio
 	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.Get](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.BusinessPortfolio, feature_wa_business_portfolio.Update](routerGroup, dependencies, apiGenerator)
 	// business account
 	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Get](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Update](routerGroup, dependencies, apiGenerator)
 	// phone number
-	registerRoute[*dto.ListResponse[dto_wa.PhoneNumber], feature_wa_user_phone_number.List](routerGroup, dependencies, apiGenerator)
-	registerRoute[*dto_wa.UserPhoneNumber, feature_wa_user_phone_number.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.WhatsAppPhoneNumberDetailsResponse, feature_wa_phone_number.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_phone_number.Disconnect](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_phone_number.Reconnect](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto.ListResponse[dto_wa.PhoneNumber], feature_wa_phone_number.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_phone_number.Delete](routerGroup, dependencies, apiGenerator)
 	// message
 	registerRoute[*dto_wa.Message, feature_wa_message.Create](routerGroup, dependencies, apiGenerator)

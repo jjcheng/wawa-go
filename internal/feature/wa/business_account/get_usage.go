@@ -2,7 +2,6 @@ package feature_wa_business_account
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type GetUsage struct {
@@ -49,14 +47,10 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	if errors := getUsage.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.MessageAnalytics](errors)
 	}
-	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "you are not authorized to view this")
-		}
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "you are not authorized to view this")
 	}
-	usage, err := dependencies.Whatsapp.GetWABAUsage(ctx, businessAccount.MetaWABAId, getUsage.Start, getUsage.End, getUsage.Granularity, businessPortfolio.AccessToken)
+	usage, err := dependencies.Whatsapp.GetWABAUsage(ctx, user.WA.BusinessAccount.MetaWABAId, getUsage.Start, getUsage.End, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error())
 	}

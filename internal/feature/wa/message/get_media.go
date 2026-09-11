@@ -42,6 +42,9 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	if user == nil {
 		return dto.NewFailedResponse[*Media](http.StatusForbidden, "you are not authenticated")
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to access this message")
+	}
 	if inputErrors := getMedia.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*Media](inputErrors)
 	}
@@ -55,28 +58,7 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	if !payloadContainsMediaID(message.Payload, getMedia.WAMediaID) {
 		return dto.NewFailedResponse[*Media](http.StatusNotFound, "media not found in message")
 	}
-	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
-	if err != nil {
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	authorized := false
-	for _, phoneNumber := range phoneNumbers {
-		if phoneNumber.MetaPhoneNumberId == message.PhoneNumberId {
-			authorized = true
-			break
-		}
-	}
-	if !authorized {
-		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to access this message")
-	}
-	businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, message.PhoneNumberId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use this phone number")
-		}
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	content, contentType, err := dependencies.Whatsapp.DownloadMedia(ctx, getMedia.WAMediaID, businessPortfolio.AccessToken)
+	content, contentType, err := dependencies.Whatsapp.DownloadMedia(ctx, getMedia.WAMediaID, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error())
 	}

@@ -5,6 +5,7 @@ import (
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
@@ -21,6 +22,15 @@ type User struct {
 	// only used in embedded signup if the activate meta function failed
 	WAActivated       bool   `json:"wa_activated"`
 	WAActivationError string `json:"wa_activation_error,omitempty"`
+	// only loaded in wacontroller
+	WA *UserWA `json:"-"`
+}
+
+type UserWA struct {
+	PhoneNumber_                 *dto_wa.PhoneNumber       `json:"-"`
+	BusinessAccount              *dto_wa.BusinessAccount   `json:"-"`
+	BusinessPortfolio            *dto_wa.BusinessPortfolio `json:"-"`
+	BusinessPortfolioAccessToken string                    `json:"-"`
 }
 
 func NewUser(user dao_account.User) User {

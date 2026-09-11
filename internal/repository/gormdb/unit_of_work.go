@@ -22,7 +22,6 @@ type UnitOfWork struct {
 	waBusinessPortfolioRepository  repository.WABusinessPortfolioRepository
 	waBusinessAccountRepository    repository.WABusinessAccountRepository
 	waPhoneNumberRepository        repository.WAPhoneNumberRepository
-	waUserPhoneNumberRepository    repository.WAUserPhoneNumberRepository
 	waHistoryMessageRepository     repository.WAHistoryMessageRepository
 	waMessageRepository            repository.WAMessageRepository
 	waMessageStatusEventRepository repository.WAMessageStatusEventRepository
@@ -46,7 +45,6 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waBusinessPortfolioRepository = NewWABusinessPortfolioRepository(db, logger)
 	unitOfWork.waBusinessAccountRepository = NewWABusinessAccountRepository(db, logger)
 	unitOfWork.waPhoneNumberRepository = NewWAPhoneNumberRepository(db, logger)
-	unitOfWork.waUserPhoneNumberRepository = NewWAUserPhoneNumberRepository(db, logger)
 	unitOfWork.waHistoryMessageRepository = NewWAHistoryMessageRepository(db, logger)
 	unitOfWork.waMessageRepository = NewWAMessageRepository(db, logger)
 	unitOfWork.waMessageStatusEventRepository = NewWAMessageStatusEventRepository(db, logger)
@@ -95,10 +93,6 @@ func (unitOfWork *UnitOfWork) WABusinessAccountRepository() repository.WABusines
 
 func (unitOfWork *UnitOfWork) WAPhoneNumberRepository() repository.WAPhoneNumberRepository {
 	return unitOfWork.waPhoneNumberRepository
-}
-
-func (unitOfWork *UnitOfWork) WAUserPhoneNumberRepository() repository.WAUserPhoneNumberRepository {
-	return unitOfWork.waUserPhoneNumberRepository
 }
 
 func (unitOfWork *UnitOfWork) WAHistoryMessageRepository() repository.WAHistoryMessageRepository {

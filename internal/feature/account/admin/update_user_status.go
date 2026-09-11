@@ -40,6 +40,9 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[any](http.StatusNotFound, "user's WhatsApp not found")
+	}
 	if errors := updateStatus.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
@@ -53,21 +56,14 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	currentBusinessPortfolio, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+	targetBusinessPortfolio, targetBusinessAccount, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(updateStatus.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	targetBusinessPortfolio, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(updateStatus.UserId))
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
-		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	if currentBusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId {
+	if user.WA.BusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId || user.WA.BusinessAccount.MetaWABAId != targetBusinessAccount.MetaWABAId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to update this user")
 	}
 	existingUser.Status = updateStatus.Status

@@ -7,6 +7,7 @@ import (
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
 )
 
@@ -36,35 +37,6 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Get(ctx context.Context, i
 	return phoneNumber, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioByMetaPhoneNumberId(ctx context.Context, metaPhoneNmberId string) (*dao_wa.BusinessPortfolio, error) {
-	var businessPortfolio *dao_wa.BusinessPortfolio
-	result := phoneNumberRepository.db.WithContext(ctx).
-		Table("wa.business_portfolios").
-		Select("wa.business_portfolios.*").
-		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.meta_business_portfolio_id = wa.business_portfolios.meta_business_portfolio_id").
-		Where("wa.phone_numbers.meta_phone_number_id = ?", metaPhoneNmberId).
-		First(&businessPortfolio)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, metaPhoneNmberId)
-		}
-		return nil, result.Error
-	}
-	return businessPortfolio, nil
-}
-
-func (phoneNumberRepository *WAPhoneNumberRepository) GetByBusinessPortfolioId(ctx context.Context, id int32, businessPortfolioId int32) (*dao_wa.PhoneNumber, error) {
-	var phoneNumber *dao_wa.PhoneNumber
-	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("id = ? AND business_portfolio_id = ?", id, businessPortfolioId).First(&phoneNumber)
-	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, id, businessPortfolioId)
-		}
-		return nil, result.Error
-	}
-	return phoneNumber, nil
-}
-
 func (phoneNumberRepository *WAPhoneNumberRepository) GetByPhoneNumberId(ctx context.Context, phoneNumberId string) (*dao_wa.PhoneNumber, error) {
 	var phoneNumber *dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", phoneNumberId).First(&phoneNumber)
@@ -75,18 +47,6 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByPhoneNumberId(ctx con
 		return nil, result.Error
 	}
 	return phoneNumber, nil
-}
-
-func (phoneNumberRepository *WAPhoneNumberRepository) CountByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) (int, error) {
-	var count int64
-	if err := phoneNumberRepository.db.WithContext(ctx).
-		Model(&dao_wa.PhoneNumber{}).
-		Where("meta_business_portfolio_id = ?", metaBusinessPortfolioId).
-		Count(&count).Error; err != nil {
-		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessPortfolioId)
-		return 0, err
-	}
-	return int(count), nil
 }
 
 func (phoneNumberRepository *WAPhoneNumberRepository) CountByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string) (int, error) {
@@ -101,55 +61,72 @@ func (phoneNumberRepository *WAPhoneNumberRepository) CountByMetaBusinessAccount
 	return int(count), nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) ListByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) ([]dao_wa.PhoneNumber, error) {
-	var phoneNumbers []dao_wa.PhoneNumber
-	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_business_portfolio_id = ?", metaBusinessPortfolioId).Order("id").Find(&phoneNumbers)
-	if result.Error != nil {
-		phoneNumberRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioId)
-		return nil, result.Error
+func (phoneNumberRepository *WAPhoneNumberRepository) ListByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string, status types.WAPhoneNumberStatus, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
+	query := phoneNumberRepository.db.WithContext(ctx).
+		Table("wa.phone_numbers AS pn").
+		Joins("INNER JOIN account.users AS u ON u.id = pn.user_id").
+		Where("pn.meta_waba_id = ?", metaBusinessAccountId)
+	if status != "" {
+		query = query.Where("pn.status = ?", status)
 	}
-	return phoneNumbers, nil
-}
-
-func (phoneNumberRepository *WAPhoneNumberRepository) ListByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
-	query := phoneNumberRepository.db.WithContext(ctx).Table("wa.phone_numbers").Where("meta_waba_id = ?", metaBusinessAccountId)
 	var count int64
-	if err := query.Distinct("wa.phone_numbers.id").Count(&count).Error; err != nil {
+	if err := query.Distinct("pn.id").Count(&count).Error; err != nil {
 		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
 		return nil, 0, 0, err
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
-	if err := query.Select("wa.phone_numbers.*").Group("wa.phone_numbers.id").Order("wa.phone_numbers.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers).Error; err != nil {
+	if err := query.Select("pn.*, u.name AS user_name").Order("pn.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers).Error; err != nil {
 		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
 		return nil, 0, 0, err
 	}
 	return phoneNumbers, totalCount, totalPages, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) CheckExists(ctx context.Context, metaPhoneNumberId string) (bool, error) {
-	var count int64
-	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", metaPhoneNumberId).Count(&count)
+func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Context, userId int32) (*dao_wa.PhoneNumber, *dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error) {
+	var phoneNumber dao_wa.PhoneNumber
+	result := phoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.PhoneNumber{}).
+		Where("user_id = ?", userId).
+		First(&phoneNumber)
 	if result.Error != nil {
-		phoneNumberRepository.logger.ErrorFunction(result.Error, metaPhoneNumberId)
-		return false, result.Error
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			phoneNumberRepository.logger.ErrorFunction(result.Error, userId)
+		}
+		return nil, nil, nil, result.Error
 	}
-	return count > 0, nil
+	businessPortfolio, businessAccount, err := phoneNumberRepository.GetBusinessPortfolioAndAccountByUserId(ctx, userId)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return &phoneNumber, businessAccount, businessPortfolio, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) ListBusinessAccounts(ctx context.Context, userId int32) ([]dao_wa.BusinessAccount, error) {
-	var businessAccounts []dao_wa.BusinessAccount
+func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, error) {
+	var businessAccount dao_wa.BusinessAccount
 	result := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.business_accounts").
-		Select("DISTINCT wa.business_accounts.*").
+		Select("wa.business_accounts.*").
 		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.meta_waba_id = wa.business_accounts.meta_waba_id").
-		Joins("JOIN wa.user_phone_numbers ON wa.user_phone_numbers.phone_number_id = wa.phone_numbers.id").
-		Where("wa.user_phone_numbers.user_id = ?", userId).
+		Where("wa.phone_numbers.user_id = ?", userId).
 		Order("wa.business_accounts.id").
-		Find(&businessAccounts)
+		First(&businessAccount)
 	if result.Error != nil {
-		phoneNumberRepository.logger.ErrorFunction(result.Error, userId)
-		return nil, result.Error
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			phoneNumberRepository.logger.ErrorFunction(result.Error, userId)
+		}
+		return nil, nil, result.Error
 	}
-	return businessAccounts, nil
+	var businessPortfolio dao_wa.BusinessPortfolio
+	result = phoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.BusinessPortfolio{}).
+		Where("meta_business_portfolio_id = ?", businessAccount.MetaBusinessPortfolioId).
+		First(&businessPortfolio)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			phoneNumberRepository.logger.ErrorFunction(result.Error, userId, businessAccount.MetaBusinessPortfolioId)
+		}
+		return nil, nil, result.Error
+	}
+	return &businessPortfolio, &businessAccount, nil
 }

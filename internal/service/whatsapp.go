@@ -222,15 +222,32 @@ type WhatsAppWABADetailsResponse struct {
 	Name                string                         `json:"name"`
 	Status              string                         `json:"status"`
 	AccountReviewStatus string                         `json:"account_review_status"`
+	Currency            string                         `json:"currency"`
 	OwnerBusinessInfo   *WhatsAppWABAOwnerBusinessInfo `json:"owner_business_info,omitempty"`
+	TimezoneID          string                         `json:"timezone_id"`
 }
 
 type WhatsAppPhoneNumberDetailsResponse struct {
-	DisplayPhoneNumber     string `json:"display_phone_number"`
-	VerifiedName           string `json:"verified_name"`
-	ID                     string `json:"id"`
-	Status                 string `json:"status"`
-	CodeVerificationStatus string `json:"code_verification_status"`
+	DisplayPhoneNumber     string                            `json:"display_phone_number"`
+	VerifiedName           string                            `json:"verified_name"`
+	ID                     string                            `json:"id"`
+	Status                 string                            `json:"status"`
+	CodeVerificationStatus string                            `json:"code_verification_status"`
+	QualityRating          string                            `json:"quality_rating"`
+	PlatformType           string                            `json:"platform_type"`
+	IsOnBizApp             bool                              `json:"is_on_biz_app"`
+	MessagingLimitTier     string                            `json:"messaging_limit_tier"`
+	NameStatus             string                            `json:"name_status"`
+	Throughput             *WhatsAppPhoneNumberThroughput    `json:"throughput,omitempty"`
+	WebhookConfiguration   *WhatsAppPhoneNumberWebhookConfig `json:"webhook_configuration,omitempty"`
+}
+
+type WhatsAppPhoneNumberThroughput struct {
+	Level string `json:"level"`
+}
+
+type WhatsAppPhoneNumberWebhookConfig struct {
+	Application string `json:"application"`
 }
 
 type WhatsAppMediaResponse struct {
@@ -495,10 +512,6 @@ func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID
 
 // SubscribeApp subscribes this app to the WABA's webhooks; without it no inbound message or status callbacks are delivered.
 func (whatsapp *Whatsapp) SubscribeApp(ctx context.Context, wabaId string, businessAccessToken string) error {
-	wabaId = strings.TrimSpace(wabaId)
-	if wabaId == "" {
-		return fmt.Errorf("wabaId is required")
-	}
 	endpoint := whatsapp.buildEndpoint(wabaId, "subscribed_apps")
 	if err := whatsapp.doJSONRequest(ctx, "subscribe_app", http.MethodPost, endpoint, nil, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
@@ -507,11 +520,8 @@ func (whatsapp *Whatsapp) SubscribeApp(ctx context.Context, wabaId string, busin
 	return nil
 }
 
+// should not be used
 func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
-	phoneNumberID = strings.TrimSpace(phoneNumberID)
-	if phoneNumberID == "" {
-		return fmt.Errorf("phone number ID is required")
-	}
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
 	if err := whatsapp.doJSONRequest(ctx, "remove_phone_number", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, phoneNumberID)
@@ -520,52 +530,62 @@ func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID s
 	return nil
 }
 
-func (whatsapp *Whatsapp) GetBusinessName(ctx context.Context, metaBusinessPortfolioId string, businessAccessToken string) (string, error) {
-	metaBusinessPortfolioId = strings.TrimSpace(metaBusinessPortfolioId)
-	if metaBusinessPortfolioId == "" {
-		return "", fmt.Errorf("metaBusinessPortfolioId is required")
+func (whatsapp *Whatsapp) DeregisterPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
+	endpoint := fmt.Sprintf("%s/%s/%s/deregister", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
+	if err := whatsapp.doJSONRequest(ctx, "deregister_phone_number", http.MethodPost, endpoint, nil, nil, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, phoneNumberID)
+		return err
 	}
-	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaBusinessPortfolioId))
-	query := url.Values{}
-	query.Set("fields", "name")
-	endpoint += "?" + query.Encode()
-	var response WhatsAppBusinessResponse
-	if err := whatsapp.doJSONRequest(ctx, "get_business_name", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-		whatsapp.logger.ErrorFunction(err, metaBusinessPortfolioId)
-		return "", err
-	}
-	if strings.TrimSpace(response.Name) == "" {
-		return "", fmt.Errorf("business name is missing from the WhatsApp API response")
-	}
-	return response.Name, nil
+	return nil
 }
+
+// ReconnectPhoneNumber registers an existing phone number again using its
+// persisted two-step verification PIN.
+func (whatsapp *Whatsapp) ReconnectPhoneNumber(ctx context.Context, phoneNumberID string, registrationPin string, businessAccessToken string) error {
+	payload := map[string]any{
+		"messaging_product": WhatsAppMessagingProduct,
+		"pin":               registrationPin,
+	}
+	endpoint := whatsapp.buildEndpoint(phoneNumberID, "register")
+	if err := whatsapp.doJSONRequest(ctx, "reconnect_phone_number", http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, phoneNumberID)
+		return err
+	}
+	return nil
+}
+
+// GetWABA owner_business_info includes id and name
+// func (whatsapp *Whatsapp) GetBusinessPortfolio(ctx context.Context, metaBusinessPortfolioId string, businessAccessToken string) (string, error) {
+// 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaBusinessPortfolioId))
+// 	query := url.Values{}
+// 	query.Set("fields", "name")
+// 	endpoint += "?" + query.Encode()
+// 	var response WhatsAppBusinessResponse
+// 	if err := whatsapp.doJSONRequest(ctx, "get_business_portfolio", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+// 		whatsapp.logger.ErrorFunction(err, metaBusinessPortfolioId)
+// 		return "", err
+// 	}
+// 	if strings.TrimSpace(response.Name) == "" {
+// 		return "", fmt.Errorf("business name is missing from the WhatsApp API response")
+// 	}
+// 	return response.Name, nil
+// }
 
 // GetWABA reads the WABA together with its owning business portfolio. Unlike the business portfolio
 // edges this only needs whatsapp_business_management, not business_management.
 func (whatsapp *Whatsapp) GetWABA(ctx context.Context, wabaId string, businessAccessToken string) (*WhatsAppWABADetailsResponse, error) {
-	wabaId = strings.TrimSpace(wabaId)
-	if wabaId == "" {
-		return nil, fmt.Errorf("wabaId is required")
-	}
 	query := url.Values{}
-	query.Set("fields", "id,name,status,account_review_status,owner_business_info")
+	query.Set("fields", "id,name,status,currency,timezone_id,account_review_status,owner_business_info")
 	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
 	var response WhatsAppWABADetailsResponse
 	if err := whatsapp.doJSONRequest(ctx, "get_waba", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
 		return nil, err
 	}
-	if response.OwnerBusinessInfo == nil || strings.TrimSpace(response.OwnerBusinessInfo.ID) == "" {
-		return nil, fmt.Errorf("owner business info is missing from the WhatsApp API response")
-	}
 	return &response, nil
 }
 
 func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start int64, end int64, granularity types.WAAnalyticsGranularity, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {
-	wabaId = strings.TrimSpace(wabaId)
-	if wabaId == "" {
-		return nil, fmt.Errorf("wabaId is required")
-	}
 	query := url.Values{}
 	query.Set("fields", fmt.Sprintf("analytics.start(%d).end(%d).granularity(%s)", start, end, granularity))
 	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
@@ -585,9 +605,9 @@ func (whatsapp *Whatsapp) GetWABAUsage(ctx context.Context, wabaId string, start
 	return &response.Analytics, nil
 }
 
-func (whatsapp *Whatsapp) GetAllPhoneNumbersByWABAId(ctx context.Context, wabaId string, businessAccessToken string) ([]WhatsAppPhoneNumberDetailsResponse, error) {
+func (whatsapp *Whatsapp) ListPhoneNumbers(ctx context.Context, wabaId string, businessAccessToken string) ([]WhatsAppPhoneNumberDetailsResponse, error) {
 	query := url.Values{}
-	query.Set("fields", "id,display_phone_number,verified_name")
+	query.Set("fields", "id,display_phone_number,verified_name,status,quality_rating,platform_type,is_on_biz_app")
 	endpoint := fmt.Sprintf("%s/%s/%s/phone_numbers?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
 	phoneNumbers := make([]WhatsAppPhoneNumberDetailsResponse, 0)
 	for endpoint != "" {
@@ -595,7 +615,7 @@ func (whatsapp *Whatsapp) GetAllPhoneNumbersByWABAId(ctx context.Context, wabaId
 			Data   []WhatsAppPhoneNumberDetailsResponse `json:"data"`
 			Paging *dto_wa.AnalyticsPaging              `json:"paging,omitempty"`
 		}
-		if err := whatsapp.doJSONRequest(ctx, "get_all_phone_numbers_by_waba_id", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		if err := whatsapp.doJSONRequest(ctx, "list_phone_numbers", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 			whatsapp.logger.ErrorFunction(err, wabaId)
 			return nil, err
 		}
@@ -839,7 +859,7 @@ func (whatsapp *Whatsapp) DeleteTemplate(ctx context.Context, wabaId string, nam
 func (whatsapp *Whatsapp) GetPhoneNumber(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) (*WhatsAppPhoneNumberDetailsResponse, error) {
 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaPhoneNumberId))
 	query := url.Values{}
-	query.Set("fields", "display_phone_number,verified_name,status,code_verification_status")
+	query.Set("fields", "id,display_phone_number,verified_name,status,code_verification_status,quality_rating,platform_type,is_on_biz_app,messaging_limit_tier,name_status,throughput,webhook_configuration")
 	endpoint += "?" + query.Encode()
 	var response WhatsAppPhoneNumberDetailsResponse
 	if err := whatsapp.doJSONRequest(ctx, "get_phone_number", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {

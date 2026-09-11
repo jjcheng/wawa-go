@@ -40,12 +40,8 @@ func (createFromSample CreateFromSample) Handle(ctx context.Context, user *dto_a
 	if inputErrors := createFromSample.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Template](inputErrors)
 	}
-	businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
-		}
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
 	}
 	sampleTemplate, err := dependencies.UnitOfWork.WASampleTemplateRepository().GetById(ctx, int32(createFromSample.SampleTemplateId))
 	if err != nil {
@@ -59,15 +55,15 @@ func (createFromSample CreateFromSample) Handle(ctx context.Context, user *dto_a
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	templateBase.Name = createFromSample.Name
-	if err := createFromSample.uploadHeaderMediaSamples(ctx, &templateBase.TemplateBase, dependencies, businessPortfolio.AccessToken); err != nil {
+	if err := createFromSample.uploadHeaderMediaSamples(ctx, &templateBase.TemplateBase, dependencies, user.WA.BusinessPortfolioAccessToken); err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}
-	template, err := dependencies.Whatsapp.CreateTemplate(ctx, businessAccount.MetaWABAId, templateBase.Payload(), businessPortfolio.AccessToken)
+	template, err := dependencies.Whatsapp.CreateTemplate(ctx, user.WA.BusinessAccount.MetaWABAId, templateBase.Payload(), user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}
 	// set meta edit template url
-	template.MetaEditTemplateUrl = fmt.Sprintf("https://business.facebook.com/latest/whatsapp_manager/message_templates/?business_id=%s&tab=message-templates&childRoute=CAPI&id=%s&nav_ref=whatsapp_manager&asset_id=%s", businessPortfolio.MetaBusinessPortfolioId, template.ID, businessAccount.MetaWABAId)
+	template.MetaEditTemplateUrl = fmt.Sprintf("https://business.facebook.com/latest/whatsapp_manager/message_templates/?business_id=%s&tab=message-templates&childRoute=CAPI&id=%s&nav_ref=whatsapp_manager&asset_id=%s", user.WA.BusinessPortfolio.MetaBusinessPortfolioId, template.ID, user.WA.BusinessAccount.MetaWABAId)
 	return dto.NewSuccessResponse(template)
 }
 

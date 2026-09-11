@@ -37,19 +37,21 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 	if errors := store.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	existing, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, store.MetaWABAId)
+	existing, businessPortfolio, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, store.MetaWABAId)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, err.Error())
 		}
 	}
-	// get waba name
-	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, store.MetaBusinessProtfolioId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business portfolio not found")
+	// New WABAs do not have a business-account association yet, so resolve the portfolio directly.
+	if businessPortfolio == nil {
+		businessPortfolio, err = dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, store.MetaBusinessProtfolioId)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business portfolio not found")
+			}
+			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	waba, err := dependencies.Whatsapp.GetWABA(ctx, store.MetaWABAId, businessPortfolio.AccessToken)
 	if err != nil {

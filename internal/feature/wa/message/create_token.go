@@ -42,18 +42,10 @@ func (createToken CreateToken) Handle(ctx context.Context, user *dto_account.Use
 	if inputErrors := createToken.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.AblyTokenRequest](inputErrors)
 	}
-	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
-	if err != nil {
-		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA == nil || user.WA.PhoneNumber_ == nil {
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
-	authorized := false
-	for _, phoneNumber := range phoneNumbers {
-		if phoneNumber.MetaPhoneNumberId == createToken.PhoneNumberID {
-			authorized = true
-			break
-		}
-	}
-	if !authorized {
+	if user.WA.PhoneNumber_.MetaPhoneNumberId != createToken.PhoneNumberID {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
 	channelName := helper.GetChatChannelName(createToken.PhoneNumberID, createToken.CustomerWAId, createToken.CustomerMetaUserID)

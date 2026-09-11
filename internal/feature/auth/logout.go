@@ -17,7 +17,7 @@ func (logout Logout) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "authentication required")
 	}
-	dependencies.UnitOfWork.AccountSessionRepository().Logout(ctx, user.Id)
+	dependencies.UnitOfWork.AccountSessionRepository().UpdateRevokedAt(ctx, user.Id)
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 

@@ -3,7 +3,6 @@ package feature_wa_message
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -18,7 +17,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type MessageType string
@@ -225,26 +223,18 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Message](inputErrors)
 	}
-	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	if len(phoneNumbers) == 0 {
+	if user.WA == nil || user.WA.PhoneNumber_ == nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
 	}
-	create.PhoneNumberID = phoneNumbers[0].MetaPhoneNumberId
-	businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, create.PhoneNumberID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
-		}
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	create.PhoneNumberID = user.WA.PhoneNumber_.MetaPhoneNumberId
+	if strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
 	}
 	create.MessagingProduct = "whatsapp"
 	if create.RecipientType == "" {
 		create.RecipientType = RecipientTypeIndividual
 	}
-	response, err := dependencies.Whatsapp.SendMessage(ctx, create.PhoneNumberID, create, businessPortfolio.AccessToken)
+	response, err := dependencies.Whatsapp.SendMessage(ctx, create.PhoneNumberID, create, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, err.Error())
 	}
@@ -265,7 +255,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	payload["timestamp"] = fmt.Sprint(timestamp) // to be consistent with WA
 	message := dao_wa.Message{
 		Sending:       true,
-		PhoneNumber:   helper.NormalizeWAId(phoneNumbers[0].PhoneNumber),
+		PhoneNumber:   helper.NormalizeWAId(user.WA.PhoneNumber_.PhoneNumber),
 		PhoneNumberId: create.PhoneNumberID,
 		CustomerWAId:  recipient,
 		WAMessageId:   response.Messages[0].ID,

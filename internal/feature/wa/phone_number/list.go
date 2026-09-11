@@ -1,11 +1,9 @@
-package feature_wa_user_phone_number
+package feature_wa_phone_number
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
-	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
@@ -13,12 +11,12 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type List struct {
-	Page     int `form:"page" description:"page number from 1"`
-	PageSize int `form:"page_size" description:"page size, default 10"`
+	Status   types.WAPhoneNumberStatus `form:"status" description:"status of the phone number"`
+	Page     int                       `form:"page" description:"page number from 1"`
+	PageSize int                       `form:"page_size" description:"page size, default 10"`
 }
 
 func (list *List) Validate() []exception.InputException {
@@ -36,33 +34,32 @@ func (list *List) Validate() []exception.InputException {
 }
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_wa.PhoneNumber]] {
-	if errors := list.Validate(); len(errors) > 0 {
-		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.PhoneNumber]](errors)
+	if inputErrors := list.Validate(); len(inputErrors) > 0 {
+		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.PhoneNumber]](inputErrors)
 	}
 	if user == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusForbidden, "you are not authenticated")
 	}
-	var phoneNumbers []dao_wa.PhoneNumber
-	var ex error
+	if user.WA == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusUnauthorized, "you are not authorized to access a WhatsApp business portfolio")
+	}
+	items := make([]dto_wa.PhoneNumber, 0)
 	var totalCount, totalPages int
 	if user.Type == types.UserTypeMaster {
-		_, businessAccount, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+		phoneNumbers, count, pages, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListByMetaBusinessAccountId(ctx, user.WA.BusinessAccount.MetaWABAId, list.Status, list.Page, list.PageSize)
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusUnauthorized, "you are not authorized to access a WhatsApp business portfolio")
-			}
 			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
-		phoneNumbers, totalCount, totalPages, ex = dependencies.UnitOfWork.WAPhoneNumberRepository().ListByMetaBusinessAccountId(ctx, businessAccount.MetaWABAId, list.Page, list.PageSize)
-	} else {
-		phoneNumbers, totalCount, totalPages, ex = dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, list.Page, list.PageSize)
-	}
-	if ex != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	items := make([]dto_wa.PhoneNumber, len(phoneNumbers))
-	for index, phoneNumber := range phoneNumbers {
-		items[index] = dto_wa.NewPhoneNumber(phoneNumber)
+		totalCount = count
+		totalPages = pages
+		items = make([]dto_wa.PhoneNumber, len(phoneNumbers))
+		for index, phoneNumber := range phoneNumbers {
+			items[index] = dto_wa.NewPhoneNumber(phoneNumber)
+		}
+	} else if user.WA.PhoneNumber_ != nil && (list.Status == "" || user.WA.PhoneNumber_.Status == list.Status) {
+		items = append(items, *user.WA.PhoneNumber_)
+		totalCount = 1
+		totalPages = 1
 	}
 	response := dto.NewPagedListResponse(items, totalPages, totalCount)
 	return dto.NewSuccessResponse(&response)

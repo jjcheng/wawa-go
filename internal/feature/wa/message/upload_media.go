@@ -2,7 +2,6 @@ package feature_wa_message
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -15,7 +14,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 // this feature is not called directly, it's redirected from wa_controller.registerWAMediaUploadRoute, any new parameter need to be binded there
@@ -51,21 +49,13 @@ func (upload UploadMedia) Handle(ctx context.Context, user *dto_account.User, de
 	}
 	filename := strings.ReplaceAll(uuid.NewString(), "-", "") + filepath.Ext(upload.Filename)
 	if upload.ToMeta {
-		phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 1)
-		if err != nil {
-			return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-		}
-		if len(phoneNumbers) == 0 {
+		if user.WA == nil || user.WA.PhoneNumber_ == nil {
 			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
 		}
-		businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioByMetaPhoneNumberId(ctx, phoneNumbers[0].MetaPhoneNumberId)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
-			}
-			return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		if strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
+			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
 		}
-		mediaID, err := dependencies.Whatsapp.UploadMedia(ctx, phoneNumbers[0].MetaPhoneNumberId, filename, upload.ContentType, upload.Content, businessPortfolio.AccessToken)
+		mediaID, err := dependencies.Whatsapp.UploadMedia(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, filename, upload.ContentType, upload.Content, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
 			return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error())
 		}

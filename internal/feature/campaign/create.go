@@ -92,21 +92,21 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "one or more customers do not have a valid country code and phone number, please edit them")
 		}
 	}
-	businessPortfolio, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+	businessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to access this business account")
 		}
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
+	phoneNumber, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
+		}
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if len(phoneNumbers) == 0 {
-		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
-	}
-	phoneNumberID := phoneNumbers[0].MetaPhoneNumberId
+	phoneNumberID := phoneNumber.MetaPhoneNumberId
 	template, err := dependencies.Whatsapp.GetTemplate(ctx, create.WATemplateId, businessPortfolio.AccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template not found")

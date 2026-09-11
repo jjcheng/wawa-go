@@ -9,6 +9,9 @@ type BusinessAccount struct {
 	dto.DTOBase
 	MetaWABAId string `json:"meta_waba_id"`
 	Name       string `json:"name"`
+	// used only when updating WABA
+	MetaBusinessPortfolioId   string `json:"meta_business_portfolio_id"`
+	MetaBusinessPortfolioName string `json:"meta_business_portfolio_name"`
 }
 
 func NewBusinessAccount(businessAccount dao_wa.BusinessAccount) BusinessAccount {

@@ -39,28 +39,16 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAUserPhoneNumberRepository().ListPhoneNumbersByUserId(ctx, user.Id, 1, 999)
-	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	authorized := false
-	for _, assignedPhoneNumber := range phoneNumbers {
-		if assignedPhoneNumber.Id == phoneNumber.Id {
-			authorized = true
-			break
-		}
-	}
-	if !authorized {
+	if user.WA == nil || user.WA.PhoneNumber_ == nil {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to remove this phone number")
 	}
-	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, phoneNumber.MetaBusinessPortfolioId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
-		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	if user.WA.PhoneNumber_.Id != phoneNumber.Id {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to remove this phone number")
 	}
-	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, businessPortfolio.MetaBusinessPortfolioId); err != nil {
+	if user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
+	}
+	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolio.MetaBusinessPortfolioId); err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
 	}
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().DeleteById(ctx, phoneNumber.Id); err != nil {

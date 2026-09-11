@@ -195,7 +195,7 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
 		return err
 	}
-	userPhoneNumber, err := transaction.WAUserPhoneNumberRepository().GetByPhoneNumberId(ctx, metadata.PhoneNumberID)
+	userPhoneNumber, err := transaction.WAPhoneNumberRepository().GetByPhoneNumberId(ctx, metadata.PhoneNumberID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errors.New("phone number id is not associated with a user")

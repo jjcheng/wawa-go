@@ -8,8 +8,5 @@ import (
 
 type WABusinessPortfolioRepository interface {
 	Repository[dao_wa.BusinessPortfolio]
-	Get(ctx context.Context, id int32) (*dao_wa.BusinessPortfolio, error)
-	GetByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, error)
 	GetByMetaBusinessPortfolioId(ctx context.Context, metaBusinessPortfolioId string) (*dao_wa.BusinessPortfolio, error)
-	ListByMetaBusinessPortfolioIds(ctx context.Context, metaBusinessPortfolioIds []string) ([]dao_wa.BusinessPortfolio, error)
 }

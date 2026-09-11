@@ -1,6 +1,9 @@
 package dao_wa
 
-import "github.com/jjcheng/wawa-go/internal/dao"
+import (
+	"github.com/jjcheng/wawa-go/internal/dao"
+	"github.com/jjcheng/wawa-go/internal/types"
+)
 
 type PhoneNumber struct {
 	dao.DAOBase
@@ -8,10 +11,14 @@ type PhoneNumber struct {
 	MetaWABAId              string `gorm:"column:meta_waba_id"`
 	MetaPhoneNumberId       string `gorm:"column:meta_phone_number_id"`
 	PhoneNumber             string `gorm:"column:phone_number"`
+	WAId                    string `gorm:"wa_id"`
 	Name                    string `gorm:"column:name"`
 	UserId                  int32  `gorm:"column:user_id"`
 	// two-step verification PIN set at registration, required to re-register the number later
-	RegistrationPin string `gorm:"column:registration_pin"`
+	RegistrationPin string                    `gorm:"column:registration_pin"`
+	Status          types.WAPhoneNumberStatus `gorm:"column:status"`
+	// from account.users table
+	UserName string `gorm:"column:user_name;->"`
 }
 
 func (PhoneNumber) TableName() string {
