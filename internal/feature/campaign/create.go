@@ -3,7 +3,6 @@ package feature_campaign
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,10 +16,8 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type Create struct {
@@ -70,6 +67,9 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusForbidden, "you are not authenticated")
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you do not have a connected WhatsApp number")
+	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Campaign](inputErrors)
 	}
@@ -93,22 +93,21 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "one or more customers do not have a valid country code and phone number, please edit them")
 		}
 	}
-	businessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to access this business account")
-		}
-		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	phoneNumber, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
-		}
-		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	phoneNumberID := phoneNumber.MetaPhoneNumberId
-	template, err := dependencies.Whatsapp.GetTemplate(ctx, create.WATemplateId, businessPortfolio.AccessToken)
+	// businessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
+	// if err != nil {
+	// 	if errors.Is(err, gorm.ErrRecordNotFound) {
+	// 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to access this business account")
+	// 	}
+	// 	return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	// }
+	// phoneNumber, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
+	// if err != nil {
+	// 	if errors.Is(err, gorm.ErrRecordNotFound) {
+	// 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
+	// 	}
+	// 	return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	// }
+	template, err := dependencies.Whatsapp.GetTemplate(ctx, create.WATemplateId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template not found")
 	}
@@ -201,20 +200,20 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	committed = true
 	result := dto_customer.NewCampaign(campaign, nil)
-	for _, recipient := range recipients {
-		createMessage := feature_wa_message.Create{
-			RecipientType: feature_wa_message.RecipientTypeIndividual,
-			To:            recipient.CustomerWAId,
-			PhoneNumberID: phoneNumberID,
-			Type:          feature_wa_message.MessageTypeTemplate,
-			Template:      &recipient.Payload,
-			AttachmentURL: attachmentUrl,
-		}
-		createMessageResponse := createMessage.Handle(ctx, user, dependencies)
-		if !createMessageResponse.Success {
-			dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, createMessageResponse.Message)
-		}
-	}
+	// for _, recipient := range recipients {
+	// 	createMessage := feature_wa_message.Create{
+	// 		RecipientType: feature_wa_message.RecipientTypeIndividual,
+	// 		To:            recipient.CustomerWAId,
+	// 		PhoneNumberID: phoneNumberID,
+	// 		Type:          feature_wa_message.MessageTypeTemplate,
+	// 		Template:      &recipient.Payload,
+	// 		AttachmentURL: attachmentUrl,
+	// 	}
+	// 	createMessageResponse := createMessage.Handle(ctx, user, dependencies)
+	// 	if !createMessageResponse.Success {
+	// 		dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, createMessageResponse.Message)
+	// 	}
+	// }
 	return dto.NewSuccessResponse(&result)
 }
 
