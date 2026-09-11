@@ -98,6 +98,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Remarks:             create.Remarks,
 		ImportedPhoneNumber: create.WAId,
 	}
+	// avoice non null error
+	if customer.AdditionalData == nil {
+		customer.AdditionalData = map[string]any{}
+	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

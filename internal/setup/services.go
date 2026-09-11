@@ -145,9 +145,8 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 		message.CustomerMetaUserId = status.RecipientUserID
 		message.CustomerWAId = status.RecipientID
 		if status.Pricing != nil {
-			if status.Pricing.Billable {
-				// set price
-			}
+			message.Billable = status.Pricing.Billable
+			message.BillingType = status.Pricing.Type
 			message.Category = status.Pricing.Category
 		}
 		transaction.WAMessageRepository().Update(ctx, message)

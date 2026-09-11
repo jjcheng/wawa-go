@@ -17,6 +17,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -201,8 +202,17 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	committed = true
 	result := dto_customer.NewCampaign(campaign, nil)
 	for _, recipient := range recipients {
-		if _, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumberID, recipient.Payload, businessPortfolio.AccessToken); err != nil {
-			dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, err)
+		createMessage := feature_wa_message.Create{
+			RecipientType: feature_wa_message.RecipientTypeIndividual,
+			To:            recipient.CustomerWAId,
+			PhoneNumberID: phoneNumberID,
+			Type:          feature_wa_message.MessageTypeTemplate,
+			Template:      &recipient.Payload,
+			AttachmentURL: attachmentUrl,
+		}
+		createMessageResponse := createMessage.Handle(ctx, user, dependencies)
+		if !createMessageResponse.Success {
+			dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, createMessageResponse.Message)
 		}
 	}
 	return dto.NewSuccessResponse(&result)

@@ -56,7 +56,7 @@ type Create struct {
 	Location         *LocationObject  `json:"location,omitempty" description:"only present if type is location"`
 	Contacts         []map[string]any `json:"contacts,omitempty" description:"only present if type is contacts"`
 	Interactive      *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
-	Template         *TemplateObject  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
+	Template         *map[string]any  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
 	Reaction         *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
 	AttachmentURL    string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
 }

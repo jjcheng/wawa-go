@@ -8389,6 +8389,12 @@
                               "attachment_url": {
                                 "type": "string"
                               },
+                              "billable": {
+                                "type": "boolean"
+                              },
+                              "billing_type": {
+                                "type": "string"
+                              },
                               "category": {
                                 "type": "string"
                               },
@@ -8427,10 +8433,6 @@
                               },
                               "phone_number_id": {
                                 "type": "string"
-                              },
-                              "price": {
-                                "format": "float",
-                                "type": "number"
                               },
                               "sending": {
                                 "type": "boolean"
@@ -9076,55 +9078,11 @@
                     "type": "object"
                   },
                   "template": {
+                    "additionalProperties": {
+                      "type": "object"
+                    },
                     "description": "only if the message is from a template, set the rest parameters to nil",
                     "nullable": true,
-                    "properties": {
-                      "components": {
-                        "items": {
-                          "properties": {
-                            "index": {
-                              "type": "string"
-                            },
-                            "parameters": {
-                              "items": {
-                                "additionalProperties": {
-                                  "type": "object"
-                                },
-                                "type": "object"
-                              },
-                              "type": "array"
-                            },
-                            "sub_type": {
-                              "type": "string"
-                            },
-                            "type": {
-                              "type": "string"
-                            }
-                          },
-                          "type": "object"
-                        },
-                        "nullable": true,
-                        "type": "array"
-                      },
-                      "language": {
-                        "nullable": true,
-                        "properties": {
-                          "code": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "policy": {
-                            "nullable": true,
-                            "type": "string"
-                          }
-                        },
-                        "type": "object"
-                      },
-                      "name": {
-                        "nullable": true,
-                        "type": "string"
-                      }
-                    },
                     "type": "object"
                   },
                   "text": {
@@ -9199,6 +9157,12 @@
                         "attachment_url": {
                           "type": "string"
                         },
+                        "billable": {
+                          "type": "boolean"
+                        },
+                        "billing_type": {
+                          "type": "string"
+                        },
                         "category": {
                           "type": "string"
                         },
@@ -9237,10 +9201,6 @@
                         },
                         "phone_number_id": {
                           "type": "string"
-                        },
-                        "price": {
-                          "format": "float",
-                          "type": "number"
                         },
                         "sending": {
                           "type": "boolean"

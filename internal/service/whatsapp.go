@@ -489,10 +489,6 @@ func (whatsapp *Whatsapp) UploadTemplateHeaderSample(ctx context.Context, filena
 // RegisterPhoneNumber registers the number on Cloud API and returns the generated two-step verification PIN,
 // which must be persisted because the same PIN is required to re-register the number later.
 func (whatsapp *Whatsapp) RegisterPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) (string, error) {
-	phoneNumberID = strings.TrimSpace(phoneNumberID)
-	if phoneNumberID == "" {
-		return "", fmt.Errorf("phone number ID is required")
-	}
 	pinNumber, err := cryptorand.Int(cryptorand.Reader, big.NewInt(1000000))
 	if err != nil {
 		return "", fmt.Errorf("failed to generate registration PIN: %w", err)

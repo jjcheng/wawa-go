@@ -91,7 +91,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	if existing != nil {
 		// a user who never set a password has no credential to bypass, so signup may hand back a session to finish onboarding
 		if !store.ResumePendingPassword || existing.Status != types.UserStatusPendingPassword {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "phone number already exists, please login instead")
+			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "user with this phone number already exists, please login instead")
 		}
 		u = dto_account.NewUser(*existing)
 	} else {

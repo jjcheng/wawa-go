@@ -222,6 +222,7 @@ func (embeddedSignup EmbeddedSignup) activateOnMeta(ctx context.Context, accessT
 		return err
 	}
 	phoneNumber.RegistrationPin = pin
+	phoneNumber.Status = types.WAPhoneNumberStatusConnected
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, phoneNumber); err != nil {
 		return err
 	}

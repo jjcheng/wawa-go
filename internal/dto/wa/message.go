@@ -21,8 +21,9 @@ type Message struct {
 	Payload            map[string]any        `json:"payload"`
 	AttachmentURL      string                `json:"attachment_url,omitempty"`
 	// billing
-	Price    float32 `json:"price,omitempty"`
-	Category string  `json:"category,omitempty"`
+	Billable    bool   `json:"billable"`
+	Category    string `json:"category,omitempty"`
+	BillingType string `json:"billing_type,omitempty"`
 }
 
 func NewMessage(message dao_wa.Message) Message {
@@ -44,7 +45,8 @@ func NewMessage(message dao_wa.Message) Message {
 		Status:             message.Status,
 		Payload:            message.Payload,
 		AttachmentURL:      message.AttachmentURL,
-		Price:              message.Price,
+		Billable:           message.Billable,
+		BillingType:        message.BillingType,
 		Category:           message.Category,
 	}
 }

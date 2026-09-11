@@ -20,8 +20,9 @@ type Message struct {
 	Payload            map[string]any        `gorm:"column:payload;type:jsonb;serializer:json"`
 	AttachmentURL      string                `gorm:"column:attachment_url"`
 	// for billing
-	Price    float32 `gorm:"price"`
-	Category string  `gorm:"category"`
+	Billable    bool   `gorm:"column:billable"`
+	BillingType string `gorm:"column:billing_type"`
+	Category    string `gorm:"column:category"`
 }
 
 func (Message) TableName() string {

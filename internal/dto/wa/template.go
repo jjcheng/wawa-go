@@ -476,17 +476,25 @@ func (sendTemplate SendTemplate) FinalPayload(template *Template, customer dao_c
 			sendTemplate.Components[i].Parameters[ii].Source = ""
 		}
 	}
+	// payload := map[string]any{
+	// 	"messaging_product": "whatsapp",
+	// 	"to":                customer.WAId,
+	// 	"type":              "template",
+	// 	"template": map[string]any{
+	// 		"name": template.Name,
+	// 		"language": map[string]string{
+	// 			"code": template.Language,
+	// 		},
+	// 		"components": sendTemplate.Components,
+	// 	},
+	// }
+	// createMessage feature will supply the rest
 	payload := map[string]any{
-		"messaging_product": "whatsapp",
-		"to":                customer.WAId,
-		"type":              "template",
-		"template": map[string]any{
-			"name": template.Name,
-			"language": map[string]string{
-				"code": template.Language,
-			},
-			"components": sendTemplate.Components,
+		"name": template.Name,
+		"language": map[string]string{
+			"code": template.Language,
 		},
+		"components": sendTemplate.Components,
 	}
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		sendTemplateData, err := json.Marshal(sendTemplate)
