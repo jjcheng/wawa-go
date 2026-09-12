@@ -10,24 +10,28 @@ type Message struct {
 	dto.DTOBase
 	Sending            bool                  `json:"sending"`
 	PhoneNumber        string                `json:"phone_number"`
-	PhoneNumberId      string                `json:"phone_number_id"`
+	MetaPhoneNumberId  string                `json:"meta_phone_number_id"`
 	CustomerName       string                `json:"customer_name"`
 	CustomerWAId       string                `json:"customer_wa_id"`
 	CustomerMetaUserId string                `json:"customer_meta_user_id"`
+	CustomerId         int32                 `json:"customer_id"`
 	WAMessageId        string                `json:"wa_message_id"`
 	Timestamp          int64                 `json:"timestamp"`
 	Type               string                `json:"type"`
 	Status             types.WAMessageStatus `json:"status"`
 	Payload            map[string]any        `json:"payload"`
+	CampaignId         *int32                `json:"campaign_id"`
 	AttachmentURL      string                `json:"attachment_url,omitempty"`
-	// billing
-	Billable    bool   `json:"billable"`
-	Category    string `json:"category,omitempty"`
-	BillingType string `json:"billing_type,omitempty"`
+	Billable           bool                  `json:"billable"`
+	Category           string                `json:"category,omitempty"`
+	BillingType        string                `json:"billing_type,omitempty"`
+	// lazy loaded
+	PreviewHTML     string `json:"preview_html,omitempty"`
+	PreviewDarkHTML string `json:"preview_dark_html,omitempty"`
 }
 
 func NewMessage(message dao_wa.Message) Message {
-	return Message{
+	d := Message{
 		DTOBase: dto.DTOBase{
 			Id:         message.Id,
 			EntryDate:  message.EntryDate,
@@ -35,10 +39,11 @@ func NewMessage(message dao_wa.Message) Message {
 		},
 		Sending:            message.Sending,
 		PhoneNumber:        message.PhoneNumber,
-		PhoneNumberId:      message.PhoneNumberId,
+		MetaPhoneNumberId:  message.MetaPhoneNumberId,
 		CustomerName:       message.CustomerName,
 		CustomerWAId:       message.CustomerWAId,
 		CustomerMetaUserId: message.CustomerMetaUserId,
+		CustomerId:         message.CustomerId,
 		WAMessageId:        message.WAMessageId,
 		Timestamp:          message.Timestamp,
 		Type:               message.Type,
@@ -49,4 +54,8 @@ func NewMessage(message dao_wa.Message) Message {
 		BillingType:        message.BillingType,
 		Category:           message.Category,
 	}
+	if message.CampaignId.Valid {
+		d.CampaignId = &message.CampaignId.Int32
+	}
+	return d
 }

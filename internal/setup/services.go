@@ -30,9 +30,10 @@ const webhookMessageVisibilityTimeoutSeconds = 180
 func SetupServices(unitOfWork repository.UnitOfWork, logger *service.Logger) *service.Dependencies {
 	fileService := service.NewFileService(logger)
 	messageQueueService := service.NewMessageQueue(logger)
+	eventBridgeService := service.NewEventBridge(logger)
 	ablyService := service.NewAbly(logger)
 	whatsappService := service.NewWhatsapp(logger)
-	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, ablyService, whatsappService)
+	dependencies := service.NewDependencies(unitOfWork, logger, fileService, messageQueueService, eventBridgeService, ablyService, whatsappService)
 	return dependencies
 }
 
@@ -155,7 +156,7 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 		return err
 	}
 	committed = true
-	err = dependencies.Ably.Publish("status", helper.GetChatChannelName(message.PhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), dto_wa.NewMessageStatusEvent(event))
+	err = dependencies.Ably.Publish("status", helper.GetChatChannelName(message.MetaPhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), dto_wa.NewMessageStatusEvent(event))
 	return err
 }
 
@@ -182,7 +183,7 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	message := dao_wa.Message{
 		Sending:            false,
 		PhoneNumber:        metadata.DisplayPhoneNumber,
-		PhoneNumberId:      metadata.PhoneNumberID,
+		MetaPhoneNumberId:  metadata.PhoneNumberID,
 		CustomerName:       contact.Profile.Name,
 		CustomerWAId:       contact.WaID,
 		CustomerMetaUserId: incomingMessage.FromUserID,
@@ -252,5 +253,5 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	}
 	committed = true
 	messageDTO := dto_wa.NewMessage(message)
-	return dependencies.Ably.Publish("message", helper.GetChatChannelName(message.PhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), messageDTO)
+	return dependencies.Ably.Publish("message", helper.GetChatChannelName(message.MetaPhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), messageDTO)
 }

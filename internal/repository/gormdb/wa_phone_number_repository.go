@@ -102,6 +102,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Co
 	return &phoneNumber, businessAccount, businessPortfolio, nil
 }
 
+// used in update user
 func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, error) {
 	var businessAccount dao_wa.BusinessAccount
 	result := phoneNumberRepository.db.WithContext(ctx).

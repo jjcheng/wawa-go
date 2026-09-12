@@ -8434,6 +8434,12 @@
                               "phone_number_id": {
                                 "type": "string"
                               },
+                              "preview_dark_html": {
+                                "type": "string"
+                              },
+                              "preview_html": {
+                                "type": "string"
+                              },
                               "sending": {
                                 "type": "boolean"
                               },
@@ -9200,6 +9206,12 @@
                           "type": "string"
                         },
                         "phone_number_id": {
+                          "type": "string"
+                        },
+                        "preview_dark_html": {
+                          "type": "string"
+                        },
+                        "preview_html": {
                           "type": "string"
                         },
                         "sending": {

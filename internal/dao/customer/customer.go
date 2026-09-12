@@ -18,7 +18,7 @@ type Customer struct {
 	Status              types.CustomerStatus `gorm:"column:status"`
 	Remarks             string               `gorm:"column:remarks"`
 	AdditionalData      map[string]any       `gorm:"column:additional_data;type:jsonb;serializer:json"`
-	ImportedPhoneNumber string               `gorm:"column:imported_phone_number"`
+	ImportedPhoneNumber string               `gorm:"column:imported_phone_number"` // to prevent duplicate when importing from vcf
 }
 
 func (Customer) TableName() string {

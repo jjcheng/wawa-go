@@ -10,14 +10,15 @@ import (
 
 type Campaign struct {
 	dto.DTOBase
-	Name         string               `json:"name"`
-	SendDate     time.Time            `json:"send_date"`
-	WATemplateId string               `json:"wa_template_id"`
-	CustomerIds  []int32              `json:"customer_ids"`
-	UserId       int32                `json:"user_id"`
-	Status       types.CampaignStatus `json:"status"`
-	Token        string               `json:"token"`
-	SendTemplate map[string]any       `json:"send_template"`
+	Name                string               `json:"name"`
+	SendDate            time.Time            `json:"send_date"`
+	WATemplateId        string               `json:"wa_template_id"`
+	CustomerIds         []int32              `json:"customer_ids"`
+	UserId              int32                `json:"user_id"`
+	Status              types.CampaignStatus `json:"status"`
+	Token               string               `json:"token"`
+	SendTemplatePayload map[string]any       `json:"send_template_payload"`
+	TemplatePayload     map[string]any       `json:"template_payload"`
 	// lazy loaded
 	Customers []Customer `json:"customers"`
 }
@@ -29,14 +30,15 @@ func NewCampaign(campaign dao_customer.Campaign, customers []Customer) Campaign 
 			EntryDate:  campaign.EntryDate,
 			LastUpdate: campaign.LastUpdate,
 		},
-		Name:         campaign.Name,
-		WATemplateId: campaign.WATemplateId,
-		CustomerIds:  []int32(campaign.CustomerIds),
-		Status:       campaign.Status,
-		Token:        campaign.Token,
-		Customers:    customers,
-		SendTemplate: campaign.SendTemplate,
-		SendDate:     campaign.SendDate,
+		Name:                campaign.Name,
+		WATemplateId:        campaign.WATemplateId,
+		CustomerIds:         []int32(campaign.CustomerIds),
+		Status:              campaign.Status,
+		Token:               campaign.Token,
+		Customers:           customers,
+		SendTemplatePayload: campaign.SendTemplatePayload,
+		SendDate:            campaign.SendDate,
+		TemplatePayload:     campaign.TemplatePayload,
 	}
 	return c
 }

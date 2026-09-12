@@ -2,8 +2,9 @@ package feature_wa_message
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type MessageType string
@@ -41,24 +43,26 @@ const (
 )
 
 type Create struct {
-	MessagingProduct string           `json:"messaging_product" val:"required" description:"always whatsapp, can leave empty"`
-	RecipientType    RecipientType    `json:"recipient_type" val:"required" description:"type of the recipient. individual or group"`
-	To               string           `json:"to" val:"required" description:"recipient's WA Id or BSUID" example:"6590000000"`
-	PhoneNumberID    string           `json:"phone_number_id" description:"set dynamically based on current user, any value is ignored"`
-	Type             MessageType      `json:"type" val:"required" description:"one of the enum types"`
-	Context          *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
-	Text             *TextObject      `json:"text,omitempty" description:"only present if type is text"`
-	Image            *MediaObject     `json:"image,omitempty" description:"only present if type is image"`
-	Audio            *MediaObject     `json:"audio,omitempty" description:"only present if type is audio"`
-	Video            *MediaObject     `json:"video,omitempty" description:"only present if type is video"`
-	Document         *MediaObject     `json:"document,omitempty" description:"only present if type is document"`
-	Sticker          *MediaObject     `json:"sticker,omitempty" description:"only present if type is sticker"`
-	Location         *LocationObject  `json:"location,omitempty" description:"only present if type is location"`
-	Contacts         []map[string]any `json:"contacts,omitempty" description:"only present if type is contacts"`
-	Interactive      *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
-	Template         *map[string]any  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
-	Reaction         *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
-	AttachmentURL    string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
+	// MessagingProduct string           `json:"messaging_product" val:"required" description:"always whatsapp, can leave empty"`
+	// RecipientType    RecipientType    `json:"recipient_type" val:"required" description:"type of the recipient. individual or group"`
+	// To               string           `json:"to" val:"required" description:"recipient's WA Id or BSUID" example:"6590000000"`
+	// PhoneNumberID    string           `json:"phone_number_id" description:"set dynamically based on current user, any value is ignored"`
+	CustomerId    int32            `json:"customer_id" val:"required" description:"id of the customer"`
+	Type          MessageType      `json:"type" val:"required" description:"one of the enum types"`
+	Context       *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
+	Text          *TextObject      `json:"text,omitempty" description:"only present if type is text"`
+	Image         *MediaObject     `json:"image,omitempty" description:"only present if type is image"`
+	Audio         *MediaObject     `json:"audio,omitempty" description:"only present if type is audio"`
+	Video         *MediaObject     `json:"video,omitempty" description:"only present if type is video"`
+	Document      *MediaObject     `json:"document,omitempty" description:"only present if type is document"`
+	Sticker       *MediaObject     `json:"sticker,omitempty" description:"only present if type is sticker"`
+	Location      *LocationObject  `json:"location,omitempty" description:"only present if type is location"`
+	Contacts      []map[string]any `json:"contacts,omitempty" description:"only present if type is contacts"`
+	Interactive   *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
+	Template      *map[string]any  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
+	Reaction      *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
+	AttachmentURL string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
+	CampaignId    *int32           `json:"campaign_id,omitempty" description:"if it's from a campaign"`
 }
 
 type MessageContext struct {
@@ -150,16 +154,19 @@ type InteractiveRow struct {
 }
 
 func (create *Create) Validate() []exception.InputException {
-	create.To = strings.TrimSpace(create.To)
-	create.PhoneNumberID = strings.TrimSpace(create.PhoneNumberID)
+	// create.To = strings.TrimSpace(create.To)
+	// create.PhoneNumberID = strings.TrimSpace(create.PhoneNumberID)
 	// origin and vcard are not part of Meta’s WhatsApp Cloud API contacts[] schema.
 	for _, contact := range create.Contacts {
 		delete(contact, "origin")
 		delete(contact, "vcard")
 	}
 	inputErrors := []exception.InputException{}
-	if create.To == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("to", "missing recipient"))
+	// if create.To == "" {
+	// 	inputErrors = append(inputErrors, exception.NewInputException("to", "missing recipient"))
+	// }
+	if create.CustomerId <= 0 {
+		inputErrors = append(inputErrors, exception.NewInputException("customer_id", "missing customer_id"))
 	}
 	if create.Type == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("type", "missing message type"))
@@ -226,50 +233,74 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.WA == nil || user.WA.PhoneNumber_ == nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
 	}
-	create.PhoneNumberID = user.WA.PhoneNumber_.MetaPhoneNumberId
+	//create.PhoneNumberID = user.WA.PhoneNumber_.MetaPhoneNumberId
 	if strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
 	}
-	create.MessagingProduct = "whatsapp"
-	if create.RecipientType == "" {
-		create.RecipientType = RecipientTypeIndividual
+	// get customer by customer id
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, create.CustomerId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "customer not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	response, err := dependencies.Whatsapp.SendMessage(ctx, create.PhoneNumberID, create, user.WA.BusinessPortfolioAccessToken)
+	if customer.UserId != user.Id {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "not your customer")
+	}
+	if customer.WAId == "" {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID, please edit the details")
+	}
+	// create.MessagingProduct = "whatsapp"
+	// if create.RecipientType == "" {
+	// 	create.RecipientType = RecipientTypeIndividual
+	// }
+	payload, err := messagePayload(create)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	payload["messaging_product"] = "whatsapp"
+	payload["recipient_type"] = "individual"
+	payload["to"] = customer.WAId
+	response, err := dependencies.Whatsapp.SendMessage(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, payload, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, err.Error())
 	}
 	if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, "WhatsApp did not return a message ID")
 	}
-	payload, err := messagePayload(create)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	recipient := create.To
-	if len(response.Contacts) > 0 && strings.TrimSpace(response.Contacts[0].WaID) != "" {
-		recipient = response.Contacts[0].WaID
-	}
-	payload["to"] = recipient
+	// recipient := create.To
+	// if len(response.Contacts) > 0 && strings.TrimSpace(response.Contacts[0].WaID) != "" {
+	// 	recipient = response.Contacts[0].WaID
+	// }
+	//payload["to"] = recipient
 	payload["id"] = response.Messages[0].ID
 	timestamp := time.Now().Unix()
-	payload["timestamp"] = fmt.Sprint(timestamp) // to be consistent with WA
+	// payload["timestamp"] = fmt.Sprint(timestamp) // to be consistent with WA
 	message := dao_wa.Message{
-		Sending:       true,
-		PhoneNumber:   helper.NormalizeWAId(user.WA.PhoneNumber_.PhoneNumber),
-		PhoneNumberId: create.PhoneNumberID,
-		CustomerWAId:  recipient,
-		WAMessageId:   response.Messages[0].ID,
-		Timestamp:     timestamp,
-		Type:          string(create.Type),
-		Payload:       payload,
-		Status:        types.WAMessageStatusAccepted,
-		AttachmentURL: create.AttachmentURL,
+		Sending:           true,
+		PhoneNumber:       helper.NormalizeWAId(user.WA.PhoneNumber_.PhoneNumber),
+		MetaPhoneNumberId: user.WA.PhoneNumber_.MetaPhoneNumberId,
+		CustomerWAId:      customer.WAId,
+		CustomerId:        customer.Id,
+		WAMessageId:       response.Messages[0].ID,
+		Timestamp:         timestamp,
+		Type:              string(create.Type),
+		Payload:           payload,
+		Status:            types.WAMessageStatusAccepted,
+		AttachmentURL:     create.AttachmentURL,
+	}
+	if create.CampaignId != nil {
+		message.CampaignId = sql.NullInt32{
+			Int32: *create.CampaignId,
+			Valid: true,
+		}
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewMessage(message)
-	dependencies.Ably.Publish("message", helper.GetChatChannelName(create.PhoneNumberID, recipient, ""), result)
+	dependencies.Ably.Publish("message", helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.WAId, ""), result)
 	return dto.NewSuccessResponse(&result)
 }
 

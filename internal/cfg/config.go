@@ -14,12 +14,13 @@ import (
 )
 
 type Config struct {
-	Site      SiteConfig
-	Database  DatabaseConfig
-	AliyunOSS AliyunOSSConfig
-	AliyunSMQ AliyunSMQConfig
-	Ably      AblyConfig
-	WhatsApp  WhatsAppConfig
+	Site              SiteConfig
+	Database          DatabaseConfig
+	AliyunOSS         AliyunOSSConfig
+	AliyunSMQ         AliyunSMQConfig
+	AliyunEventBridge AliyunEventBridgeConfig
+	Ably              AblyConfig
+	WhatsApp          WhatsAppConfig
 }
 
 type DatabaseConfig struct {
@@ -58,6 +59,14 @@ type AliyunSMQConfig struct {
 	AccessKeySecret    string
 	QueueName          string
 	PollingWaitSeconds int64
+}
+
+type AliyunEventBridgeConfig struct {
+	Endpoint        string
+	AccessKeyID     string
+	AccessKeySecret string
+	EventBusName    string
+	Source          string
 }
 
 type AblyConfig struct {
@@ -123,6 +132,13 @@ func Default() *Config {
 				AccessKeySecret:    os.Getenv("ALIYUN_SMQ_ACCESS_KEY_SECRET"),
 				QueueName:          os.Getenv("ALIYUN_SMQ_QUEUE_NAME"),
 				PollingWaitSeconds: 15,
+			},
+			AliyunEventBridge: AliyunEventBridgeConfig{
+				Endpoint:        os.Getenv("ALIYUN_EVENTBRIDGE_ENDPOINT"),
+				AccessKeyID:     os.Getenv("ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID"),
+				AccessKeySecret: os.Getenv("ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET"),
+				EventBusName:    os.Getenv("ALIYUN_EVENTBRIDGE_EVENT_BUS_NAME"),
+				Source:          os.Getenv("ALIYUN_EVENTBRIDGE_SOURCE"),
 			},
 			Ably: AblyConfig{
 				APIKey: os.Getenv("ABLY_API_KEY"),

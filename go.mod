@@ -6,6 +6,9 @@ require (
 	ariga.io/atlas v0.37.0
 	github.com/JohannesKaufmann/html-to-markdown v1.6.0
 	github.com/ably/ably-go v1.4.1
+	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4
+	github.com/alibabacloud-go/eventbridge-20200401 v1.0.7
+	github.com/alibabacloud-go/eventbridge-sdk v1.3.3
 	github.com/aliyun/aliyun-mns-go-sdk v1.0.11
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/dustin/go-humanize v1.0.1
@@ -28,8 +31,8 @@ require (
 
 require (
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
-	github.com/alibabacloud-go/tea v1.2.2 // indirect
-	github.com/aliyun/credentials-go v1.3.10 // indirect
+	github.com/alibabacloud-go/tea v1.5.2 // indirect
+	github.com/aliyun/credentials-go v1.4.5 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/gogap/errors v0.0.0-20210818113853-edfbba0ddea9 // indirect
 	github.com/gogap/stack v0.0.0-20150131034635-fef68dddd4f8 // indirect
@@ -44,12 +47,19 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/ably/vcdiff-go v0.0.2 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
+	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
+	github.com/alibabacloud-go/endpoint-util v1.1.0 // indirect
+	github.com/alibabacloud-go/eventbridge-util v1.0.4 // indirect
+	github.com/alibabacloud-go/openapi-util v0.1.0 // indirect
+	github.com/alibabacloud-go/tea-utils v1.4.5 // indirect
+	github.com/alibabacloud-go/tea-utils/v2 v2.0.9 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.1 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/clbanning/mxj/v2 v2.7.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
@@ -63,6 +73,7 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl/v2 v2.24.0 // indirect
@@ -91,6 +102,7 @@ require (
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
+	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect

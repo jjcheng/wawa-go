@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -16,6 +17,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -93,20 +95,6 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "one or more customers do not have a valid country code and phone number, please edit them")
 		}
 	}
-	// businessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-	// if err != nil {
-	// 	if errors.Is(err, gorm.ErrRecordNotFound) {
-	// 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to access this business account")
-	// 	}
-	// 	return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	// }
-	// phoneNumber, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
-	// if err != nil {
-	// 	if errors.Is(err, gorm.ErrRecordNotFound) {
-	// 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
-	// 	}
-	// 	return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	// }
 	template, err := dependencies.Whatsapp.GetTemplate(ctx, create.WATemplateId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template not found")
@@ -115,7 +103,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusBadRequest, "whatsapp template is not approved")
 	}
 	// convert create.SendTemplate to map
-	sendTemplateMap := map[string]any{
+	sendTemplatePayload := map[string]any{
 		"components": create.SendTemplate.Components,
 	}
 	// for flow and quick_reply button, supply the campaign token
@@ -159,14 +147,15 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 	}()
 	campaign := dao_customer.Campaign{
-		Name:          create.Name,
-		WATemplateId:  create.WATemplateId,
-		CustomerIds:   dao_customer.CustomerIDs(create.CustomerIds),
-		UserId:        user.Id,
-		Status:        types.CampaignStatusPending,
-		Token:         campaignToken,
-		SendTemplate:  sendTemplateMap,
-		AttachmentURL: attachmentUrl,
+		Name:                create.Name,
+		WATemplateId:        create.WATemplateId,
+		CustomerIds:         dao_customer.CustomerIDs(create.CustomerIds),
+		UserId:              user.Id,
+		Status:              types.CampaignStatusPending,
+		Token:               campaignToken,
+		SendTemplatePayload: sendTemplatePayload,
+		AttachmentURL:       attachmentUrl,
+		TemplatePayload:     template.Payload(),
 	}
 	if create.SendDate != nil {
 		campaign.SendDate = *create.SendDate
@@ -199,21 +188,29 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	committed = true
+	if dependencies.EventBridge != nil {
+		if _, err := dependencies.EventBridge.Schedule(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate); err != nil {
+			dependencies.Logger.ErrorFunction(err, campaign.Id)
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusServiceUnavailable, "campaign was created but could not be scheduled")
+		}
+	}
 	result := dto_customer.NewCampaign(campaign, nil)
-	// for _, recipient := range recipients {
-	// 	createMessage := feature_wa_message.Create{
-	// 		RecipientType: feature_wa_message.RecipientTypeIndividual,
-	// 		To:            recipient.CustomerWAId,
-	// 		PhoneNumberID: phoneNumberID,
-	// 		Type:          feature_wa_message.MessageTypeTemplate,
-	// 		Template:      &recipient.Payload,
-	// 		AttachmentURL: attachmentUrl,
-	// 	}
-	// 	createMessageResponse := createMessage.Handle(ctx, user, dependencies)
-	// 	if !createMessageResponse.Success {
-	// 		dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, createMessageResponse.Message)
-	// 	}
-	// }
+	// for debugging
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		for _, recipient := range recipients {
+			createMessage := feature_wa_message.Create{
+				CustomerId:    recipient.CustomerId,
+				Type:          feature_wa_message.MessageTypeTemplate,
+				Template:      &recipient.Payload,
+				AttachmentURL: attachmentUrl,
+				CampaignId:    &campaign.Id,
+			}
+			createMessageResponse := createMessage.Handle(ctx, user, dependencies)
+			if !createMessageResponse.Success {
+				dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, createMessageResponse.Message)
+			}
+		}
+	}
 	return dto.NewSuccessResponse(&result)
 }
 
