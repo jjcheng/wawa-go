@@ -22,8 +22,9 @@ type Message struct {
 	Category      string                `json:"category,omitempty"`
 	BillingType   string                `json:"billing_type,omitempty"`
 	// lazy loaded
-	PreviewHTML     string `json:"preview_html,omitempty"`
-	PreviewDarkHTML string `json:"preview_dark_html,omitempty"`
+	Statuses        []MessageStatusEvent `json:"statuses,omitempty"`
+	PreviewHTML     string               `json:"preview_html,omitempty"`
+	PreviewDarkHTML string               `json:"preview_dark_html,omitempty"`
 }
 
 func NewMessage(message dao_wa.Message) Message {
@@ -34,10 +35,10 @@ func NewMessage(message dao_wa.Message) Message {
 			LastUpdate: message.LastUpdate,
 		},
 		Sending:       message.Sending,
+		Timestamp:     message.Timestamp,
 		PhoneNumberId: message.PhoneNumberId,
 		CustomerId:    message.CustomerId,
 		WAMessageId:   message.WAMessageId,
-		Timestamp:     message.Timestamp,
 		Type:          message.Type,
 		Status:        message.Status,
 		Payload:       message.Payload,

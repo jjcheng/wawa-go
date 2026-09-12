@@ -66,6 +66,7 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[any, feature_wa_phone_number.Delete](routerGroup, dependencies, apiGenerator)
 	// message
 	registerRoute[*dto_wa.Message, feature_wa_message.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.Message, feature_wa_message.Get](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AblyTokenRequest, feature_wa_message.CreateChatToken](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto.ListResponse[dto_wa.Message], feature_wa_message.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*feature_wa_message.Media, feature_wa_message.GetMedia](routerGroup, dependencies, apiGenerator)

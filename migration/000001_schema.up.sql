@@ -36,7 +36,7 @@ CREATE TABLE "wa"."business_accounts" (
   "business_portfolio_id" integer NOT NULL,
   "currency" text NOT NULL,
   PRIMARY KEY ("id"),
-  CONSTRAINT "business_accounts_meta_waba_id_unique" UNIQUE ("waba_id"),
+  CONSTRAINT "business_accounts_waba_id_unique" UNIQUE ("waba_id"),
   CONSTRAINT "business_accounts_business_portfolio_id_fkey" FOREIGN KEY ("business_portfolio_id") REFERENCES "wa"."business_portfolios" ("id") ON UPDATE CASCADE ON DELETE RESTRICT
 );
 CREATE TABLE "account"."users" (

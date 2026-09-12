@@ -11,7 +11,7 @@ type MessageStatusEvent struct {
 	WAMessageId string                `json:"wa_message_id"`
 	Status      types.WAMessageStatus `json:"status"`
 	Timestamp   int64                 `json:"timestamp"`
-	Payload     map[string]any        `json:"payload"`
+	Payload     map[string]any        `json:"-"`
 }
 
 func NewMessageStatusEvent(messageStatusEvent dao_wa.MessageStatusEvent) MessageStatusEvent {

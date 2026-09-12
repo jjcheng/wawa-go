@@ -417,9 +417,13 @@ func (sendTemplate SendTemplate) FinalPayload(template *Template, customer dao_c
 	// load customer data
 	for _, component := range sendTemplate.Components {
 		for i, parameter := range component.Parameters {
-			if parameter.Source == "customer.name" {
+			switch parameter.Source {
+			case "customer.name":
 				component.Parameters[i].Text = customer.DisplayName
-			} else if parameter.Type == "coupon_code" { // should do at front end, but just correct it here
+			case "customer.token":
+				component.Parameters[i].Text = customer.Token
+			}
+			if parameter.Type == "coupon_code" { // should do at front end, but just correct it here
 				if component.Parameters[i].CouponCode == "" {
 					component.Parameters[i].CouponCode = component.Parameters[i].Text
 				}

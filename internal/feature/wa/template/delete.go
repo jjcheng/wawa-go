@@ -32,11 +32,11 @@ func (delete *Delete) Validate() []exception.InputException {
 }
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+	if user == nil || user.WA == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
+	}
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
-	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to access this WABA")
 	}
 	if err := dependencies.Whatsapp.DeleteTemplate(ctx, user.WA.BusinessAccount.WABAId, delete.Name, delete.Id, user.WA.BusinessPortfolioAccessToken); err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
