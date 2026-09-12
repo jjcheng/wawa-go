@@ -181,7 +181,7 @@ type TemplateAnalyticsListResponse struct {
 
 type TemplateComponent struct {
 	Format  types.WATemplateComponentFormat `json:"format" val:"required" description:"TEXT, IMAGE, VIDEO, DOCUMENT, LOCATION"`
-	Text    string                          `json:"text" description:"only if format = TEXT"`
+	Text    string                          `json:"text,omitempty" description:"only if format = TEXT"`
 	Type    types.WATemplateComponentType   `json:"type" description:"HEADER, BODY, FOOTER, BUTTONS"`
 	Example *TemplateComponentExample       `json:"example,omitempty" description:"only present if type is HEADER, BODY"`
 	Buttons []TemplateComponentButton       `json:"buttons,omitempty" description:"buttons below the message"`
