@@ -18,6 +18,10 @@ type CampaignRecipient struct {
 	LastError     string                        `json:"last_error"`
 	Attempts      int32                         `json:"attempts"`
 	NextAttemptAt *time.Time                    `json:"next_attempt_at"`
+	// from customers
+	CustomerName        string `json:"customer_name"`
+	CustomerCountryCode string `json:"customer_country_code"`
+	CustomerPhoneNumber string `json:"customer_phone_number"`
 }
 
 func NewCampaignRecipient(campaignRecipient dao_customer.CampaignRecipient) CampaignRecipient {
@@ -27,13 +31,16 @@ func NewCampaignRecipient(campaignRecipient dao_customer.CampaignRecipient) Camp
 			EntryDate:  campaignRecipient.EntryDate,
 			LastUpdate: campaignRecipient.LastUpdate,
 		},
-		MessageId:     campaignRecipient.MessageId,
-		CampaignId:    campaignRecipient.CampaignId,
-		CustomerId:    campaignRecipient.CustomerId,
-		Payload:       campaignRecipient.Payload,
-		Status:        campaignRecipient.Status,
-		LastError:     campaignRecipient.LastError,
-		Attempts:      campaignRecipient.Attempts,
-		NextAttemptAt: campaignRecipient.NextAttemptAt,
+		MessageId:           campaignRecipient.MessageId,
+		CampaignId:          campaignRecipient.CampaignId,
+		CustomerId:          campaignRecipient.CustomerId,
+		CustomerName:        campaignRecipient.CustomerName,
+		CustomerCountryCode: campaignRecipient.CustomerCountryCode,
+		CustomerPhoneNumber: campaignRecipient.CustomerPhoneNumber,
+		Payload:             campaignRecipient.Payload,
+		Status:              campaignRecipient.Status,
+		LastError:           campaignRecipient.LastError,
+		Attempts:            campaignRecipient.Attempts,
+		NextAttemptAt:       campaignRecipient.NextAttemptAt,
 	}
 }

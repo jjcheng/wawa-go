@@ -2688,9 +2688,18 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
+                              "customer_country_code": {
+                                "type": "string"
+                              },
                               "customer_id": {
                                 "format": "int32",
                                 "type": "integer"
+                              },
+                              "customer_name": {
+                                "type": "string"
+                              },
+                              "customer_phone_number": {
+                                "type": "string"
                               },
                               "entry_date": {
                                 "example": "2025-10-01T08:08:00Z",
@@ -9129,6 +9138,9 @@
                                       "format": "date-time",
                                       "type": "string"
                                     },
+                                    "error_message": {
+                                      "type": "string"
+                                    },
                                     "id": {
                                       "example": 1,
                                       "format": "int32",
@@ -9927,6 +9939,9 @@
                               "entry_date": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
+                                "type": "string"
+                              },
+                              "error_message": {
                                 "type": "string"
                               },
                               "id": {
@@ -10777,6 +10792,9 @@
                               "entry_date": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
+                                "type": "string"
+                              },
+                              "error_message": {
                                 "type": "string"
                               },
                               "id": {

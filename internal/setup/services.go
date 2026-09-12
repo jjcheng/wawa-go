@@ -141,6 +141,17 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 		Timestamp:   timestamp,
 		Payload:     status.Payload,
 	}
+	if len(status.Errors) > 0 {
+		var errorMessages []string
+		for _, err := range status.Errors {
+			if err.ErrorData != nil && err.ErrorData.Details != "" {
+				errorMessages = append(errorMessages, err.ErrorData.Details)
+			}
+		}
+		if len(errorMessages) > 0 {
+			event.ErrorMessage = strings.Join(errorMessages, "\n")
+		}
+	}
 	if err := transaction.WAMessageStatusEventRepository().Insert(ctx, &event); err != nil {
 		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 	}

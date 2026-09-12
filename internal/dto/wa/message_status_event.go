@@ -8,10 +8,11 @@ import (
 
 type MessageStatusEvent struct {
 	dto.DTOBase
-	WAMessageId string                `json:"wa_message_id"`
-	Status      types.WAMessageStatus `json:"status"`
-	Timestamp   int64                 `json:"timestamp"`
-	Payload     map[string]any        `json:"-"`
+	WAMessageId  string                `json:"wa_message_id"`
+	Status       types.WAMessageStatus `json:"status"`
+	Timestamp    int64                 `json:"timestamp"`
+	ErrorMessage string                `json:"error_message"`
+	Payload      map[string]any        `json:"-"`
 }
 
 func NewMessageStatusEvent(messageStatusEvent dao_wa.MessageStatusEvent) MessageStatusEvent {
@@ -21,9 +22,10 @@ func NewMessageStatusEvent(messageStatusEvent dao_wa.MessageStatusEvent) Message
 			EntryDate:  messageStatusEvent.EntryDate,
 			LastUpdate: messageStatusEvent.LastUpdate,
 		},
-		WAMessageId: messageStatusEvent.WAMessageId,
-		Status:      messageStatusEvent.Status,
-		Timestamp:   messageStatusEvent.Timestamp,
-		Payload:     messageStatusEvent.Payload,
+		WAMessageId:  messageStatusEvent.WAMessageId,
+		Status:       messageStatusEvent.Status,
+		Timestamp:    messageStatusEvent.Timestamp,
+		Payload:      messageStatusEvent.Payload,
+		ErrorMessage: messageStatusEvent.ErrorMessage,
 	}
 }

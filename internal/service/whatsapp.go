@@ -205,6 +205,13 @@ type WhatsAppBusinessResponse struct {
 	Name string `json:"name"`
 }
 
+type WhatsAppProductCatalog struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Vertical     string `json:"vertical,omitempty"`
+	ProductCount int    `json:"product_count,omitempty"`
+}
+
 type WhatsAppWABAResponse struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
@@ -622,6 +629,32 @@ func (whatsapp *Whatsapp) ListPhoneNumbers(ctx context.Context, wabaId string, b
 		endpoint = strings.TrimSpace(response.Paging.Next)
 	}
 	return phoneNumbers, nil
+}
+
+// ListProductCatalogs lists product catalogs owned by a Meta business portfolio.
+func (whatsapp *Whatsapp) ListProductCatalogs(ctx context.Context, businessPortfolioId string, businessAccessToken string) ([]WhatsAppProductCatalog, error) {
+	query := url.Values{}
+	query.Set("fields", "id,name,vertical,product_count")
+	endpoint := fmt.Sprintf("%s/%s/%s/owned_product_catalogs?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(businessPortfolioId), query.Encode())
+	catalogs := make([]WhatsAppProductCatalog, 0)
+	for endpoint != "" {
+		var response struct {
+			Data   []WhatsAppProductCatalog `json:"data"`
+			Paging *struct {
+				Next string `json:"next,omitempty"`
+			} `json:"paging,omitempty"`
+		}
+		if err := whatsapp.doJSONRequest(ctx, "list_product_catalogs", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+			whatsapp.logger.ErrorFunction(err, businessPortfolioId)
+			return nil, err
+		}
+		catalogs = append(catalogs, response.Data...)
+		if response.Paging == nil {
+			break
+		}
+		endpoint = strings.TrimSpace(response.Paging.Next)
+	}
+	return catalogs, nil
 }
 
 func (whatsapp *Whatsapp) GetPhoneNumberUsage(ctx context.Context, wabaId string, waIds []string, start int64, end int64, granularity types.WAAnalyticsGranularity, businessAccessToken string) (*dto_wa.MessageAnalytics, error) {

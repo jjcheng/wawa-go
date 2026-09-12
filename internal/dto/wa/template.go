@@ -255,21 +255,28 @@ func documentIconForType(documentType string) string {
 func formatWhatsAppText(text string) string {
 	var formatted strings.Builder
 	for len(text) > 0 {
+		if strings.HasPrefix(text, "{{") {
+			if closingIndex := strings.Index(text[2:], "}}"); closingIndex >= 0 {
+				contentEnd := closingIndex + 2
+				formatted.WriteString(html.EscapeString(text[:contentEnd+2]))
+				text = text[contentEnd+2:]
+				continue
+			}
+		}
+
 		if strings.HasPrefix(text, "```") {
-			if closingIndex := strings.Index(text[3:], "```"); closingIndex >= 0 {
-				contentEnd := closingIndex + 3
+			if closingIndex := indexOutsideTemplatePlaceholder(text, "```", 3); closingIndex >= 0 {
 				formatted.WriteString("<span style='font-family:monospace;background:#f0f2f5;padding:1px 3px;border-radius:3px;'>")
-				formatted.WriteString(html.EscapeString(text[3:contentEnd]))
+				formatted.WriteString(html.EscapeString(text[3:closingIndex]))
 				formatted.WriteString("</span>")
-				text = text[contentEnd+3:]
+				text = text[closingIndex+3:]
 				continue
 			}
 		}
 
 		if text[0] == '*' || text[0] == '_' || text[0] == '~' {
 			marker := text[0]
-			if closingIndex := strings.IndexByte(text[1:], marker); closingIndex > 0 {
-				contentEnd := closingIndex + 1
+			if closingIndex := indexOutsideTemplatePlaceholder(text, string(marker), 1); closingIndex > 1 {
 				openingTag, closingTag := "", ""
 				switch marker {
 				case '*':
@@ -280,25 +287,45 @@ func formatWhatsAppText(text string) string {
 					openingTag, closingTag = "<del style='text-decoration:line-through;'>", "</del>"
 				}
 				formatted.WriteString(openingTag)
-				formatted.WriteString(html.EscapeString(text[1:contentEnd]))
+				formatted.WriteString(html.EscapeString(text[1:closingIndex]))
 				formatted.WriteString(closingTag)
-				text = text[contentEnd+1:]
+				text = text[closingIndex+1:]
 				continue
 			}
 		}
 
-		nextMarker := strings.IndexAny(text, "*_~`")
-		if nextMarker <= 0 {
-			if nextMarker == 0 {
-				nextMarker = 1
+		nextSpecial := strings.IndexAny(text, "*_~`")
+		if placeholderIndex := strings.Index(text, "{{"); placeholderIndex >= 0 && (nextSpecial < 0 || placeholderIndex < nextSpecial) {
+			nextSpecial = placeholderIndex
+		}
+		if nextSpecial <= 0 {
+			if nextSpecial == 0 {
+				nextSpecial = 1
 			} else {
-				nextMarker = len(text)
+				nextSpecial = len(text)
 			}
 		}
-		formatted.WriteString(html.EscapeString(text[:nextMarker]))
-		text = text[nextMarker:]
+		formatted.WriteString(html.EscapeString(text[:nextSpecial]))
+		text = text[nextSpecial:]
 	}
 	return formatted.String()
+}
+
+func indexOutsideTemplatePlaceholder(text string, marker string, start int) int {
+	for index := start; index < len(text); {
+		if strings.HasPrefix(text[index:], "{{") {
+			closingIndex := strings.Index(text[index+2:], "}}")
+			if closingIndex >= 0 {
+				index += closingIndex + 4
+				continue
+			}
+		}
+		if strings.HasPrefix(text[index:], marker) {
+			return index
+		}
+		index++
+	}
+	return -1
 }
 
 func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (string, error) {
@@ -348,7 +375,7 @@ func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (s
 			documentIcon := documentIconForType(documentType)
 			return fmt.Sprintf("<div style='padding:0;'><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:10px;padding:12px;border-radius:6px;background:%s;color:%s;text-decoration:none;font-size:13px;'><span style='font-size:26px;line-height:1;'>%s</span><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>%s document</span></a></div>", documentURL, theme.MutedBackground, theme.TextPrimary, documentIcon, strings.ToUpper(documentType)), nil
 		default:
-			return fmt.Sprintf("<div style='padding:0;'><img src='%s' alt='Location map' style='display:block;width:100%%;height:170px;object-fit:cover;border-radius:6px 6px 0 0;'><div style='padding:8px 9px;background:%s;border-radius:0 0 6px 6px;'><div style='font-weight:600;font-size:13.5px;line-height:18px;color:%s;'>%s</div><div style='margin-top:2px;font-size:12px;line-height:16px;color:%s;'>%s</div></div></div>", "https://www.onemap.gov.sg/api/staticmap/getStaticImage?layerchosen=default&zoom=15&height=450&width=450&lat=1.3521&lng=103.844", theme.MutedBackground, theme.TextPrimary, "Location Name", theme.TextSecondary, "Location Address"), nil
+			return fmt.Sprintf("<div style='padding:0;'><img src='%s' alt='Location map' style='display:block;width:100%%;height:170px;object-fit:cover;border-radius:6px 6px 0 0;'><div style='padding:8px 9px;background:%s;border-radius:0 0 6px 6px;'><div style='font-weight:600;font-size:13.5px;line-height:18px;color:%s;'>%s</div><div style='margin-top:2px;font-size:12px;line-height:16px;color:%s;'>%s</div></div></div>", "https://www.onemap.gov.sg/api/staticmap/getStaticImage?layerchosen=default&zoom=15&height=450&width=450&lat=1.3521&lng=103.844", theme.MutedBackground, theme.TextPrimary, "Location name", theme.TextSecondary, "Location address"), nil
 		}
 
 	case types.WATemplateComponentTypeBody:

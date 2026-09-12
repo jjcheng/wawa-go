@@ -2,6 +2,7 @@ package feature_campaign_recipient
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type List struct {
@@ -43,7 +45,17 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.CampaignRecipient]](inputErrors)
 	}
-	recipients, totalCount, totalPages, err := dependencies.UnitOfWork.CampaignRecipientRepository().ListByCampaignIdAndUserId(ctx, list.CampaignId, user.Id, list.Name, list.Status, list.Page, list.PageSize)
+	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, list.CampaignId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto.ListResponse[dto_customer.CampaignRecipient]](http.StatusNotFound, "campaign not found")
+		}
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.CampaignRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	if campaign.UserId != user.Id {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.CampaignRecipient]](http.StatusNotFound, "campaign not found")
+	}
+	recipients, totalCount, totalPages, err := dependencies.UnitOfWork.CampaignRecipientRepository().ListByCampaignId(ctx, list.CampaignId, list.Name, list.Status, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.CampaignRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
