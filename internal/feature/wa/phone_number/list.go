@@ -34,14 +34,14 @@ func (list *List) Validate() []exception.InputException {
 }
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_wa.PhoneNumber]] {
-	if inputErrors := list.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.PhoneNumber]](inputErrors)
-	}
 	if user == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusForbidden, "you are not authenticated")
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusUnauthorized, "you are not authorized to access a WhatsApp business portfolio")
+	}
+	if inputErrors := list.Validate(); len(inputErrors) > 0 {
+		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.PhoneNumber]](inputErrors)
 	}
 	items := make([]dto_wa.PhoneNumber, 0)
 	var totalCount, totalPages int

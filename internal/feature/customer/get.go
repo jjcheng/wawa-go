@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -17,16 +16,13 @@ import (
 )
 
 type Get struct {
-	WAId       string `form:"wa_id" description:"country code + phone number of the customer" example:"6590909090"`
-	MetaUserId string `form:"meta_user_id" description:"Meta user id of the customer"`
+	Id int32 `uri:"id" val:"required" description:"id of the customer"`
 }
 
 func (get *Get) Validate() []exception.InputException {
-	get.WAId = strings.TrimSpace(get.WAId)
-	get.MetaUserId = strings.TrimSpace(get.MetaUserId)
 	inputErrors := []exception.InputException{}
-	if get.WAId == "" && get.MetaUserId == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("wa_id", "WA id or Meta user ID is required"))
+	if get.Id <= 0 {
+		inputErrors = append(inputErrors, exception.NewInputException("id", "missing id"))
 	}
 	return inputErrors
 }
@@ -38,39 +34,27 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
 	}
-	var customer *dto_customer.Customer
-	if get.MetaUserId != "" {
-		item, err := dependencies.UnitOfWork.CustomerRepository().GetByMetaUserId(ctx, user.Id, get.MetaUserId)
-		if err != nil {
-			return customerGetError(err)
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, get.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found")
 		}
-		mapped := dto_customer.NewCustomer(*item)
-		customer = &mapped
-	} else {
-		item, err := dependencies.UnitOfWork.CustomerRepository().GetByWAId(ctx, user.Id, get.WAId)
-		if err != nil {
-			return customerGetError(err)
-		}
-		mapped := dto_customer.NewCustomer(*item)
-		customer = &mapped
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	return dto.NewSuccessResponse(customer)
-}
-
-func customerGetError(err error) dto.Response[*dto_customer.Customer] {
-	if errors.Is(err, gorm.ErrRecordNotFound) {
+	if customer.UserId != user.Id {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found")
 	}
-	return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	d := dto_customer.NewCustomer(*customer)
+	return dto.NewSuccessResponse(&d)
 }
 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get customer",
-		"Gets a customer by WA ID or Meta user ID.",
-		types.HttpRequestTypeQuery,
+		"Gets a customer by ID.",
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/customers/get",
+		"/v1/customers/:id",
 		true,
 		true,
 		types.APITagCustomer,

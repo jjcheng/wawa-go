@@ -12,6 +12,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
+// bulk archive/unarchive customers
 type SetStatus struct {
 	Ids    []int32              `json:"ids" val:"required" description:"id of the customers"`
 	Status types.CustomerStatus `json:"status" val:"required" description:"status of the customers"`

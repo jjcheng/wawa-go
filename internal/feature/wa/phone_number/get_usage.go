@@ -2,6 +2,7 @@ package feature_wa_phone_number
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -12,10 +13,11 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type GetUsage struct {
-	WAIds       []string                     `form:"wa_ids" val:"required" description:"up to 10 wa Ids, only if user is MASTER"`
+	Id          int32                        `form:"id" val:"required" description:"id of the phone number"`
 	Start       int64                        `form:"start" val:"required" description:"Unix timestamp for the analytics start"`
 	End         int64                        `form:"end" val:"required" description:"Unix timestamp for the analytics end"`
 	Granularity types.WAAnalyticsGranularity `form:"granularity" val:"required" description:"analytics granularity: HALF_HOUR, DAY, or MONTH"`
@@ -23,11 +25,8 @@ type GetUsage struct {
 
 func (getUsage *GetUsage) Validate() []exception.InputException {
 	errors := []exception.InputException{}
-	if len(getUsage.WAIds) == 0 {
-		errors = append(errors, exception.NewInputException("wa_ids", "missing WA IDs"))
-	}
-	if len(getUsage.WAIds) > 10 {
-		errors = append(errors, exception.NewInputException("wa_ids", "at most 10 WA IDs are allowed"))
+	if getUsage.Id <= 0 {
+		errors = append(errors, exception.NewInputException("id", "missing ID"))
 	}
 	if getUsage.Start <= 0 {
 		errors = append(errors, exception.NewInputException("start", "start must be a positive Unix timestamp"))
@@ -54,7 +53,7 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 			return dto.NewSuccessResponse(&dto_wa.MessageAnalytics{})
 		}
 		// assign back to WAIds
-		getUsage.WAIds = []string{user.WA.PhoneNumber_.WAId}
+		getUsage.Id = user.WA.PhoneNumber_.Id
 	}
 	if validationErrors := getUsage.Validate(); len(validationErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.MessageAnalytics](validationErrors)
@@ -62,7 +61,24 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
 		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "you are not authorized to view this")
 	}
-	analytics, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, getUsage.WAIds, getUsage.Start, getUsage.End, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
+	// get waIds by ids
+	var waId string
+	if user.Type == types.UserTypeMaster {
+		phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, getUsage.Id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusNotFound, "phone number not found")
+			}
+			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		if phoneNumber.BusinessAccountId != user.WA.PhoneNumber_.BusinessAccountId {
+			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusNotFound, "phone number not found")
+		}
+		waId = phoneNumber.WAId
+	} else {
+		waId = user.WA.PhoneNumber_.WAId
+	}
+	analytics, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, []string{waId}, getUsage.Start, getUsage.End, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error())
 	}

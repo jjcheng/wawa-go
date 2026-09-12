@@ -27,6 +27,21 @@ func NewCustomerRepository(db *gorm.DB, logger *service.Logger) repository.Custo
 	}
 }
 
+func (customerRepository *CustomerRepository) GetByIdAndUserId(ctx context.Context, id int32, userId int32) (*dao_customer.Customer, error) {
+	var customer dao_customer.Customer
+	result := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("id = ? AND user_id = ?", id, userId).
+		First(&customer)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			customerRepository.logger.ErrorFunction(result.Error, id, userId)
+		}
+		return nil, result.Error
+	}
+	return &customer, nil
+}
+
 func (customerRepository *CustomerRepository) CountActiveByUserId(ctx context.Context, userId int32) (int, error) {
 	var count int64
 	if err := customerRepository.db.WithContext(ctx).

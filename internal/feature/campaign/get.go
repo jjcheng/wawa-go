@@ -43,21 +43,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if campaign.UserId != user.Id {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusNotFound, "campaign not found")
 	}
-	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, []int32(campaign.CustomerIds))
-	if err != nil {
-		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	customersById := make(map[int32]dto_customer.Customer, len(customers))
-	for _, customer := range customers {
-		customersById[customer.Id] = dto_customer.NewCustomer(customer)
-	}
-	orderedCustomers := make([]dto_customer.Customer, 0, len(customers))
-	for _, customerId := range []int32(campaign.CustomerIds) {
-		if customer, ok := customersById[customerId]; ok {
-			orderedCustomers = append(orderedCustomers, customer)
-		}
-	}
-	result := dto_customer.NewCampaign(*campaign, orderedCustomers)
+	result := dto_customer.NewCampaign(*campaign)
 	return dto.NewSuccessResponse(&result)
 }
 

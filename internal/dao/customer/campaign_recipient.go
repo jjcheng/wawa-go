@@ -20,7 +20,7 @@ type CampaignRecipient struct {
 }
 
 func (CampaignRecipient) TableName() string {
-	return "customer.campaign_recipient"
+	return "customer.campaign_recipients"
 }
 
 func (campaignRecipient CampaignRecipient) Base() dao.DAOBase {

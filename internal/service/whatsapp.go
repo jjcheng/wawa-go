@@ -526,7 +526,7 @@ func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID s
 	return nil
 }
 
-func (whatsapp *Whatsapp) DeregisterPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
+func (whatsapp *Whatsapp) DisconnectPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
 	endpoint := fmt.Sprintf("%s/%s/%s/deregister", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
 	if err := whatsapp.doJSONRequest(ctx, "deregister_phone_number", http.MethodPost, endpoint, nil, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, phoneNumberID)
@@ -817,7 +817,9 @@ func (whatsapp *Whatsapp) getTemplateAnalytics(ctx context.Context, requestType 
 				return int(dataPoint.Read)
 			})
 			response.Data[index].TotalClicked = helper.Sum(response.Data[index].DataPoints, func(dataPoint dto_wa.TemplateAnalyticsDataPoint) int {
-				return int(dataPoint.Clicked)
+				return helper.Sum(dataPoint.Clicked, func(click dto_wa.TemplateAnalyticsClickEntry) int {
+					return int(click.Count)
+				})
 			})
 		}
 		analytics = append(analytics, response.Data...)

@@ -155,13 +155,19 @@ type TemplateAnalytics struct {
 }
 
 type TemplateAnalyticsDataPoint struct {
-	TemplateID string `json:"template_id"`
-	Start      int64  `json:"start"`
-	End        int64  `json:"end"`
-	Sent       int64  `json:"sent,omitempty"`
-	Delivered  int64  `json:"delivered,omitempty"`
-	Read       int64  `json:"read,omitempty"`
-	Clicked    int64  `json:"clicked,omitempty"`
+	TemplateID string                        `json:"template_id"`
+	Start      int64                         `json:"start"`
+	End        int64                         `json:"end"`
+	Sent       int64                         `json:"sent,omitempty"`
+	Delivered  int64                         `json:"delivered,omitempty"`
+	Read       int64                         `json:"read,omitempty"`
+	Clicked    []TemplateAnalyticsClickEntry `json:"clicked,omitempty"`
+}
+
+type TemplateAnalyticsClickEntry struct {
+	ButtonContent string `json:"button_content"`
+	Count         int64  `json:"count"`
+	Type          string `json:"type"`
 }
 
 type TemplateAnalyticsListResponse struct {

@@ -28,8 +28,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.WA == nil || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
 	}
-	metaWABAId := user.WA.BusinessAccount.WABAId
-	template, err := dependencies.Whatsapp.CreateTemplate(ctx, metaWABAId, create.Payload(), user.WA.BusinessPortfolioAccessToken)
+	template, err := dependencies.Whatsapp.CreateTemplate(ctx, user.WA.BusinessAccount.WABAId, create.Payload(), user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}

@@ -13,6 +13,7 @@ import (
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -24,9 +25,9 @@ type Create struct {
 	CountryCode   string   `json:"country_code" val:"required" description:"customer country code"`
 	PhoneNumber   string   `json:"phone_number" val:"required" description:"customer phone number"`
 	MetaUserId    string   `json:"meta_user_id" description:"a string given by Meta"`
-	WAId          string   `json:"wa_id" description:"given by Meta"`
 	Tags          []string `json:"tags" description:"tags of the customer"`
 	Remarks       string   `json:"remarks" description:"for your own reference"`
+	WAId          string   `json:"wa_id" description:"optional waId from incoming messages"`
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -40,13 +41,8 @@ func (create *Create) Validate() []exception.InputException {
 	create.MetaUserId = strings.TrimSpace(create.MetaUserId)
 	create.WAId = strings.TrimSpace(create.WAId)
 	create.Remarks = strings.TrimSpace(create.Remarks)
-	if create.Tags == nil {
-		// without this will have postgres error
-		create.Tags = []string{}
-	} else {
-		for i := range create.Tags {
-			create.Tags[i] = strings.TrimSpace(create.Tags[i])
-		}
+	for i := range create.Tags {
+		create.Tags[i] = strings.TrimSpace(create.Tags[i])
 	}
 	errors := []exception.InputException{}
 	if create.DisplayName == "" {
@@ -59,9 +55,6 @@ func (create *Create) Validate() []exception.InputException {
 		}
 		if create.PhoneNumber == "" {
 			errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
-		}
-		if create.WAId == "" {
-			errors = append(errors, exception.NewInputException("wa_id", "missing WA ID"))
 		}
 	}
 	return errors
@@ -89,6 +82,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists")
 		}
 	}
+	// if a WAId already provided, use it, otherwise derive from countryCode+phoneNumber
+	waId := create.WAId
+	if waId == "" {
+		waId = helper.GetWAId(create.CountryCode, create.PhoneNumber)
+	}
 	customer := dao_customer.Customer{
 		DisplayName:         create.DisplayName,
 		WADisplayName:       create.WADisplayName,
@@ -97,15 +95,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		MetaUserId:          create.MetaUserId,
 		Tags:                create.Tags,
 		UserId:              user.Id,
-		WAId:                create.WAId,
+		WAId:                waId,
 		Status:              types.CustomerStatusActive,
 		Remarks:             create.Remarks,
-		ImportedPhoneNumber: create.WAId,
+		ImportedPhoneNumber: waId,
 		Token:               strings.ReplaceAll(uuid.NewString(), "-", ""),
-	}
-	// avoice non null error
-	if customer.AdditionalData == nil {
-		customer.AdditionalData = map[string]any{}
 	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

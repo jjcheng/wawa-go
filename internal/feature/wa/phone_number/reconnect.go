@@ -42,7 +42,11 @@ func (reconnect Reconnect) Handle(ctx context.Context, user *dto_account.User, d
 	if user.WA == nil || user.WA.BusinessAccount == nil || phoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to reconnect this phone number")
 	}
-	if phoneNumber.Status != types.WAPhoneNumberStatusDisconnected {
+	phoneDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
+	if err != nil {
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+	}
+	if phoneDetails.Status != "DISCONNECTED" {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "phone number is not disconnected")
 	}
 	if phoneNumber.RegistrationPin == "" {

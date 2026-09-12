@@ -45,9 +45,7 @@ func NewMessage(message dao_wa.Message) Message {
 		Billable:      message.Billable,
 		BillingType:   message.BillingType,
 		Category:      message.Category,
-	}
-	if message.CampaignId.Valid {
-		d.CampaignId = &message.CampaignId.Int32
+		CampaignId:    message.CampaignId,
 	}
 	return d
 }

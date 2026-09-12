@@ -39,15 +39,15 @@ func (accountUserRepository *AccountUserRepository) Get(ctx context.Context, id 
 	return item, nil
 }
 
-func (accountUserRepository *AccountUserRepository) HasMasterUser(ctx context.Context, metaBusinessPortfolioId string) (bool, error) {
+func (accountUserRepository *AccountUserRepository) HasMasterUser(ctx context.Context, businessAccountId int32) (bool, error) {
 	var count int64
 	result := accountUserRepository.db.WithContext(ctx).
 		Table("account.users").
 		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = account.users.id").
-		Where("wa.phone_numbers.meta_business_portfolio_id = ? AND account.users.type = ?", metaBusinessPortfolioId, types.UserTypeMaster).
+		Where("wa.phone_numbers.business_account_id = ? AND account.users.type = ?", businessAccountId, types.UserTypeMaster).
 		Count(&count)
 	if result.Error != nil {
-		accountUserRepository.logger.ErrorFunction(result.Error, metaBusinessPortfolioId)
+		accountUserRepository.logger.ErrorFunction(result.Error, businessAccountId)
 		return false, result.Error
 	}
 	return count > 0, nil

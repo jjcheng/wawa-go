@@ -2,7 +2,6 @@ package feature_wa_message
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -238,23 +237,16 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
 	}
 	// get customer by customer id
-	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, create.CustomerId)
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetByIdAndUserId(ctx, create.CustomerId, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "customer not found")
 		}
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if customer.UserId != user.Id {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "not your customer")
-	}
 	if customer.WAId == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID, please edit the details")
 	}
-	// create.MessagingProduct = "whatsapp"
-	// if create.RecipientType == "" {
-	// 	create.RecipientType = RecipientTypeIndividual
-	// }
 	payload, err := messagePayload(create)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
@@ -262,6 +254,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	payload["messaging_product"] = "whatsapp"
 	payload["recipient_type"] = "individual"
 	payload["to"] = customer.WAId
+	delete(payload, "customer_id")
 	response, err := dependencies.Whatsapp.SendMessage(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, payload, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, err.Error())
@@ -269,14 +262,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, "WhatsApp did not return a message ID")
 	}
-	// recipient := create.To
-	// if len(response.Contacts) > 0 && strings.TrimSpace(response.Contacts[0].WaID) != "" {
-	// 	recipient = response.Contacts[0].WaID
-	// }
-	//payload["to"] = recipient
-	payload["id"] = response.Messages[0].ID
 	timestamp := time.Now().Unix()
-	// payload["timestamp"] = fmt.Sprint(timestamp) // to be consistent with WA
 	message := dao_wa.Message{
 		Sending:       true,
 		PhoneNumberId: user.WA.PhoneNumber_.Id,
@@ -287,12 +273,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Payload:       payload,
 		Status:        types.WAMessageStatusAccepted,
 		AttachmentURL: create.AttachmentURL,
-	}
-	if create.CampaignId != nil {
-		message.CampaignId = sql.NullInt32{
-			Int32: *create.CampaignId,
-			Valid: true,
-		}
+		CampaignId:    create.CampaignId,
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -99,7 +100,7 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 			result.Skipped = append(result.Skipped, contact)
 			continue
 		}
-		countryCode, phoneNumber := customerPhoneIdentity(contact.PhoneNumber)
+		countryCode, phoneNumber := parsePhoneNumber(contact.PhoneNumber)
 		existing, err := transaction.CustomerRepository().GetByImportedPhoneNumber(ctx, user.Id, contact.ImportedPhoneNumber)
 		if err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -122,6 +123,7 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 			Remarks:             contact.Note,
 			AdditionalData:      contact.AdditionalData(),
 			ImportedPhoneNumber: contact.ImportedPhoneNumber,
+			Token:               strings.ReplaceAll(uuid.NewString(), "-", ""),
 		}
 		// if countrycode and phone number both are numbers, set WAId = countryCode+phoneNumber
 		if helper.IsDigitsOnly(countryCode) && helper.IsDigitsOnly(phoneNumber) {
@@ -147,7 +149,18 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 	return dto.NewSuccessResponse(result)
 }
 
-func customerPhoneIdentity(phoneNumber string) (string, string) {
+func parsePhoneNumber(phoneNumber string) (string, string) {
+	// if phone number has ( and ), the number inside () is the country code
+	if strings.HasPrefix(phoneNumber, "(") {
+		closingParenthesis := strings.Index(phoneNumber, ")")
+		if closingParenthesis > 1 {
+			countryCode := phoneNumber[1:closingParenthesis]
+			nationalNumber := phoneNumber[closingParenthesis+1:]
+			if helper.IsDigitsOnly(countryCode) && helper.IsDigitsOnly(nationalNumber) {
+				return countryCode, nationalNumber
+			}
+		}
+	}
 	countryCode, nationalNumber, err := helper.GetCountryCodeAndPhoneNumberFromWAId(phoneNumber)
 	if err != nil {
 		return ".", phoneNumber
@@ -193,9 +206,9 @@ func (contact Contact) AdditionalData() map[string]any {
 	if contact.TimeZone != "" {
 		data["time_zone"] = contact.TimeZone
 	}
-	if contact.Photo != "" {
-		data["photo"] = contact.Photo
-	}
+	// if contact.Photo != "" {
+	// 	data["photo"] = contact.Photo
+	// }
 	if contact.URL != "" {
 		data["url"] = contact.URL
 	}

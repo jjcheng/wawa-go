@@ -8,5 +8,5 @@ import (
 
 type WABusinessAccountRepository interface {
 	Repository[dao_wa.BusinessAccount]
-	GetByMetaWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error)
+	GetByWABAId(ctx context.Context, wabaId string) (*dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error)
 }

@@ -98,14 +98,14 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	}
 	// business account — the WABA under that portfolio
 	storeBusinessAccountResponse := (feature_wa_business_account.Store{
-		BusinessProtfolioId: storeBusinessPortfolioResponse.Data.Id,
-		WABADetails:         wabaDetails,
+		BusinessPortfolio: storeBusinessPortfolioResponse.Data,
+		WABADetails:       wabaDetails,
 	}).Handle(ctx, nil, &transactionDependencies)
 	if !storeBusinessAccountResponse.Success {
 		return dto.NewFailedResponse[*dto_account.User](storeBusinessAccountResponse.StatusCode, storeBusinessAccountResponse.Message)
 	}
 	// user — the login account. Before creating it you ask the database "does this portfolio already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
-	hasMasterUser, err := transaction.AccountUserRepository().HasMasterUser(ctx, embeddedSignup.Data.BusinessId)
+	hasMasterUser, err := transaction.AccountUserRepository().HasMasterUser(ctx, storeBusinessAccountResponse.Data.Id)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

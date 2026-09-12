@@ -64,8 +64,7 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	if user.WA == nil || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusUnauthorized, "you are not authorized to access this WABA")
 	}
-	metaWABAId := user.WA.BusinessAccount.WABAId
-	analytics, err := dependencies.Whatsapp.GetTemplateUsage(ctx, metaWABAId, getUsage.Start, getUsage.End, getUsage.TemplateIds, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
+	analytics, err := dependencies.Whatsapp.GetTemplateUsage(ctx, user.WA.BusinessAccount.WABAId, getUsage.Start, getUsage.End, getUsage.TemplateIds, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusBadGateway, err.Error())
 	}

@@ -18,13 +18,15 @@ type User struct {
 	Description       string           `json:"description"`
 	Type              types.UserType   `json:"type"`
 	Status            types.UserStatus `json:"status"`
-	AccessToken       string           `json:"access_token,omitempty"`
+	AccessToken       string           `json:"access_token,omitempty" description:"only returned during login"`
 	AccessTokenExpiry *time.Time       `json:"access_token_expiry,omitempty" description:"access token expiry time"`
 	// only used in embedded signup if the activate meta function failed
 	WAActivated       bool   `json:"wa_activated,omitempty"`
 	WAActivationError string `json:"wa_activation_error,omitempty"`
-	// only loaded in wacontroller
+	// to retrieve all WA related objects
 	WA *UserWA `json:"-"`
+	// login info
+	Session *Session `json:"-"`
 }
 
 type UserWA struct {

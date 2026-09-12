@@ -37,6 +37,23 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Get(ctx context.Context, i
 	return phoneNumber, nil
 }
 
+func (phoneNumberRepository *WAPhoneNumberRepository) GetByWAIds(ctx context.Context, ids []int32) ([]dao_wa.PhoneNumber, error) {
+	if len(ids) == 0 {
+		return []dao_wa.PhoneNumber{}, nil
+	}
+	var phoneNumbers []dao_wa.PhoneNumber
+	result := phoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.PhoneNumber{}).
+		Where("id IN ?", ids).
+		Order("id").
+		Find(&phoneNumbers)
+	if result.Error != nil {
+		phoneNumberRepository.logger.ErrorFunction(result.Error, ids)
+		return nil, result.Error
+	}
+	return phoneNumbers, nil
+}
+
 func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx context.Context, metaPhoneNumberId string) (*dao_wa.PhoneNumber, error) {
 	var phoneNumber *dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", metaPhoneNumberId).First(&phoneNumber)
@@ -108,7 +125,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 	result := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.business_accounts").
 		Select("wa.business_accounts.*").
-		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.meta_waba_id = wa.business_accounts.meta_waba_id").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.business_account_id = wa.business_accounts.id").
 		Where("wa.phone_numbers.user_id = ?", userId).
 		Order("wa.business_accounts.id").
 		First(&businessAccount)
@@ -121,7 +138,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 	var businessPortfolio dao_wa.BusinessPortfolio
 	result = phoneNumberRepository.db.WithContext(ctx).
 		Model(&dao_wa.BusinessPortfolio{}).
-		Where("business_portfolio_id = ?", businessAccount.BussinessPortfolioId).
+		Where("id = ?", businessAccount.BussinessPortfolioId).
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {

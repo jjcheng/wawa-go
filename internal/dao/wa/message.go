@@ -1,8 +1,6 @@
 package dao_wa
 
 import (
-	"database/sql"
-
 	"github.com/jjcheng/wawa-go/internal/dao"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -14,7 +12,7 @@ type Message struct {
 	PhoneNumberId int32                 `gorm:"column:phone_number_id"`
 	WAMessageId   string                `gorm:"column:wa_message_id"`
 	Timestamp     int64                 `gorm:"column:timestamp"`
-	CampaignId    sql.NullInt32         `gorm:"column:campaign_id"`
+	CampaignId    *int32                `gorm:"column:campaign_id"`
 	Type          string                `gorm:"column:type"`
 	Status        types.WAMessageStatus `gorm:"column:status"`
 	Payload       map[string]any        `gorm:"column:payload;type:jsonb;serializer:json"`

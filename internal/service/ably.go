@@ -17,13 +17,14 @@ type Ably struct {
 }
 
 type AblyTokenRequest struct {
-	TTL        int64  `json:"ttl"`
-	Capability string `json:"capability"`
-	ClientID   string `json:"clientId"`
-	Timestamp  int64  `json:"timestamp"`
-	KeyName    string `json:"keyName"`
-	Nonce      string `json:"nonce"`
-	MAC        string `json:"mac"`
+	TTL         int64  `json:"ttl"`
+	Capability  string `json:"capability"`
+	ClientID    string `json:"clientId"`
+	Timestamp   int64  `json:"timestamp"`
+	KeyName     string `json:"keyName"`
+	Nonce       string `json:"nonce"`
+	MAC         string `json:"mac"`
+	ChannelName string `json:"channel_name"`
 }
 
 func NewAbly(logger *Logger) *Ably {
@@ -59,13 +60,14 @@ func (ablyService *Ably) CreateConversationTokenRequest(channelName string, clie
 		return nil, err
 	}
 	return &AblyTokenRequest{
-		TTL:        request.TTL,
-		Capability: request.Capability,
-		ClientID:   request.ClientID,
-		Timestamp:  request.Timestamp,
-		KeyName:    request.KeyName,
-		Nonce:      request.Nonce,
-		MAC:        request.MAC,
+		TTL:         request.TTL,
+		Capability:  request.Capability,
+		ClientID:    request.ClientID,
+		Timestamp:   request.Timestamp,
+		KeyName:     request.KeyName,
+		Nonce:       request.Nonce,
+		MAC:         request.MAC,
+		ChannelName: channelName,
 	}, nil
 }
 

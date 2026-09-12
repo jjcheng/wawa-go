@@ -148,13 +148,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	campaign := dao_customer.Campaign{
 		Name:                create.Name,
 		WATemplateId:        create.WATemplateId,
-		CustomerIds:         dao_customer.CustomerIDs(create.CustomerIds),
 		UserId:              user.Id,
 		Status:              types.CampaignStatusPending,
 		Token:               campaignToken,
 		SendTemplatePayload: sendTemplatePayload,
 		AttachmentURL:       attachmentUrl,
 		TemplatePayload:     template.Payload(),
+		RecipientCount:      int32(len(customers)),
 	}
 	if create.SendDate != nil {
 		campaign.SendDate = *create.SendDate
@@ -183,13 +183,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	committed = true
-	if dependencies.EventBridge != nil {
-		if _, err := dependencies.EventBridge.Schedule(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate); err != nil {
-			dependencies.Logger.ErrorFunction(err, campaign.Id)
-			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusServiceUnavailable, "campaign was created but could not be scheduled")
-		}
-	}
-	result := dto_customer.NewCampaign(campaign, nil)
+	// if dependencies.EventBridge != nil {
+	// 	if _, err := dependencies.EventBridge.Schedule(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate); err != nil {
+	// 		dependencies.Logger.ErrorFunction(err, campaign.Id)
+	// 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusServiceUnavailable, "campaign was created but could not be scheduled")
+	// 	}
+	// }
+	result := dto_customer.NewCampaign(campaign)
 	// for debugging
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		for _, recipient := range recipients {

@@ -24,25 +24,25 @@ func NewWABusinessAccountRepository(db *gorm.DB, logger *service.Logger) reposit
 	}
 }
 
-func (businessAccountRepository *WABusinessAccountRepository) GetByMetaWABAId(ctx context.Context, metaWABAId string) (*dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error) {
+func (businessAccountRepository *WABusinessAccountRepository) GetByWABAId(ctx context.Context, wabaId string) (*dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error) {
 	var businessAccount *dao_wa.BusinessAccount
 	result := businessAccountRepository.db.WithContext(ctx).
 		Model(&dao_wa.BusinessAccount{}).
-		Where("meta_waba_id = ?", metaWABAId).
+		Where("waba_id = ?", wabaId).
 		First(&businessAccount)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
+			businessAccountRepository.logger.ErrorFunction(result.Error, wabaId)
 		}
 		return nil, nil, result.Error
 	}
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	result = businessAccountRepository.db.WithContext(ctx).
-		Where("business_portfolio_id = ?", businessAccount.BussinessPortfolioId).
+		Where("id = ?", businessAccount.BussinessPortfolioId).
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			businessAccountRepository.logger.ErrorFunction(result.Error, metaWABAId)
+			businessAccountRepository.logger.ErrorFunction(result.Error, wabaId)
 		}
 		return nil, nil, result.Error
 	}

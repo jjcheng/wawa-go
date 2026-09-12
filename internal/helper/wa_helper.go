@@ -121,3 +121,7 @@ func GetCountryCodeAndPhoneNumberFromWAId(waID string) (string, string, error) {
 	}
 	return fmt.Sprintf("%d", phoneNumber.GetCountryCode()), phonenumbers.GetNationalSignificantNumber(phoneNumber), nil
 }
+
+func GetWAId(countryCode string, phoneNumber string) string {
+	return strings.TrimSpace(countryCode) + strings.TrimSpace(phoneNumber)
+}

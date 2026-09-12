@@ -9,6 +9,7 @@ import (
 
 type CustomerRepository interface {
 	Repository[dao_customer.Customer]
+	GetByIdAndUserId(ctx context.Context, id int32, userId int32) (*dao_customer.Customer, error)
 	GetByCountryCodePhoneNumber(ctx context.Context, userId int32, countryCode string, phoneNumber string) (*dao_customer.Customer, error)
 	GetByWAId(ctx context.Context, userId int32, waId string) (*dao_customer.Customer, error)
 	GetByMetaUserId(ctx context.Context, userId int32, metaUserId string) (*dao_customer.Customer, error)

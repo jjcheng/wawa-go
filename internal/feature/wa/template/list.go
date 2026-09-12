@@ -50,8 +50,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusUnauthorized, "you are not authorized to access this business account")
 	}
-	metaWABAId := user.WA.BusinessAccount.WABAId
-	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplates(ctx, metaWABAId, list.NameOrContent, list.Category, list.Language, list.Status, list.QualityScore, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
+	wabaTemplates, paging, err := dependencies.Whatsapp.ListTemplates(ctx, user.WA.BusinessAccount.WABAId, list.NameOrContent, list.Category, list.Language, list.Status, list.QualityScore, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Template]](http.StatusBadGateway, err.Error())
 	}

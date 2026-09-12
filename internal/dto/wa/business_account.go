@@ -16,16 +16,18 @@ type BusinessAccount struct {
 	MetaBusinessPortfolioName string `json:"meta_business_portfolio_name"`
 }
 
-func NewBusinessAccount(businessAccount dao_wa.BusinessAccount) BusinessAccount {
+func NewBusinessAccount(businessAccount dao_wa.BusinessAccount, metaBusinessPortfolioId string, metaBusinessPortfolioName string) BusinessAccount {
 	return BusinessAccount{
 		DTOBase: dto.DTOBase{
 			Id:         businessAccount.Id,
 			EntryDate:  businessAccount.EntryDate,
 			LastUpdate: businessAccount.LastUpdate,
 		},
-		WABAId:     businessAccount.WABAId,
-		Name:       businessAccount.Name,
-		Currency:   businessAccount.Currency,
-		TimezoneId: businessAccount.TimezoneId,
+		WABAId:                    businessAccount.WABAId,
+		Name:                      businessAccount.Name,
+		Currency:                  businessAccount.Currency,
+		TimezoneId:                businessAccount.TimezoneId,
+		MetaBusinessPortfolioId:   metaBusinessPortfolioId,
+		MetaBusinessPortfolioName: metaBusinessPortfolioName,
 	}
 }

@@ -10,5 +10,5 @@ type AccountUserRepository interface {
 	Repository[dao_account.User]
 	GetByPhoneNumber(ctx context.Context, countryCode string, phoneNumber string) (*dao_account.User, error)
 	Get(ctx context.Context, id int32) (*dao_account.User, error)
-	HasMasterUser(ctx context.Context, metaBusinessPortfolioId string) (bool, error)
+	HasMasterUser(ctx context.Context, businessAccountId int32) (bool, error)
 }

@@ -16,14 +16,14 @@ import (
 
 // used only in embedded signup
 type Store struct {
-	BusinessProtfolioId int32                                `json:"business_portfolio_id" val:"required" description:"id of business portfolio"`
-	WABADetails         *service.WhatsAppWABADetailsResponse `json:"waba_details" val:"required" description:"details of WABA"`
+	BusinessPortfolio *dto_wa.BusinessPortfolio            `json:"business_portfolio" val:"required" description:"business porfolio associated with this business account"`
+	WABADetails       *service.WhatsAppWABADetailsResponse `json:"waba_details" val:"required" description:"details of WABA"`
 }
 
 func (store *Store) Validate() []exception.InputException {
 	var errors []exception.InputException
-	if store.BusinessProtfolioId <= 0 {
-		errors = append(errors, exception.NewInputException("business_portfolio_id", "missing business portfolio id"))
+	if store.BusinessPortfolio == nil {
+		errors = append(errors, exception.NewInputException("business_portfolio", "missing business portfolio"))
 	}
 	if store.WABADetails == nil {
 		errors = append(errors, exception.NewInputException("waba_details", "missing WABA details"))
@@ -35,10 +35,10 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 	if errors := store.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	existing, businessPortfolio, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, store.WABADetails.ID)
+	existing, _, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByWABAId(ctx, store.WABADetails.ID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, err.Error())
+			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 	}
 	var businessAccount dao_wa.BusinessAccount
@@ -51,7 +51,7 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 		}
 	} else {
 		businessAccount = dao_wa.BusinessAccount{
-			BussinessPortfolioId: businessPortfolio.Id,
+			BussinessPortfolioId: store.BusinessPortfolio.Id,
 			WABAId:               store.WABADetails.ID,
 			Name:                 store.WABADetails.Name,
 			TimezoneId:           store.WABADetails.TimezoneID,
@@ -61,6 +61,6 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 	}
-	d := dto_wa.NewBusinessAccount(businessAccount)
+	d := dto_wa.NewBusinessAccount(businessAccount, "", "")
 	return dto.NewSuccessResponse(&d)
 }

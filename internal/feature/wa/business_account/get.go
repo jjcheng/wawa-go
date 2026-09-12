@@ -31,6 +31,8 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
 	}
 	result := *user.WA.BusinessAccount
+	result.MetaBusinessPortfolioId = user.WA.BusinessPortfolio.MetaBusinessPortfolioId
+	result.MetaBusinessPortfolioName = user.WA.BusinessPortfolio.Name
 	return dto.NewSuccessResponse(&result)
 }
 

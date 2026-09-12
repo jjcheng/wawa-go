@@ -45,7 +45,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}
 	items := make([]dto_customer.Campaign, 0, len(campaigns.Items))
 	for _, campaign := range campaigns.Items {
-		items = append(items, dto_customer.NewCampaign(campaign, nil))
+		items = append(items, dto_customer.NewCampaign(campaign))
 	}
 	response := dto.NewPagedListResponse(items, campaigns.NumberOfPages, campaigns.NumberOfItems)
 	return dto.NewSuccessResponse(&response)

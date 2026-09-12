@@ -65,7 +65,7 @@ func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User,
 	if err := transaction.CommitTransaction(); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if err := dependencies.Whatsapp.DeregisterPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken); err != nil {
+	if err := dependencies.Whatsapp.DisconnectPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken); err != nil {
 		phoneNumber.Status = previousStatus
 		rollbackTransaction := dependencies.UnitOfWork.BeginTransaction()
 		if rollbackErr := rollbackTransaction.WAPhoneNumberRepository().Update(ctx, phoneNumber); rollbackErr != nil {

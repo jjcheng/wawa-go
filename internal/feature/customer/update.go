@@ -85,9 +85,6 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	customer.Remarks = update.Remarks
 	customer.WAId = customer.CountryCode + customer.PhoneNumber
 	customer.AdditionalData = update.AdditionalData
-	if customer.AdditionalData == nil {
-		customer.AdditionalData = map[string]any{}
-	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, customer); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

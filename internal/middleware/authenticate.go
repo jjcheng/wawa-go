@@ -59,12 +59,13 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 				return
 			}
 			userDTO := dto_account.NewUser(*user)
+			userDTO.Session = helper.ConvertToPointer(dto_account.NewSession(*session))
 			// load wa reloated objects
 			phoneNumber, businessAccount, businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx.Request.Context(), user.Id)
 			if err == nil {
 				phoneNumberDTO := dto_wa.NewPhoneNumber(*phoneNumber)
 				phoneNumberDTO.UserName = userDTO.Name
-				businessAccountDTO := dto_wa.NewBusinessAccount(*businessAccount)
+				businessAccountDTO := dto_wa.NewBusinessAccount(*businessAccount, businessPortfolio.MetaBusinessPortfolioId, businessPortfolio.Name)
 				businessPortfolioDTO := dto_wa.NewBusinessPortfolio(*businessPortfolio, false)
 				userDTO.WA = &dto_account.UserWA{
 					PhoneNumber_:                 &phoneNumberDTO,

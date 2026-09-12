@@ -62,9 +62,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 	}
-	result := dto_wa.NewBusinessAccount(*businessAccount)
-	result.MetaBusinessPortfolioName = waba.OwnerBusinessInfo.Name
-	result.MetaBusinessPortfolioId = waba.OwnerBusinessInfo.ID
+	result := dto_wa.NewBusinessAccount(*businessAccount, waba.OwnerBusinessInfo.ID, waba.OwnerBusinessInfo.Name)
 	return dto.NewSuccessResponse(&result)
 }
 
