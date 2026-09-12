@@ -38,7 +38,7 @@ func (businessAccountRepository *WABusinessAccountRepository) GetByMetaWABAId(ct
 	}
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	result = businessAccountRepository.db.WithContext(ctx).
-		Where("meta_business_portfolio_id = ?", businessAccount.MetaBusinessPortfolioId).
+		Where("business_portfolio_id = ?", businessAccount.BussinessPortfolioId).
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {

@@ -42,7 +42,7 @@ func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User,
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if user.WA == nil || user.WA.BusinessPortfolio == nil || phoneNumber.MetaBusinessPortfolioId != user.WA.BusinessPortfolio.MetaBusinessPortfolioId {
+	if user.WA == nil || user.WA.BusinessAccount == nil || phoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to deregister this phone number")
 	}
 	phoneDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
@@ -53,7 +53,7 @@ func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User,
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "This number is co-existed on WhatsApp Business App, please re-register in the app instead.")
 	}
 	if phoneDetails.Status != "CONNECTED" {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "This number is already disconnected")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "This number is not connected")
 	}
 	previousStatus := phoneNumber.Status
 	phoneNumber.Status = types.WAPhoneNumberStatusDisconnected

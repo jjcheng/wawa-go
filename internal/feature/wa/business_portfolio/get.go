@@ -14,13 +14,9 @@ import (
 )
 
 type Get struct {
-	//MetaBusinessPortfolioId string `uri:"meta_business_portfolio_id"  description:"Meta business portfolio id"`
 }
 
 func (get *Get) Validate() []exception.InputException {
-	// var errors []exception.InputException
-	// get.MetaBusinessPortfolioId = strings.TrimSpace(get.MetaBusinessPortfolioId)
-	// return errors
 	return nil
 }
 
@@ -36,25 +32,12 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	}
 	result := *user.WA.BusinessPortfolio
 	return dto.NewSuccessResponse(&result)
-	// if get.MetaBusinessPortfolioId != "" {
-	// 	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, get.MetaBusinessPortfolioId)
-	// 	if err != nil {
-	// 		if errors.Is(err, gorm.ErrRecordNotFound) {
-	// 			return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusNotFound, "business portfolio not found")
-	// 		}
-	// 		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	// 	}
-	// 	result := dto_wa.NewBusinessPortfolio(*businessPortfolio, false)
-	// 	return dto.NewSuccessResponse(&result)
-	// } else {
-	// unreachable legacy lookup retained below for reference
-	//}
 }
 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp business portfolio",
-		"Gets a WhatsApp business portfolio by its Meta business portfolio ID.",
+		"Gets a WhatsApp business portfolio managed by the user.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/wa/business-portfolios",

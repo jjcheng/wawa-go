@@ -45,6 +45,9 @@ func (changePassword *ChangePassword) Validate() []exception.InputException {
 }
 
 func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
+	if user == nil {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "you are not authenticated")
+	}
 	if errors := changePassword.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}

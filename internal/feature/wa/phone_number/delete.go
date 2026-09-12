@@ -15,39 +15,38 @@ import (
 )
 
 type Delete struct {
-	PhoneNumberId int32 `json:"phone_number_id" val:"required" description:"id of the phone number"`
+	Id int32 `uri:"id" val:"required" description:"id of the phone number"`
 }
 
 func (delete *Delete) Validate() []exception.InputException {
-	if delete.PhoneNumberId <= 0 {
-		return []exception.InputException{exception.NewInputException("phone_number_id", "invalid phone number id")}
+	if delete.Id <= 0 {
+		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
 	}
 	return nil
 }
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+	return dto.NewFailedResponse[any](http.StatusNotImplemented, "not in use")
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
 	}
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, delete.PhoneNumberId)
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, delete.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to remove this phone number")
+	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
 	}
-	if user.WA.PhoneNumber_.Id != phoneNumber.Id {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to remove this phone number")
+	if user.WA.BusinessAccount.Id != phoneNumber.BusinessAccountId {
+		return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")
 	}
-	if user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
-	}
+	// TODO: remove all messages
 	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolio.MetaBusinessPortfolioId); err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
 	}
@@ -61,9 +60,9 @@ func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Remove WhatsApp phone number",
 		"Removes an assigned WhatsApp phone number from WhatsApp and the local account.",
-		types.HttpRequestTypeJSON,
+		types.HttpRequestTypeUri,
 		http.MethodDelete,
-		"/v1/wa/phone-numbers",
+		"/v1/wa/phone-numbers/:id",
 		true,
 		false,
 		types.APITagWA,

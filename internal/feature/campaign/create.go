@@ -2,7 +2,6 @@ package feature_campaign
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"strings"
@@ -170,15 +169,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	recipients := make([]dao_customer.CampaignRecipient, 0, len(customers))
 	for index, customer := range customers {
 		recipients = append(recipients, dao_customer.CampaignRecipient{
-			CustomerName:       customer.DisplayName,
-			CustomerWAId:       customer.WAId,
-			CustomerMetaUserId: customer.MetaUserId,
-			CampaignId:         campaign.Id,
-			CustomerId:         customer.Id,
-			UserId:             user.Id,
-			Payload:            payloads[index],
-			Status:             types.CampaignRecipientStatusPending,
-			NextAttemptAt:      sql.NullTime{Time: campaign.SendDate, Valid: true},
+			CampaignId:    campaign.Id,
+			CustomerId:    customer.Id,
+			Payload:       payloads[index],
+			Status:        types.CampaignRecipientStatusPending,
+			NextAttemptAt: &campaign.SendDate,
 		})
 	}
 	if err := transaction.CampaignRecipientRepository().InsertBulk(ctx, recipients); err != nil {

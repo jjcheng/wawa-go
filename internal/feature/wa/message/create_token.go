@@ -2,9 +2,9 @@ package feature_wa_message
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -13,56 +13,53 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
-type CreateToken struct {
-	PhoneNumberID      string `json:"phone_number_id" val:"required" description:"Meta ID of the business phone number"`
-	CustomerWAId       string `json:"customer_wa_id" description:"Customer WhatsApp ID" example:"6590073708"`
-	CustomerMetaUserID string `json:"customer_meta_user_id" description:"Customer Meta business-scoped user ID"`
+type CreateChatToken struct {
+	CustomerId int32 `form:"customer_id" val:"required" description:"id of the customer"`
 }
 
-func (createToken *CreateToken) Validate() []exception.InputException {
-	createToken.PhoneNumberID = strings.TrimSpace(createToken.PhoneNumberID)
-	createToken.CustomerWAId = strings.TrimSpace(createToken.CustomerWAId)
-	createToken.CustomerMetaUserID = strings.TrimSpace(createToken.CustomerMetaUserID)
+func (createChatToken *CreateChatToken) Validate() []exception.InputException {
 	inputErrors := []exception.InputException{}
-	if createToken.PhoneNumberID == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("phone_number_id", "missing phone number ID"))
-	}
-	if createToken.CustomerWAId == "" && createToken.CustomerMetaUserID == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("customer_wa_id", "customer WA Id or Meta user ID is required"))
+	if createChatToken.CustomerId <= 0 {
+		inputErrors = append(inputErrors, exception.NewInputException("customer_id", "missing customer ID"))
 	}
 	return inputErrors
 }
 
-func (createToken CreateToken) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.AblyTokenRequest] {
+func (createChatToken CreateChatToken) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.AblyTokenRequest] {
 	if user == nil {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusForbidden, "you are not authenticated")
 	}
-	if inputErrors := createToken.Validate(); len(inputErrors) > 0 {
+	if inputErrors := createChatToken.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.AblyTokenRequest](inputErrors)
 	}
 	if user.WA == nil || user.WA.PhoneNumber_ == nil {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
-	if user.WA.PhoneNumber_.MetaPhoneNumberId != createToken.PhoneNumberID {
-		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, createChatToken.CustomerId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusBadRequest, "customer not found")
+		}
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	channelName := helper.GetChatChannelName(createToken.PhoneNumberID, createToken.CustomerWAId, createToken.CustomerMetaUserID)
+	channelName := helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token)
 	tokenRequest, err := dependencies.Ably.CreateConversationTokenRequest(channelName, fmt.Sprintf("user:%d", user.Id))
 	if err != nil {
-		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusServiceUnavailable, "realtime messaging is unavailable")
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusServiceUnavailable, "realtime chat is unavailable")
 	}
 	return dto.NewSuccessResponse(tokenRequest)
 }
 
-func (CreateToken) APISettings() feature.APISettings {
+func (CreateChatToken) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Create WhatsApp conversation realtime token",
-		"Creates a short-lived Ably token restricted to subscribe and presence on one WhatsApp conversation channel.",
-		types.HttpRequestTypeJSON,
+		"Create WhatsApp conversation realtime chat token",
+		"Creates a short-lived Ably token restricted to subscribe and presence on WhatsApp chat page.",
+		types.HttpRequestTypeQuery,
 		http.MethodPost,
-		"/v1/wa/messages/realtime-token",
+		"/v1/wa/messages/chat-token",
 		true,
 		true,
 		types.APITagWA,
@@ -70,7 +67,7 @@ func (CreateToken) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException("customer not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WhatsApp phone number", http.StatusUnauthorized)),
-			feature.NewAPIError(*exception.NewCustomException("realtime messaging is unavailable", http.StatusServiceUnavailable)),
+			feature.NewAPIError(*exception.NewCustomException("realtime chat is unavailable", http.StatusServiceUnavailable)),
 		},
 	)
 }

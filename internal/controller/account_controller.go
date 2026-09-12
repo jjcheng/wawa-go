@@ -15,4 +15,5 @@ func registerAccountController(routerGroup *gin.RouterGroup, dependencies *servi
 	registerRoute[any, feature_account_admin.UpdateStatus](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_account.User, feature_account_user.ChangePassword](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_account.User, feature_account_user.SetPassword](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_account.User, feature_account_user.Me](routerGroup, dependencies, apiGenerator)
 }

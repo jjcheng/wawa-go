@@ -24,33 +24,22 @@ func NewWAMessageRepository(db *gorm.DB, logger *service.Logger) repository.WAMe
 	}
 }
 
-func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNumberId string, customerWAId string, customerMetaUserId string, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error) {
-	phoneNumberId = strings.TrimSpace(phoneNumberId)
-	customerWAId = strings.TrimSpace(customerWAId)
-	customerMetaUserId = strings.TrimSpace(customerMetaUserId)
+func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNumberId int32, customerId int32, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error) {
 	query := messageRepository.db.WithContext(ctx).Model(&dao_wa.Message{})
-	if phoneNumberId != "" {
-		query = query.Where("phone_number_id = ?", phoneNumberId)
-	}
-	// take either customer_wa_id or customer_meta_user_id
-	if customerWAId != "" {
-		query = query.Where("customer_wa_id = ?", customerWAId)
-	} else if customerMetaUserId != "" {
-		query = query.Where("customer_meta_user_id = ?", customerMetaUserId)
-	}
+	query = query.Where("phone_number_id = ? AND customer_id = ?", phoneNumberId, customerId)
 	if ignoreUnsupportedType {
 		query = query.Where("type <> ?", "unsupported")
 	}
 	var count int64
 	if err = query.Count(&count).Error; err != nil {
-		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerWAId, customerMetaUserId)
+		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerId)
 		return nil, 0, 0, err
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	offset := (page - 1) * pageSize
 	if err = query.Order("timestamp DESC").Offset(offset).Limit(pageSize).Find(&messages).Error; err != nil {
-		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerWAId, customerMetaUserId, page, pageSize)
+		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerId, page, pageSize)
 		return nil, 0, 0, err
 	}
 	return messages, totalPages, totalCount, nil

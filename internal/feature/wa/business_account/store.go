@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -15,20 +14,19 @@ import (
 	"gorm.io/gorm"
 )
 
+// used only in embedded signup
 type Store struct {
-	MetaBusinessProtfolioId string `json:"meta_business_portfolio_id" val:"required" description:"returned in embedded signup"`
-	MetaWABAId              string `json:"meta_waba_id" val:"required" description:"returned in embedded signup"`
+	BusinessProtfolioId int32                                `json:"business_portfolio_id" val:"required" description:"id of business portfolio"`
+	WABADetails         *service.WhatsAppWABADetailsResponse `json:"waba_details" val:"required" description:"details of WABA"`
 }
 
 func (store *Store) Validate() []exception.InputException {
 	var errors []exception.InputException
-	store.MetaBusinessProtfolioId = strings.TrimSpace(store.MetaBusinessProtfolioId)
-	store.MetaWABAId = strings.TrimSpace(store.MetaWABAId)
-	if store.MetaBusinessProtfolioId == "" {
-		errors = append(errors, exception.NewInputException("meta_business_portfolio_id", "missing Meta business portfolio id"))
+	if store.BusinessProtfolioId <= 0 {
+		errors = append(errors, exception.NewInputException("business_portfolio_id", "missing business portfolio id"))
 	}
-	if store.MetaWABAId == "" {
-		errors = append(errors, exception.NewInputException("meta_waba_id", "missing Meta WABA id"))
+	if store.WABADetails == nil {
+		errors = append(errors, exception.NewInputException("waba_details", "missing WABA details"))
 	}
 	return errors
 }
@@ -37,39 +35,27 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 	if errors := store.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	existing, businessPortfolio, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, store.MetaWABAId)
+	existing, businessPortfolio, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, store.WABADetails.ID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, err.Error())
 		}
 	}
-	// New WABAs do not have a business-account association yet, so resolve the portfolio directly.
-	if businessPortfolio == nil {
-		businessPortfolio, err = dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, store.MetaBusinessProtfolioId)
-		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business portfolio not found")
-			}
-			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-		}
-	}
-	waba, err := dependencies.Whatsapp.GetWABA(ctx, store.MetaWABAId, businessPortfolio.AccessToken)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, err.Error())
-	}
 	var businessAccount dao_wa.BusinessAccount
 	if existing != nil {
 		businessAccount = *existing
-		if businessAccount.Name != waba.Name {
-			businessAccount.Name = waba.Name
-			// ignore error if any
+		if businessAccount.Name != store.WABADetails.Name {
+			businessAccount.Name = store.WABADetails.Name
+			// ignore errors
 			_ = dependencies.UnitOfWork.WABusinessAccountRepository().Update(ctx, &businessAccount)
 		}
 	} else {
 		businessAccount = dao_wa.BusinessAccount{
-			MetaBusinessPortfolioId: store.MetaBusinessProtfolioId,
-			MetaWABAId:              store.MetaWABAId,
-			Name:                    waba.Name,
+			BussinessPortfolioId: businessPortfolio.Id,
+			WABAId:               store.WABADetails.ID,
+			Name:                 store.WABADetails.Name,
+			TimezoneId:           store.WABADetails.TimezoneID,
+			Currency:             store.WABADetails.Currency,
 		}
 		if err := dependencies.UnitOfWork.WABusinessAccountRepository().Insert(ctx, &businessAccount); err != nil {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

@@ -58,12 +58,12 @@ func (createFromSample CreateFromSample) Handle(ctx context.Context, user *dto_a
 	if err := createFromSample.uploadHeaderMediaSamples(ctx, &templateBase.TemplateBase, dependencies, user.WA.BusinessPortfolioAccessToken); err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}
-	template, err := dependencies.Whatsapp.CreateTemplate(ctx, user.WA.BusinessAccount.MetaWABAId, templateBase.Payload(), user.WA.BusinessPortfolioAccessToken)
+	template, err := dependencies.Whatsapp.CreateTemplate(ctx, user.WA.BusinessAccount.WABAId, templateBase.Payload(), user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}
 	// set meta edit template url
-	template.MetaEditTemplateUrl = fmt.Sprintf("https://business.facebook.com/latest/whatsapp_manager/message_templates/?business_id=%s&tab=message-templates&childRoute=CAPI&id=%s&nav_ref=whatsapp_manager&asset_id=%s", user.WA.BusinessPortfolio.MetaBusinessPortfolioId, template.ID, user.WA.BusinessAccount.MetaWABAId)
+	template.MetaEditTemplateUrl = fmt.Sprintf("https://business.facebook.com/latest/whatsapp_manager/message_templates/?business_id=%s&tab=message-templates&childRoute=CAPI&id=%s&nav_ref=whatsapp_manager&asset_id=%s", user.WA.BusinessPortfolio.MetaBusinessPortfolioId, template.ID, user.WA.BusinessAccount.WABAId)
 	return dto.NewSuccessResponse(template)
 }
 

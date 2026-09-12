@@ -37,47 +37,47 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Get(ctx context.Context, i
 	return phoneNumber, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) GetByPhoneNumberId(ctx context.Context, phoneNumberId string) (*dao_wa.PhoneNumber, error) {
+func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx context.Context, metaPhoneNumberId string) (*dao_wa.PhoneNumber, error) {
 	var phoneNumber *dao_wa.PhoneNumber
-	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", phoneNumberId).First(&phoneNumber)
+	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", metaPhoneNumberId).First(&phoneNumber)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, phoneNumberId)
+			phoneNumberRepository.logger.ErrorFunction(result.Error, metaPhoneNumberId)
 		}
 		return nil, result.Error
 	}
 	return phoneNumber, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) CountByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string) (int, error) {
+func (phoneNumberRepository *WAPhoneNumberRepository) CountByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error) {
 	var count int64
 	if err := phoneNumberRepository.db.WithContext(ctx).
 		Model(&dao_wa.PhoneNumber{}).
-		Where("meta_waba_id = ?", metaBusinessAccountId).
+		Where("business_account_id = ?", businessAccountId).
 		Count(&count).Error; err != nil {
-		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		phoneNumberRepository.logger.ErrorFunction(err, businessAccountId)
 		return 0, err
 	}
 	return int(count), nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) ListByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string, status types.WAPhoneNumberStatus, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
+func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32, status types.WAPhoneNumberStatus, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
 	query := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers AS pn").
 		Joins("INNER JOIN account.users AS u ON u.id = pn.user_id").
-		Where("pn.meta_waba_id = ?", metaBusinessAccountId)
+		Where("pn.business_account_id = ?", businessAccountId)
 	if status != "" {
 		query = query.Where("pn.status = ?", status)
 	}
 	var count int64
 	if err := query.Distinct("pn.id").Count(&count).Error; err != nil {
-		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		phoneNumberRepository.logger.ErrorFunction(err, businessAccountId)
 		return nil, 0, 0, err
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	if err := query.Select("pn.*, u.name AS user_name").Order("pn.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers).Error; err != nil {
-		phoneNumberRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		phoneNumberRepository.logger.ErrorFunction(err, businessAccountId)
 		return nil, 0, 0, err
 	}
 	return phoneNumbers, totalCount, totalPages, nil
@@ -121,11 +121,11 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 	var businessPortfolio dao_wa.BusinessPortfolio
 	result = phoneNumberRepository.db.WithContext(ctx).
 		Model(&dao_wa.BusinessPortfolio{}).
-		Where("meta_business_portfolio_id = ?", businessAccount.MetaBusinessPortfolioId).
+		Where("business_portfolio_id = ?", businessAccount.BussinessPortfolioId).
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, userId, businessAccount.MetaBusinessPortfolioId)
+			phoneNumberRepository.logger.ErrorFunction(result.Error, userId, businessAccount.BussinessPortfolioId)
 		}
 		return nil, nil, result.Error
 	}

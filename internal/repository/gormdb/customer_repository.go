@@ -39,15 +39,15 @@ func (customerRepository *CustomerRepository) CountActiveByUserId(ctx context.Co
 	return int(count), nil
 }
 
-func (customerRepository *CustomerRepository) CountActiveByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string) (int, error) {
+func (customerRepository *CustomerRepository) CountActiveByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error) {
 	var count int64
 	if err := customerRepository.db.WithContext(ctx).
 		Table("customer.customers").
 		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = customer.customers.user_id").
-		Where("wa.phone_numbers.meta_waba_id = ? AND customer.customers.status = ?", metaBusinessAccountId, types.CustomerStatusActive).
+		Where("wa.phone_numbers.business_account_id = ? AND customer.customers.status = ?", businessAccountId, types.CustomerStatusActive).
 		Distinct("customer.customers.id").
 		Count(&count).Error; err != nil {
-		customerRepository.logger.ErrorFunction(err, metaBusinessAccountId)
+		customerRepository.logger.ErrorFunction(err, businessAccountId)
 		return 0, err
 	}
 	return int(count), nil

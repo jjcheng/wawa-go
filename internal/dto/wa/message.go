@@ -8,23 +8,19 @@ import (
 
 type Message struct {
 	dto.DTOBase
-	Sending            bool                  `json:"sending"`
-	PhoneNumber        string                `json:"phone_number"`
-	MetaPhoneNumberId  string                `json:"meta_phone_number_id"`
-	CustomerName       string                `json:"customer_name"`
-	CustomerWAId       string                `json:"customer_wa_id"`
-	CustomerMetaUserId string                `json:"customer_meta_user_id"`
-	CustomerId         int32                 `json:"customer_id"`
-	WAMessageId        string                `json:"wa_message_id"`
-	Timestamp          int64                 `json:"timestamp"`
-	Type               string                `json:"type"`
-	Status             types.WAMessageStatus `json:"status"`
-	Payload            map[string]any        `json:"payload"`
-	CampaignId         *int32                `json:"campaign_id"`
-	AttachmentURL      string                `json:"attachment_url,omitempty"`
-	Billable           bool                  `json:"billable"`
-	Category           string                `json:"category,omitempty"`
-	BillingType        string                `json:"billing_type,omitempty"`
+	Sending       bool                  `json:"sending"`
+	PhoneNumberId int32                 `json:"phone_number_id"`
+	CustomerId    int32                 `json:"customer_id"`
+	WAMessageId   string                `json:"wa_message_id"`
+	Timestamp     int64                 `json:"timestamp"`
+	Type          string                `json:"type"`
+	Status        types.WAMessageStatus `json:"status"`
+	Payload       map[string]any        `json:"payload"`
+	CampaignId    *int32                `json:"campaign_id"`
+	AttachmentURL string                `json:"attachment_url,omitempty"`
+	Billable      bool                  `json:"billable"`
+	Category      string                `json:"category,omitempty"`
+	BillingType   string                `json:"billing_type,omitempty"`
 	// lazy loaded
 	PreviewHTML     string `json:"preview_html,omitempty"`
 	PreviewDarkHTML string `json:"preview_dark_html,omitempty"`
@@ -37,22 +33,18 @@ func NewMessage(message dao_wa.Message) Message {
 			EntryDate:  message.EntryDate,
 			LastUpdate: message.LastUpdate,
 		},
-		Sending:            message.Sending,
-		PhoneNumber:        message.PhoneNumber,
-		MetaPhoneNumberId:  message.MetaPhoneNumberId,
-		CustomerName:       message.CustomerName,
-		CustomerWAId:       message.CustomerWAId,
-		CustomerMetaUserId: message.CustomerMetaUserId,
-		CustomerId:         message.CustomerId,
-		WAMessageId:        message.WAMessageId,
-		Timestamp:          message.Timestamp,
-		Type:               message.Type,
-		Status:             message.Status,
-		Payload:            message.Payload,
-		AttachmentURL:      message.AttachmentURL,
-		Billable:           message.Billable,
-		BillingType:        message.BillingType,
-		Category:           message.Category,
+		Sending:       message.Sending,
+		PhoneNumberId: message.PhoneNumberId,
+		CustomerId:    message.CustomerId,
+		WAMessageId:   message.WAMessageId,
+		Timestamp:     message.Timestamp,
+		Type:          message.Type,
+		Status:        message.Status,
+		Payload:       message.Payload,
+		AttachmentURL: message.AttachmentURL,
+		Billable:      message.Billable,
+		BillingType:   message.BillingType,
+		Category:      message.Category,
 	}
 	if message.CampaignId.Valid {
 		d.CampaignId = &message.CampaignId.Int32

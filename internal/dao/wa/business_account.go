@@ -4,10 +4,11 @@ import "github.com/jjcheng/wawa-go/internal/dao"
 
 type BusinessAccount struct {
 	dao.DAOBase
-	MetaBusinessPortfolioId string `gorm:"column:meta_business_portfolio_id"`
-	MetaWABAId              string `gorm:"column:meta_waba_id"`
-	Name                    string `gorm:"column:name"`
-	TimeZoneId              string `gorm:"column:time_zone_id"`
+	BussinessPortfolioId int32  `gorm:"column:business_portfolio_id"`
+	WABAId               string `gorm:"column:waba_id"`
+	Name                 string `gorm:"column:name"`
+	TimezoneId           string `gorm:"column:timezone_id"`
+	Currency             string `gorm:"column:currency"`
 }
 
 func (BusinessAccount) TableName() string {

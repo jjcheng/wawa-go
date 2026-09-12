@@ -6,16 +6,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	"github.com/jjcheng/wawa-go/internal/exception"
 	feature_customer "github.com/jjcheng/wawa-go/internal/feature/customer"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -77,13 +79,13 @@ func StartQueueListener(ctx context.Context, dependencies *service.Dependencies)
 			continue
 		}
 		messageCtx, messageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		err = processWAIncoming(messageCtx, dependencies, *incoming)
+		ex := processWAIncoming(messageCtx, dependencies, *incoming)
 		messageCancel()
-		if err != nil {
+		if ex != nil {
 			// delete the queued message if already stored
-			if strings.Contains(err.Error(), "duplicate key value violates") {
-				if err := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); err != nil {
-					dependencies.Logger.ErrorFunction(err, message.MessageID)
+			if strings.Contains(ex.Message, "duplicate key value violates") {
+				if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
+					dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
 				}
 			}
 			continue
@@ -94,17 +96,20 @@ func StartQueueListener(ctx context.Context, dependencies *service.Dependencies)
 	}
 }
 
-func processWAIncoming(ctx context.Context, dependencies *service.Dependencies, incoming dto_wa.Incoming) error {
+func processWAIncoming(ctx context.Context, dependencies *service.Dependencies, incoming dto_wa.Incoming) *exception.Exception {
 	for _, entry := range incoming.Entry {
 		for _, change := range entry.Changes {
 			for _, incomingMessage := range change.Value.Messages {
-				if err := storeWAIncomingMessage(ctx, dependencies, incomingMessage, change.Value.Contacts, change.Value.Metadata); err != nil {
-					return err
+				if ex := storeWAIncomingMessage(ctx, dependencies, incomingMessage, change.Value.Contacts, change.Value.Metadata); ex != nil {
+					if strings.Contains(ex.Message, "duplicate") {
+						continue
+					}
+					return ex
 				}
 			}
 			for _, status := range change.Value.Statuses {
-				if err := storeWAMessageStatus(ctx, dependencies, status); err != nil {
-					return err
+				if ex := storeWAMessageStatus(ctx, dependencies, status); ex != nil {
+					return ex
 				}
 			}
 		}
@@ -112,10 +117,10 @@ func processWAIncoming(ctx context.Context, dependencies *service.Dependencies, 
 	return nil
 }
 
-func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status) error {
+func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status) *exception.Exception {
 	timestamp, err := strconv.ParseInt(status.Timestamp, 10, 64)
 	if err != nil {
-		return fmt.Errorf("invalid WhatsApp status timestamp %q: %w", status.Timestamp, err)
+		return exception.NewCustomException(fmt.Sprintf("invalid WhatsApp status timestamp: %q", status.Timestamp), http.StatusBadGateway)
 	}
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	committed := false
@@ -127,49 +132,83 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 	messageStatus := types.WAMessageStatus(status.Status)
 	message, err := transaction.WAMessageRepository().GetByWAMessageId(ctx, status.ID)
 	if err != nil {
-		return err
+		return exception.NewCustomException(fmt.Sprintf("message not found with status ID: %s", status.ID), http.StatusNotFound)
 	}
 	event := dao_wa.MessageStatusEvent{
 		WAMessageId: status.ID,
+		MessageId:   message.Id,
 		Status:      messageStatus,
 		Timestamp:   timestamp,
 		Payload:     status.Payload,
 	}
 	if err := transaction.WAMessageStatusEventRepository().Insert(ctx, &event); err != nil {
-		return err
+		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 	}
 	// Persist every callback for audit, but only advance the current status. Meta may
 	// deliver callbacks out of order or omit delivered when a message is read directly.
 	// This prevents stale sent, delivered, or failed callbacks from regressing read/played.
 	if helper.CanTransitionWAMessageStatus(message.Status, messageStatus) {
 		message.Status = messageStatus
-		message.CustomerMetaUserId = status.RecipientUserID
-		message.CustomerWAId = status.RecipientID
 		if status.Pricing != nil {
 			message.Billable = status.Pricing.Billable
 			message.BillingType = status.Pricing.Type
 			message.Category = status.Pricing.Category
 		}
-		transaction.WAMessageRepository().Update(ctx, message)
+		if err := transaction.WAMessageRepository().Update(ctx, message); err != nil {
+			return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
+		}
 	}
+	customer, err := transaction.CustomerRepository().GetById(ctx, message.CustomerId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return exception.NewCustomException(fmt.Sprintf("customer not found with ID: %d", message.CustomerId), http.StatusNotFound)
+		}
+		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
+	}
+	var customerHasChange bool
+	if status.RecipientUserID != "" && customer.MetaUserId != status.RecipientUserID {
+		customer.MetaUserId = status.RecipientUserID
+		customerHasChange = true
+	}
+	if status.RecipientID != "" && customer.WAId != status.RecipientID {
+		customer.WAId = status.RecipientID
+		customerHasChange = true
+	}
+	if customerHasChange {
+		if err := transaction.CustomerRepository().Update(ctx, customer); err != nil {
+			return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
+		}
+	}
+	phoneNumber, err := transaction.WAPhoneNumberRepository().GetById(ctx, message.PhoneNumberId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return exception.NewCustomException("phone number not found", http.StatusNotFound)
+		}
+		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
+	}
+	channelName := helper.GetChatChannelName(phoneNumber.MetaPhoneNumberId, customer.Token)
 	if err := transaction.CommitTransaction(); err != nil {
-		return err
+		dependencies.Logger.ErrorFunction(err, status)
+		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 	}
 	committed = true
-	err = dependencies.Ably.Publish("status", helper.GetChatChannelName(message.MetaPhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), dto_wa.NewMessageStatusEvent(event))
-	return err
+	// Publish outside the transaction because Ably cannot participate in the database commit.
+	if err := dependencies.Ably.Publish("status", channelName, dto_wa.NewMessageStatusEvent(event)); err != nil {
+		return exception.NewCustomException("error publishing Ably status event: "+channelName, http.StatusBadGateway)
+	}
+	return nil
 }
 
-func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
+func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) *exception.Exception {
 	timestamp, err := strconv.ParseInt(incomingMessage.Timestamp, 10, 64)
 	if err != nil {
-		return fmt.Errorf("invalid WhatsApp message timestamp %q: %w", incomingMessage.Timestamp, err)
+		return exception.NewCustomException(fmt.Sprintf("invalid WhatsApp message timestamp: %q", incomingMessage.Timestamp), http.StatusBadGateway)
 	}
 	contact := helper.First(contacts, func(c dto_wa.IncomingContact) bool {
 		return c.UserID == incomingMessage.FromUserID
 	})
 	if contact == nil {
-		return fmt.Errorf("missing contact in WA incoming message: %s", incomingMessage.ID)
+		return exception.NewCustomException(fmt.Sprintf("missing contact in WA incoming message: %s", incomingMessage.ID), http.StatusBadGateway)
 	}
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	committed := false
@@ -180,78 +219,89 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	}()
 	transactionDependencies := *dependencies
 	transactionDependencies.UnitOfWork = transaction
-	message := dao_wa.Message{
-		Sending:            false,
-		PhoneNumber:        metadata.DisplayPhoneNumber,
-		MetaPhoneNumberId:  metadata.PhoneNumberID,
-		CustomerName:       contact.Profile.Name,
-		CustomerWAId:       contact.WaID,
-		CustomerMetaUserId: incomingMessage.FromUserID,
-		WAMessageId:        incomingMessage.ID,
-		Timestamp:          timestamp,
-		Type:               incomingMessage.Type,
-		Payload:            incomingMessage.Payload,
-	}
-	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
-		return err
-	}
-	userPhoneNumber, err := transaction.WAPhoneNumberRepository().GetByPhoneNumberId(ctx, metadata.PhoneNumberID)
+	userPhoneNumber, err := transaction.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, metadata.PhoneNumberID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("phone number id is not associated with a user")
+			return exception.NewCustomException(fmt.Sprintf("phone number ID not associated with a user: %s", metadata.PhoneNumberID), http.StatusNotFound)
 		}
-		return err
+		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 	}
 	// check customer exists based on waId or metaUserId
 	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.UserId, contact.WaID, incomingMessage.FromUserID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
+			return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 		}
 	}
 	// if no existing customer, create new
+	var customerDTO dto_customer.Customer
 	if existingCustomer == nil {
 		countryCode, phoneNumber, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessage.From)
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, metadata.DisplayPhoneNumber)
-			// use a fake country code + phone number so it does not violate unique rule
 			countryCode = "."
-			phoneNumber = strings.ReplaceAll(uuid.NewString(), "-", "")
+			phoneNumber = incomingMessage.From
 		}
 		createCustomer := feature_customer.Create{
-			DisplayName: contact.Profile.Name,
-			CountryCode: countryCode,
-			PhoneNumber: phoneNumber,
-			MetaUserId:  incomingMessage.FromUserID,
-			WAId:        contact.WaID,
-			Remarks:     "automatically created by incoming WhatsApp message",
+			DisplayName:   contact.Profile.Name, // set same as wa display name
+			WADisplayName: contact.Profile.Name,
+			CountryCode:   countryCode,
+			PhoneNumber:   phoneNumber,
+			MetaUserId:    incomingMessage.FromUserID,
+			WAId:          contact.WaID,
+			Remarks:       "created from incoming WhatsApp message",
 		}
 		createCustomerResponse := createCustomer.Handle(ctx, &dto_account.User{DTOBase: dto.DTOBase{
 			Id: userPhoneNumber.UserId,
 		}}, &transactionDependencies)
 		if !createCustomerResponse.Success {
-			return errors.New(createCustomerResponse.Message)
+			return exception.NewCustomException(createCustomerResponse.Message, createCustomerResponse.StatusCode)
 		}
+		customerDTO = *createCustomerResponse.Data
 	} else { // update metaUserId if not exist
 		var hasChange bool
-		if existingCustomer.MetaUserId != incomingMessage.FromUserID {
+		if incomingMessage.FromUserID != "" && existingCustomer.MetaUserId != incomingMessage.FromUserID {
 			existingCustomer.MetaUserId = incomingMessage.FromUserID
 			hasChange = true
 		}
-		if existingCustomer.WAId != contact.WaID {
+		if contact.WaID != "" && existingCustomer.WAId != contact.WaID {
 			existingCustomer.WAId = contact.WaID
+			hasChange = true
+		}
+		if contact.Profile.Name != "" && existingCustomer.WADisplayName != contact.Profile.Name {
+			existingCustomer.WADisplayName = contact.Profile.Name
 			hasChange = true
 		}
 		if hasChange {
 			if err := transaction.CustomerRepository().Update(ctx, existingCustomer); err != nil {
-				return err
+				return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 			}
 		}
+		customerDTO = dto_customer.NewCustomer(*existingCustomer)
+	}
+	message := dao_wa.Message{
+		Sending:       false,
+		CustomerId:    customerDTO.Id,
+		PhoneNumberId: userPhoneNumber.Id,
+		WAMessageId:   incomingMessage.ID,
+		Timestamp:     timestamp,
+		Type:          incomingMessage.Type,
+		Payload:       incomingMessage.Payload,
+	}
+	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return exception.NewCustomException("duplicate message entry", http.StatusBadRequest)
+		}
+		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		return err
+		return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
 	}
 	committed = true
 	messageDTO := dto_wa.NewMessage(message)
-	return dependencies.Ably.Publish("message", helper.GetChatChannelName(message.MetaPhoneNumberId, message.CustomerWAId, message.CustomerMetaUserId), messageDTO)
+	channelName := helper.GetChatChannelName(metadata.PhoneNumberID, customerDTO.Token)
+	if err := dependencies.Ably.Publish("message", channelName, messageDTO); err != nil {
+		return exception.NewCustomException("error publishing Ably message event: "+channelName, http.StatusBadGateway)
+	}
+	return nil
 }

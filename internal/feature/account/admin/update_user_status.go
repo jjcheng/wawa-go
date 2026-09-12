@@ -63,7 +63,7 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if user.WA.BusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId || user.WA.BusinessAccount.MetaWABAId != targetBusinessAccount.MetaWABAId {
+	if user.WA.BusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId || user.WA.BusinessAccount.WABAId != targetBusinessAccount.WABAId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to update this user")
 	}
 	existingUser.Status = updateStatus.Status

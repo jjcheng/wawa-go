@@ -278,17 +278,15 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	timestamp := time.Now().Unix()
 	// payload["timestamp"] = fmt.Sprint(timestamp) // to be consistent with WA
 	message := dao_wa.Message{
-		Sending:           true,
-		PhoneNumber:       helper.NormalizeWAId(user.WA.PhoneNumber_.PhoneNumber),
-		MetaPhoneNumberId: user.WA.PhoneNumber_.MetaPhoneNumberId,
-		CustomerWAId:      customer.WAId,
-		CustomerId:        customer.Id,
-		WAMessageId:       response.Messages[0].ID,
-		Timestamp:         timestamp,
-		Type:              string(create.Type),
-		Payload:           payload,
-		Status:            types.WAMessageStatusAccepted,
-		AttachmentURL:     create.AttachmentURL,
+		Sending:       true,
+		PhoneNumberId: user.WA.PhoneNumber_.Id,
+		CustomerId:    customer.Id,
+		WAMessageId:   response.Messages[0].ID,
+		Timestamp:     timestamp,
+		Type:          string(create.Type),
+		Payload:       payload,
+		Status:        types.WAMessageStatusAccepted,
+		AttachmentURL: create.AttachmentURL,
 	}
 	if create.CampaignId != nil {
 		message.CampaignId = sql.NullInt32{
@@ -300,7 +298,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewMessage(message)
-	dependencies.Ably.Publish("message", helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.WAId, ""), result)
+	dependencies.Ably.Publish("message", helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token), result)
 	return dto.NewSuccessResponse(&result)
 }
 

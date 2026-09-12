@@ -2,8 +2,8 @@ package feature_wa_message
 
 import (
 	"context"
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -12,19 +12,16 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type List struct {
-	PhoneNumberId      string `form:"phone_number_id" val:"required" description:"user's phone number id"`
-	CustomerWAId       string `form:"customer_wa_id" description:"country code + phone number, all numbers, must present if customer_meta_user_id is empty" example:"6590909900"`
-	CustomerMetaUserId string `form:"customer_meta_user_id" description:"user id from Meta, must present if customer WA Id is empty"`
-	Page               int    `form:"page" description:"page number from 1"`
-	PageSize           int    `form:"page_size" description:"page size, default 50"`
+	CustomerId int32 `form:"customer_id" val:"required" description:"id of the customer"`
+	Page       int   `form:"page" description:"page number from 1"`
+	PageSize   int   `form:"page_size" description:"page size, default 50"`
 }
 
 func (list *List) Validate() []exception.InputException {
-	list.CustomerWAId = strings.TrimSpace(list.CustomerWAId)
-	list.CustomerMetaUserId = strings.TrimSpace(list.CustomerMetaUserId)
 	if list.Page == 0 {
 		list.Page = 1
 	}
@@ -32,11 +29,8 @@ func (list *List) Validate() []exception.InputException {
 		list.PageSize = 50
 	}
 	inputErrors := []exception.InputException{}
-	if list.PhoneNumberId == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("phone_number_id", "missing phone number ID"))
-	}
-	if list.CustomerWAId == "" && list.CustomerMetaUserId == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("customer_wa_id", "customerWA Id or Meta user ID is required"))
+	if list.CustomerId <= 0 {
+		inputErrors = append(inputErrors, exception.NewInputException("customer_id", "missing customer ID"))
 	}
 	if list.Page < 1 {
 		inputErrors = append(inputErrors, exception.NewInputException("page", "page must be at least 1"))
@@ -57,10 +51,17 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if user.WA == nil || user.WA.PhoneNumber_ == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
-	if user.WA.PhoneNumber_.MetaPhoneNumberId != list.PhoneNumberId {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, list.CustomerId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusNotFound, "customer not found")
+		}
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, list.PhoneNumberId, list.CustomerWAId, list.CustomerMetaUserId, true, list.Page, list.PageSize)
+	if customer.UserId != user.Id {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "not your customer")
+	}
+	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, user.WA.PhoneNumber_.Id, customer.Id, true, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

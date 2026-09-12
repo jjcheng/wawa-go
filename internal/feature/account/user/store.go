@@ -19,10 +19,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// for now only used in embedded signup
 type Store struct {
 	Name            string           `json:"name" val:"required" description:"name of the new user" example:"John Doe"`
 	CountryCode     string           `json:"country_code" val:"required" description:"country code number"`
 	PhoneNumber     string           `json:"phone_number" val:"required" description:"phone number of the user, without country code"`
+	Email           string           `json:"email" description:"email address of the user"`
 	Type            types.UserType   `json:"type" val:"required" description:"type of the user" example:"PUBLIC"`
 	Description     string           `json:"description" description:"for your reference" example:"created by account department"`
 	Password        string           `json:"password" val:"required" description:"password of the user"`
@@ -37,6 +39,7 @@ func (store *Store) Validate() []exception.InputException {
 	store.Description = strings.TrimSpace(store.Description)
 	store.CountryCode = strings.TrimSpace(store.CountryCode)
 	store.PhoneNumber = strings.TrimSpace(store.PhoneNumber)
+	store.Email = strings.TrimSpace(store.Email)
 	// remove any space or + or - from phone number
 	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, "+", "")
 	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, " ", "")
@@ -52,6 +55,9 @@ func (store *Store) Validate() []exception.InputException {
 	}
 	if store.PhoneNumber == "" {
 		errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
+	}
+	if store.Email != "" && !helper.ValidateEmail(store.Email) {
+		errors = append(errors, exception.NewInputException("email", "invalid email"))
 	}
 	if store.Type == "" {
 		errors = append(errors, exception.NewInputException("type", "missing type"))
@@ -105,6 +111,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 			Name:         store.Name,
 			CountryCode:  store.CountryCode,
 			PhoneNumber:  store.PhoneNumber,
+			Email:        store.Email,
 			Description:  store.Description,
 			Type:         store.Type,
 			PasswordHash: passwordHash,
@@ -131,6 +138,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session); err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	// after embedded signup completed, return access token to auto login
 	u.AccessToken = accessToken
 	u.AccessTokenExpiry = &accessTokenExpiry
 	return dto.NewSuccessResponse(&u)

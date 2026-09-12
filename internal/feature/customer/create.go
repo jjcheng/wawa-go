@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/google/uuid"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -18,17 +19,19 @@ import (
 )
 
 type Create struct {
-	DisplayName string   `json:"display_name" val:"required" description:"customer display name"`
-	CountryCode string   `json:"country_code" val:"required" description:"customer country code"`
-	PhoneNumber string   `json:"phone_number" val:"required" description:"customer phone number"`
-	MetaUserId  string   `json:"meta_user_id" description:"a string given by Meta"`
-	WAId        string   `json:"wa_id" description:"given by Meta"`
-	Tags        []string `json:"tags" description:"tags of the customer"`
-	Remarks     string   `json:"remarks" description:"for your own reference"`
+	DisplayName   string   `json:"display_name" val:"required" description:"display name given by user"`
+	WADisplayName string   `json:"wa_display_name" description:"display name given by WhatsApp"`
+	CountryCode   string   `json:"country_code" val:"required" description:"customer country code"`
+	PhoneNumber   string   `json:"phone_number" val:"required" description:"customer phone number"`
+	MetaUserId    string   `json:"meta_user_id" description:"a string given by Meta"`
+	WAId          string   `json:"wa_id" description:"given by Meta"`
+	Tags          []string `json:"tags" description:"tags of the customer"`
+	Remarks       string   `json:"remarks" description:"for your own reference"`
 }
 
 func (create *Create) Validate() []exception.InputException {
 	create.DisplayName = strings.TrimSpace(create.DisplayName)
+	create.WADisplayName = strings.TrimSpace(create.WADisplayName)
 	create.CountryCode = strings.TrimSpace(create.CountryCode)
 	create.PhoneNumber = strings.TrimSpace(create.PhoneNumber)
 	create.PhoneNumber = strings.ReplaceAll(create.PhoneNumber, "+", "")
@@ -88,6 +91,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	customer := dao_customer.Customer{
 		DisplayName:         create.DisplayName,
+		WADisplayName:       create.WADisplayName,
 		CountryCode:         create.CountryCode,
 		PhoneNumber:         create.PhoneNumber,
 		MetaUserId:          create.MetaUserId,
@@ -97,6 +101,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Status:              types.CustomerStatusActive,
 		Remarks:             create.Remarks,
 		ImportedPhoneNumber: create.WAId,
+		Token:               strings.ReplaceAll(uuid.NewString(), "-", ""),
 	}
 	// avoice non null error
 	if customer.AdditionalData == nil {

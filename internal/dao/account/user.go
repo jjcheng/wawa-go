@@ -11,6 +11,7 @@ type User struct {
 	CountryCode  string           `gorm:"country_code"`
 	PhoneNumber  string           `gorm:"column:phone_number"`
 	PasswordHash string           `gorm:"column:password_hash"`
+	Email        string           `gorm:"column:email"`
 	Description  string           `gorm:"column:description"`
 	Type         types.UserType   `gorm:"column:type"`
 	Status       types.UserStatus `gorm:"column:status"`

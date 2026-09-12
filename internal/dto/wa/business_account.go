@@ -7,9 +7,11 @@ import (
 
 type BusinessAccount struct {
 	dto.DTOBase
-	MetaWABAId string `json:"meta_waba_id"`
+	WABAId     string `json:"waba_id"`
 	Name       string `json:"name"`
-	// used only when updating WABA
+	TimezoneId string `json:"timezone_id"`
+	Currency   string `json:"currency"`
+	// used only when user updating WABA
 	MetaBusinessPortfolioId   string `json:"meta_business_portfolio_id"`
 	MetaBusinessPortfolioName string `json:"meta_business_portfolio_name"`
 }
@@ -21,7 +23,9 @@ func NewBusinessAccount(businessAccount dao_wa.BusinessAccount) BusinessAccount 
 			EntryDate:  businessAccount.EntryDate,
 			LastUpdate: businessAccount.LastUpdate,
 		},
-		MetaWABAId: businessAccount.MetaWABAId,
+		WABAId:     businessAccount.WABAId,
 		Name:       businessAccount.Name,
+		Currency:   businessAccount.Currency,
+		TimezoneId: businessAccount.TimezoneId,
 	}
 }

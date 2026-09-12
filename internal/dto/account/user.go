@@ -14,13 +14,14 @@ type User struct {
 	Name              string           `json:"name"`
 	CountryCode       string           `json:"country_code"`
 	PhoneNumber       string           `json:"phone_number"`
+	Email             string           `json:"email"`
 	Description       string           `json:"description"`
 	Type              types.UserType   `json:"type"`
 	Status            types.UserStatus `json:"status"`
 	AccessToken       string           `json:"access_token,omitempty"`
 	AccessTokenExpiry *time.Time       `json:"access_token_expiry,omitempty" description:"access token expiry time"`
 	// only used in embedded signup if the activate meta function failed
-	WAActivated       bool   `json:"wa_activated"`
+	WAActivated       bool   `json:"wa_activated,omitempty"`
 	WAActivationError string `json:"wa_activation_error,omitempty"`
 	// only loaded in wacontroller
 	WA *UserWA `json:"-"`
@@ -43,6 +44,7 @@ func NewUser(user dao_account.User) User {
 		Name:        user.Name,
 		CountryCode: user.CountryCode,
 		PhoneNumber: user.PhoneNumber,
+		Email:       user.Email,
 		Description: user.Description,
 		Type:        user.Type,
 		Status:      user.Status,

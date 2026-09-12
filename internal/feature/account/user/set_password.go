@@ -38,8 +38,15 @@ func (setPassword *SetPassword) Validate() []exception.InputException {
 }
 
 func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
+	if user == nil {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "you are not authenticated")
+	}
 	if errors := setPassword.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
+	}
+	// once a password is set this path must not be reusable, otherwise a stolen session could reset it without the current password
+	if user.Status != types.UserStatusPendingPassword {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "password is already set, use change password instead")
 	}
 	existing, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
 	if err != nil {
@@ -47,10 +54,6 @@ func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.Use
 			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")
 		}
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	// once a password is set this path must not be reusable, otherwise a stolen session could reset it without the current password
-	if existing.Status != types.UserStatusPendingPassword {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "password is already set, use change password instead")
 	}
 	passwordHash, err := helper.HashPassword(setPassword.NewPassword)
 	if err != nil {
@@ -67,7 +70,7 @@ func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.Use
 }
 
 func (SetPassword) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Set initial password", "Set the first password for a user created by WhatsApp embedded signup", types.HttpRequestTypeJSON, http.MethodPost, "/v1/account/users/me/initial-password", true, true, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Set initial password", "Set the first password for a user created by WhatsApp embedded signup", types.HttpRequestTypeJSON, http.MethodPatch, "/v1/account/users/me/initial-password", true, true, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("password is already set, use change password instead", http.StatusConflict)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

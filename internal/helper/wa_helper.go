@@ -59,12 +59,8 @@ func NormalizeWAId(phoneNumber string) string {
 	return waId
 }
 
-func GetChatChannelName(phoneNumberId string, customerWAId string, customerMetaUserId string) string {
-	customerId := customerWAId
-	if customerId == "" {
-		customerId = customerMetaUserId
-	}
-	return fmt.Sprintf("chat:%s:%s", phoneNumberId, customerId)
+func GetChatChannelName(metaPhoneNumberId string, customerToken string) string {
+	return fmt.Sprintf("chat:%s-%s", metaPhoneNumberId, customerToken)
 }
 
 // take X-Hub-Signature-256 from header

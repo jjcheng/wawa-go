@@ -72,6 +72,7 @@ func (f *File) UploadFile(data []byte, folderName string, filename string, stora
 	// Upload to OSS
 	err = f.bucket.PutObject(blobName, bytes.NewReader(data), options...)
 	if err != nil {
+		f.logger.ErrorFunction(err, blobName, options)
 		return "", fmt.Errorf("failed to upload blob: %w", err)
 	}
 	// construct public URL

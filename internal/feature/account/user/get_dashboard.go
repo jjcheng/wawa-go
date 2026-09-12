@@ -2,7 +2,6 @@ package feature_account_user
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type GetDashboard struct {
@@ -34,56 +32,43 @@ func (getDashboard GetDashboard) Handle(ctx context.Context, user *dto_account.U
 	if user == nil {
 		return dto.NewFailedResponse[*Dashboard](http.StatusForbidden, "you are not authenticated")
 	}
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*Dashboard](http.StatusUnauthorized, "you are not authorized")
+	}
 	if inputErrors := getDashboard.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*Dashboard](inputErrors)
 	}
 	var activePhoneNumbers, activeCustomers, messagesSent, messagesDelivered int
 	start := time.Now().UTC().AddDate(0, 0, -30).Unix()
 	end := time.Now().UTC().Unix()
+	var err error
 	if getDashboard.BusinessAccount && user.Type == types.UserTypeMaster {
-		businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-		if err != nil {
-			return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-		}
 		// get phone numbers by WABA
-		activePhoneNumbers, err = dependencies.UnitOfWork.WAPhoneNumberRepository().CountByMetaBusinessAccountId(ctx, businessAccount.MetaWABAId)
+		activePhoneNumbers, err = dependencies.UnitOfWork.WAPhoneNumberRepository().CountByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 		// get active customer count by WABA
-		activeCustomers, err = dependencies.UnitOfWork.CustomerRepository().CountActiveByMetaBusinessAccountId(ctx, businessAccount.MetaWABAId)
+		activeCustomers, err = dependencies.UnitOfWork.CustomerRepository().CountActiveByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
-		usage, err := dependencies.Whatsapp.GetWABAUsage(ctx, businessAccount.MetaWABAId, start, end, types.WAAnalyticsGranularityDay, businessPortfolio.AccessToken)
+		usage, err := dependencies.Whatsapp.GetWABAUsage(ctx, user.WA.BusinessAccount.WABAId, start, end, types.WAAnalyticsGranularityDay, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusBadGateway, err.Error())
 		}
 		messagesSent = usage.TotalSent
 		messagesDelivered = usage.TotalDelivered
 	} else {
-		// get user's phone number
-		phoneNumber, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
+		if user.WA.PhoneNumber_ != nil && user.WA.PhoneNumber_.Status == types.WAPhoneNumberStatusConnected {
+			activePhoneNumbers = 1
+		}
+		usage, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, []string{user.WA.PhoneNumber_.WAId}, start, end, types.WAAnalyticsGranularityDay, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-			}
+			return dto.NewFailedResponse[*Dashboard](http.StatusBadGateway, err.Error())
 		}
-		if phoneNumber != nil {
-			if phoneNumber.Status == types.WAPhoneNumberStatusConnected {
-				activePhoneNumbers = 1
-			}
-			businessPortfolio, businessAccount, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, user.Id)
-			if err != nil {
-				return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-			}
-			usage, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, businessAccount.MetaWABAId, []string{phoneNumber.WAId}, start, end, types.WAAnalyticsGranularityDay, businessPortfolio.AccessToken)
-			if err != nil {
-				return dto.NewFailedResponse[*Dashboard](http.StatusBadGateway, err.Error())
-			}
-			messagesSent = usage.TotalSent
-			messagesDelivered = usage.TotalDelivered
-		}
+		messagesSent = usage.TotalSent
+		messagesDelivered = usage.TotalDelivered
 		// get user's customers
 		ac, err := dependencies.UnitOfWork.CustomerRepository().CountActiveByUserId(ctx, user.Id)
 		if err != nil {

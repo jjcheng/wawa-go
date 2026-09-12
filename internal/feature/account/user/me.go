@@ -1,7 +1,8 @@
-package feature_auth
+package feature_account_user
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -13,9 +14,12 @@ import (
 type Me struct{}
 
 func (me Me) Handle(_ context.Context, user *dto_account.User, _ *service.Dependencies) dto.Response[*dto_account.User] {
+	if user == nil {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "you are not authenticated")
+	}
 	return dto.NewSuccessResponse(user)
 }
 
 func (Me) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Get current user", "Returns the authenticated user", types.HttpRequestTypeNone, "GET", "/v1/auth/me", true, false, types.APITagAuth, nil)
+	return feature.NewAPISettings("Get current user", "Returns the authenticated user", types.HttpRequestTypeNone, "GET", "/v1/account/me", true, false, types.APITagAuth, nil)
 }

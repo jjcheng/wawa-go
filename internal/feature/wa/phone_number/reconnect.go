@@ -39,7 +39,7 @@ func (reconnect Reconnect) Handle(ctx context.Context, user *dto_account.User, d
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if user.WA == nil || user.WA.BusinessPortfolio == nil || phoneNumber.MetaBusinessPortfolioId != user.WA.BusinessPortfolio.MetaBusinessPortfolioId {
+	if user.WA == nil || user.WA.BusinessAccount == nil || phoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to reconnect this phone number")
 	}
 	if phoneNumber.Status != types.WAPhoneNumberStatusDisconnected {

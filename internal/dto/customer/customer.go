@@ -9,6 +9,7 @@ import (
 type Customer struct {
 	dto.DTOBase
 	DisplayName         string               `json:"display_name"`
+	WADisplayName       string               `json:"wa_display_name"`
 	CountryCode         string               `json:"country_code"`
 	PhoneNumber         string               `json:"phone_number"`
 	MetaUserId          string               `json:"meta_user_id"`
@@ -18,6 +19,7 @@ type Customer struct {
 	Remarks             string               `json:"remarks"`
 	AdditionalData      map[string]any       `json:"additional_data"`
 	ImportedPhoneNumber string               `json:"imported_phone_number"`
+	Token               string               `json:"token"`
 }
 
 func NewCustomer(customer dao_customer.Customer) Customer {
@@ -28,6 +30,7 @@ func NewCustomer(customer dao_customer.Customer) Customer {
 			LastUpdate: customer.LastUpdate,
 		},
 		DisplayName:         customer.DisplayName,
+		WADisplayName:       customer.WADisplayName,
 		CountryCode:         customer.CountryCode,
 		PhoneNumber:         customer.PhoneNumber,
 		MetaUserId:          customer.MetaUserId,
@@ -37,5 +40,6 @@ func NewCustomer(customer dao_customer.Customer) Customer {
 		Remarks:             customer.Remarks,
 		AdditionalData:      customer.AdditionalData,
 		ImportedPhoneNumber: customer.ImportedPhoneNumber,
+		Token:               customer.Token,
 	}
 }

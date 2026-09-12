@@ -72,7 +72,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		return dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
 	}
 	// Step 2 — Check the customer is telling the truth
-	waba, phoneNumberDetails, response := embeddedSignup.verifyOwnership(ctx, accessToken, dependencies)
+	wabaDetails, phoneNumberDetails, response := embeddedSignup.verifyOwnership(ctx, accessToken, dependencies)
 	if response != nil {
 		return *response
 	}
@@ -87,24 +87,24 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 			transaction.Rollback()
 		}
 	}()
-	// business portfolio — the tenant, storing the access token and the name from owner_business_info.
-	createBusinessPortfolioResponse := (feature_wa_business_portfolio.Store{
+	// business portfolio — store the access token and the name from owner_business_info
+	storeBusinessPortfolioResponse := (feature_wa_business_portfolio.Store{
 		MetaBusinessPortfolioId: embeddedSignup.Data.BusinessId,
-		Name:                    waba.OwnerBusinessInfo.Name,
+		Name:                    wabaDetails.OwnerBusinessInfo.Name,
 		AccessToken:             accessToken,
 	}).Handle(ctx, nil, &transactionDependencies)
-	if !createBusinessPortfolioResponse.Success {
-		return dto.NewFailedResponse[*dto_account.User](createBusinessPortfolioResponse.StatusCode, createBusinessPortfolioResponse.Message)
+	if !storeBusinessPortfolioResponse.Success {
+		return dto.NewFailedResponse[*dto_account.User](storeBusinessPortfolioResponse.StatusCode, storeBusinessPortfolioResponse.Message)
 	}
-	// Business account — the WABA under that portfolio.
-	createBusinessAccountResponse := (feature_wa_business_account.Store{
-		MetaBusinessProtfolioId: embeddedSignup.Data.BusinessId,
-		MetaWABAId:              embeddedSignup.Data.WABAId,
+	// business account — the WABA under that portfolio
+	storeBusinessAccountResponse := (feature_wa_business_account.Store{
+		BusinessProtfolioId: storeBusinessPortfolioResponse.Data.Id,
+		WABADetails:         wabaDetails,
 	}).Handle(ctx, nil, &transactionDependencies)
-	if !createBusinessAccountResponse.Success {
-		return dto.NewFailedResponse[*dto_account.User](createBusinessAccountResponse.StatusCode, createBusinessAccountResponse.Message)
+	if !storeBusinessAccountResponse.Success {
+		return dto.NewFailedResponse[*dto_account.User](storeBusinessAccountResponse.StatusCode, storeBusinessAccountResponse.Message)
 	}
-	// User — the login account. Before creating it you ask the database "does this portfolio already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
+	// user — the login account. Before creating it you ask the database "does this portfolio already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
 	hasMasterUser, err := transaction.AccountUserRepository().HasMasterUser(ctx, embeddedSignup.Data.BusinessId)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
@@ -119,7 +119,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	phoneNumber = strings.ReplaceAll(phoneNumber, "-", "")
 	phoneNumber = strings.ReplaceAll(phoneNumber, " ", "")
 	phoneNumber = strings.TrimSpace(phoneNumber)
-	createUser := feature_account_user.Store{
+	storeUser := feature_account_user.Store{
 		Name:            phoneNumberDetails.VerifiedName,
 		CountryCode:     countryCode,
 		PhoneNumber:     phoneNumber,
@@ -127,43 +127,42 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		Description:     "created by WhatsApp embedded signup",
 		Password:        tmpPassword,
 		ConfirmPassword: tmpPassword,
-		Status:          types.UserStatusPendingPassword,
+		Status:          types.UserStatusPendingPassword, // ask user to update password after embedded signup
 		// Meta verified ownership above, so a signup that was abandoned before the password was set can be resumed
 		ResumePendingPassword: true,
 	}
 	if !hasMasterUser {
-		createUser.Type = types.UserTypeMaster
+		storeUser.Type = types.UserTypeMaster
 	}
-	createUserResponse := createUser.Handle(ctx, nil, &transactionDependencies)
+	createUserResponse := storeUser.Handle(ctx, nil, &transactionDependencies)
 	if !createUserResponse.Success {
 		return createUserResponse
 	}
-	// Phone number — using the display number and verified name Meta reported.
-	createPhoneNumberResponse := (feature_wa_phone_number.Store{
-		MetaBusinessPortfolioId: embeddedSignup.Data.BusinessId,
-		MetaWABAId:              embeddedSignup.Data.WABAId,
-		MetaPhoneNumberId:       embeddedSignup.Data.PhoneNumberId,
-		PhoneNumber:             phoneNumberDetails.DisplayPhoneNumber,
-		Name:                    phoneNumberDetails.VerifiedName,
-		UserId:                  createUserResponse.Data.Id,
+	// phone number — using the display number and verified name Meta reported
+	storePhoneNumberResponse := (feature_wa_phone_number.Store{
+		BusinessAccountId:  storeBusinessAccountResponse.Data.Id,
+		MetaPhoneNumberId:  embeddedSignup.Data.PhoneNumberId,
+		DisplayPhoneNumber: phoneNumberDetails.DisplayPhoneNumber,
+		Name:               phoneNumberDetails.VerifiedName,
+		UserId:             createUserResponse.Data.Id,
 	}).Handle(ctx, nil, &transactionDependencies)
-	if !createPhoneNumberResponse.Success {
-		return dto.NewFailedResponse[*dto_account.User](createPhoneNumberResponse.StatusCode, createPhoneNumberResponse.Message)
+	if !storePhoneNumberResponse.Success {
+		return dto.NewFailedResponse[*dto_account.User](storePhoneNumberResponse.StatusCode, storePhoneNumberResponse.Message)
 	}
 	// If any step fails, the deferred rollback throws away all of it. You never end up with half a tenant.
 	if exception := transaction.CommitTransaction(); exception != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	committed = true
-	// Step 4 — Commit, then talk to Meta
+	// Step 4 — Commit, then subscribe the app and activate the phone number
 	// The transaction commits. Only now does activateOnMeta run, because these two calls change things on Meta's side and a database rollback can't undo them:
-	if err := embeddedSignup.activateOnMeta(ctx, accessToken, createPhoneNumberResponse.Data.Id, phoneNumberDetails.Status, dependencies); err != nil {
-		createUserResponse.Data.WAActivationError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta. Please try again later. Error from Meta: %v", err)
+	if err := embeddedSignup.activateOnMeta(ctx, accessToken, storePhoneNumberResponse.Data.Id, phoneNumberDetails.Status, dependencies); err != nil {
+		createUserResponse.Data.WAActivationError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta at the moment. Please try again later. Error from Meta: %v", err)
 		return createUserResponse
 	}
 	createUserResponse.Data.WAActivated = true
 	// Step 5 — Respond
-	// The new user is returned along with a session token, so the customer lands logged in.
+	// The new user is returned along with a session token, so the customer lands logged in
 	return createUserResponse
 }
 
@@ -173,14 +172,14 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 func (embeddedSignup EmbeddedSignup) verifyOwnership(ctx context.Context, accessToken string, dependencies *service.Dependencies) (*service.WhatsAppWABADetailsResponse, *service.WhatsAppPhoneNumberDetailsResponse, *dto.Response[*dto_account.User]) {
 	forbidden := dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "the WhatsApp account is not granted to this application")
 	// Read the WABA using the token. If the token doesn't cover that WABA, Meta refuses, and you return 403.
-	waba, err := dependencies.Whatsapp.GetWABA(ctx, embeddedSignup.Data.WABAId, accessToken)
+	wabaDetails, err := dependencies.Whatsapp.GetWABA(ctx, embeddedSignup.Data.WABAId, accessToken)
 	if err != nil {
 		failed := dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
 		return nil, nil, &failed
 	}
 	// Compare owners. The WABA response includes owner_business_info, which is Meta's own statement of which business portfolio owns it. If that doesn't match the business ID the browser sent, you return 403. This stops someone filing their WABA under somebody else's portfolio.
-	if waba.OwnerBusinessInfo.ID != embeddedSignup.Data.BusinessId {
-		dependencies.Logger.Warnf("embedded signup business portfolio id does not own the WABA: waba_id=%s submitted_business_id=%s owner_business_id=%s", embeddedSignup.Data.WABAId, embeddedSignup.Data.BusinessId, waba.OwnerBusinessInfo.ID)
+	if wabaDetails.OwnerBusinessInfo.ID != embeddedSignup.Data.BusinessId {
+		dependencies.Logger.Warnf("embedded signup business portfolio id does not own the WABA: waba_id=%s submitted_business_id=%s owner_business_id=%s", embeddedSignup.Data.WABAId, embeddedSignup.Data.BusinessId, wabaDetails.OwnerBusinessInfo.ID)
 		return nil, nil, &forbidden
 	}
 	// List the WABA's phone numbers and confirm the submitted phone number ID is actually one of them.
@@ -201,7 +200,7 @@ func (embeddedSignup EmbeddedSignup) verifyOwnership(ctx context.Context, access
 		badGateway := dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, err.Error())
 		return nil, nil, &badGateway
 	}
-	return waba, phoneNumberDetails, nil
+	return wabaDetails, phoneNumberDetails, nil
 }
 
 func (embeddedSignup EmbeddedSignup) activateOnMeta(ctx context.Context, accessToken string, phoneNumberId int32, status string, dependencies *service.Dependencies) error {
@@ -231,7 +230,7 @@ func (embeddedSignup EmbeddedSignup) activateOnMeta(ctx context.Context, accessT
 
 // api endpoint only for testing
 func (EmbeddedSignup) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Process WhatsApp embedded signup", "Create the organization, WhatsApp business account, phone number, and user from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/v1/wa/account/embedded-signup", false, true, types.APITagWA, []feature.APIError{
+	return feature.NewAPISettings("Complete WhatsApp embedded signup", "Create the Meta business portfolio, WhatsApp business account, phone number, user and activate with Meta from an embedded signup.", types.HttpRequestTypeJSON, "POST", "/v1/wa/account/embedded-signup", false, true, types.APITagWA, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("phone number already exists", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("the WhatsApp account is not granted to this application", http.StatusForbidden)),
 		feature.NewAPIError(*exception.NewCustomException("an account already exists for this phone number, please login instead", http.StatusConflict)),

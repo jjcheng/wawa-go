@@ -19,9 +19,6 @@ type Get struct {
 }
 
 func (get *Get) Validate() []exception.InputException {
-	if get.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "missing phone number ID")}
-	}
 	return nil
 }
 
@@ -45,7 +42,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		}
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if storedPhoneNumber.MetaBusinessPortfolioId != user.WA.BusinessPortfolio.MetaBusinessPortfolioId || storedPhoneNumber.MetaWABAId != user.WA.BusinessAccount.MetaWABAId {
+	if storedPhoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
 	// get phone number from meta

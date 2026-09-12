@@ -5,8 +5,10 @@ import (
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
+// not linked to a phone number id
 type MessageStatusEvent struct {
 	dao.DAOBase
+	MessageId   int32                 `gorm:"column:message_id"`
 	WAMessageId string                `gorm:"column:wa_message_id"`
 	Status      types.WAMessageStatus `gorm:"column:status"`
 	Timestamp   int64                 `gorm:"column:timestamp"`

@@ -16,7 +16,7 @@ type CustomerRepository interface {
 	ListByIds(ctx context.Context, userId int32, ids []int32) ([]dao_customer.Customer, error)
 	CountByIds(ctx context.Context, userId int32, ids []int32) (int, error)
 	CountActiveByUserId(ctx context.Context, userId int32) (int, error)
-	CountActiveByMetaBusinessAccountId(ctx context.Context, metaBusinessAccountId string) (int, error)
+	CountActiveByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error)
 	GetDistinctTags(ctx context.Context, userId int32) ([]string, error)
 	List(ctx context.Context, userId int32, name string, phoneNumber string, order types.OrderCustomersType, status types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error)
 	GetByImportedPhoneNumber(ctx context.Context, userId int32, importedPhoneNumber string) (*dao_customer.Customer, error)

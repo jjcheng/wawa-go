@@ -16,8 +16,8 @@ import (
 )
 
 type GetMedia struct {
-	WAMessageId string `form:"wa_message_id" val:"required" description:"WhatsApp message ID"`
-	WAMediaID   string `form:"wa_media_id" val:"required" description:"WhatsApp media ID"`
+	MessageId int32  `form:"message_id" val:"required" description:"id of the message"`
+	WAMediaID string `form:"wa_media_id" val:"required" description:"WhatsApp media ID"`
 }
 
 type Media struct {
@@ -27,13 +27,12 @@ type Media struct {
 
 func (getMedia *GetMedia) Validate() []exception.InputException {
 	getMedia.WAMediaID = strings.TrimSpace(getMedia.WAMediaID)
-	getMedia.WAMessageId = strings.TrimSpace(getMedia.WAMessageId)
 	inputErrors := []exception.InputException{}
 	if getMedia.WAMediaID == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("wa_media_id", "missing WA media id"))
 	}
-	if getMedia.WAMessageId == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("wa_message_id", "missing WA message id"))
+	if getMedia.MessageId < 0 {
+		inputErrors = append(inputErrors, exception.NewInputException("message_id", "missing message id"))
 	}
 	return inputErrors
 }
@@ -48,16 +47,25 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	if inputErrors := getMedia.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*Media](inputErrors)
 	}
-	message, err := dependencies.UnitOfWork.WAMessageRepository().GetByWAMessageId(ctx, getMedia.WAMessageId)
+	message, err := dependencies.UnitOfWork.WAMessageRepository().GetById(ctx, getMedia.MessageId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*Media](http.StatusNotFound, "message not found")
 		}
 		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if !payloadContainsMediaID(message.Payload, getMedia.WAMediaID) {
-		return dto.NewFailedResponse[*Media](http.StatusNotFound, "media not found in message")
+	// check message belongs to user
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, message.PhoneNumberId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*Media](http.StatusNotFound, "phone number not found")
+		}
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	if phoneNumber.UserId != user.Id {
+		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "not your media")
+	}
+	// download from Meta
 	content, contentType, err := dependencies.Whatsapp.DownloadMedia(ctx, getMedia.WAMediaID, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error())
@@ -66,30 +74,15 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	if contentTypeParts := strings.SplitN(contentType, "/", 2); len(contentTypeParts) == 2 && contentTypeParts[1] != "" {
 		filename += "." + contentTypeParts[1]
 	}
+	// upload to OSS
 	attachmentURL, err := dependencies.File.UploadFile(content, "media", filename, types.StorageClassCool)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, getMedia.WAMediaID)
 		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	message.AttachmentURL = attachmentURL
-	if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
+	// ignore error
+	_ = dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message)
 	return dto.NewSuccessResponse(&Media{URL: attachmentURL})
-}
-
-func payloadContainsMediaID(payload map[string]any, mediaID string) bool {
-	for _, mediaType := range []string{"audio", "document", "image", "sticker", "video"} {
-		media, ok := payload[mediaType].(map[string]any)
-		if !ok {
-			continue
-		}
-		id, _ := media["id"].(string)
-		if id == mediaID {
-			return true
-		}
-	}
-	return false
 }
 
 func (GetMedia) APISettings() feature.APISettings {

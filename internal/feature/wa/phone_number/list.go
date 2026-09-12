@@ -46,7 +46,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	items := make([]dto_wa.PhoneNumber, 0)
 	var totalCount, totalPages int
 	if user.Type == types.UserTypeMaster {
-		phoneNumbers, count, pages, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListByMetaBusinessAccountId(ctx, user.WA.BusinessAccount.MetaWABAId, list.Status, list.Page, list.PageSize)
+		phoneNumbers, count, pages, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, list.Status, list.Page, list.PageSize)
 		if err != nil {
 			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}

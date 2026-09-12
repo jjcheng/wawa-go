@@ -8,15 +8,14 @@ import (
 
 type PhoneNumber struct {
 	dto.DTOBase
-	MetaBusinessPortfolioId string                    `json:"meta_business_portfolio_id"`
-	MetaWABAId              string                    `json:"meta_waba_id"`
-	MetaPhoneNumberId       string                    `json:"meta_phone_number_id"`
-	PhoneNumber             string                    `json:"phone_number"`
-	Name                    string                    `json:"name"`
-	UserId                  int32                     `json:"user_id"`
-	WAId                    string                    `json:"wa_id"`
-	Status                  types.WAPhoneNumberStatus `json:"status"`
-	UserName                string                    `json:"user_name"`
+	BusinessAccountId  int32                     `json:"business_account_id"`
+	MetaPhoneNumberId  string                    `json:"meta_phone_number_id"`
+	DisplayPhoneNumber string                    `json:"display_phone_number"`
+	Name               string                    `json:"name"`
+	UserId             int32                     `json:"user_id"`
+	WAId               string                    `json:"wa_id"`
+	Status             types.WAPhoneNumberStatus `json:"status"`
+	UserName           string                    `json:"user_name"` // retrieved from users table
 }
 
 func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
@@ -26,15 +25,14 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 			EntryDate:  phoneNumber.EntryDate,
 			LastUpdate: phoneNumber.LastUpdate,
 		},
-		MetaBusinessPortfolioId: phoneNumber.MetaBusinessPortfolioId,
-		MetaWABAId:              phoneNumber.MetaWABAId,
-		MetaPhoneNumberId:       phoneNumber.MetaPhoneNumberId,
-		PhoneNumber:             phoneNumber.PhoneNumber,
-		Name:                    phoneNumber.Name,
-		WAId:                    phoneNumber.WAId,
-		UserId:                  phoneNumber.UserId,
-		Status:                  phoneNumber.Status,
-		UserName:                phoneNumber.UserName,
+		BusinessAccountId:  phoneNumber.BusinessAccountId,
+		MetaPhoneNumberId:  phoneNumber.MetaPhoneNumberId,
+		DisplayPhoneNumber: phoneNumber.DisplayPhoneNumber,
+		Name:               phoneNumber.Name,
+		WAId:               phoneNumber.WAId,
+		UserId:             phoneNumber.UserId,
+		Status:             phoneNumber.Status,
+		UserName:           phoneNumber.UserName,
 	}
 	return d
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -17,53 +16,53 @@ import (
 )
 
 type Update struct {
-	MetaWABAId string `uri:"meta_waba_id" val:"required" description:"Meta WABA id"`
 }
 
 func (update *Update) Validate() []exception.InputException {
-	var errors []exception.InputException
-	update.MetaWABAId = strings.TrimSpace(update.MetaWABAId)
-	if update.MetaWABAId == "" {
-		errors = append(errors, exception.NewInputException("meta_waba_id", "missing Meta WABA id"))
-	}
-	return errors
+	return nil
 }
 
 func (update Update) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
-	if user != nil && user.Type != types.UserTypeMaster {
+	if user == nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusForbidden, "you are not authenticated")
+	}
+	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusUnauthorized, "your are not authorized")
 	}
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	// if user is authenticated, reset the wabaid
-	if user != nil {
-		update.MetaWABAId = user.WA.BusinessAccount.MetaWABAId
-	}
-	existing, businessPortfolio, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByMetaWABAId(ctx, update.MetaWABAId)
+	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, user.WA.BusinessAccount.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
 		}
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	waba, err := dependencies.Whatsapp.GetWABA(ctx, update.MetaWABAId, businessPortfolio.AccessToken)
+	waba, err := dependencies.Whatsapp.GetWABA(ctx, user.WA.BusinessAccount.WABAId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusBadGateway, err.Error())
 	}
-	existing.Name = waba.Name
-	existing.TimeZoneId = waba.TimezoneID
-	if err := dependencies.UnitOfWork.WABusinessAccountRepository().Update(ctx, existing); err != nil {
+	businessAccount.Name = waba.Name
+	businessAccount.TimezoneId = waba.TimezoneID
+	if err := dependencies.UnitOfWork.WABusinessAccountRepository().Update(ctx, businessAccount); err != nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	// now update business portfolio
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetById(ctx, user.WA.BusinessPortfolio.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business portfolio not found")
+		}
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
 	if businessPortfolio.Name != waba.OwnerBusinessInfo.Name {
 		businessPortfolio.Name = waba.OwnerBusinessInfo.Name
 		if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, businessPortfolio); err != nil {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 	}
-	result := dto_wa.NewBusinessAccount(*existing)
+	result := dto_wa.NewBusinessAccount(*businessAccount)
 	result.MetaBusinessPortfolioName = waba.OwnerBusinessInfo.Name
 	result.MetaBusinessPortfolioId = waba.OwnerBusinessInfo.ID
 	return dto.NewSuccessResponse(&result)
@@ -73,9 +72,9 @@ func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Update WhatsApp business account",
 		"Refreshes and stores the WABA name from the WhatsApp API.",
-		types.HttpRequestTypeUri,
+		types.HttpRequestTypeNone,
 		http.MethodPatch,
-		"/v1/wa/business-accounts/:meta_waba_id",
+		"/v1/wa/business-accounts",
 		true,
 		false,
 		types.APITagAccount,
