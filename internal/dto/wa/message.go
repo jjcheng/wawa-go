@@ -8,19 +8,22 @@ import (
 
 type Message struct {
 	dto.DTOBase
-	Sending       bool                  `json:"sending"`
-	PhoneNumberId int32                 `json:"phone_number_id"`
-	CustomerId    int32                 `json:"customer_id"`
-	WAMessageId   string                `json:"wa_message_id"`
-	Timestamp     int64                 `json:"timestamp"`
-	Type          string                `json:"type"`
-	Status        types.WAMessageStatus `json:"status"`
-	Payload       map[string]any        `json:"payload"`
-	CampaignId    *int32                `json:"campaign_id"`
-	AttachmentURL string                `json:"attachment_url,omitempty"`
-	Billable      bool                  `json:"billable"`
-	Category      string                `json:"category,omitempty"`
-	BillingType   string                `json:"billing_type,omitempty"`
+	Sending             bool                  `json:"sending"`
+	PhoneNumberId       int32                 `json:"phone_number_id"`
+	CustomerId          int32                 `json:"customer_id"`
+	WAMessageId         string                `json:"wa_message_id"`
+	Timestamp           int64                 `json:"timestamp"`
+	Type                string                `json:"type"`
+	Status              types.WAMessageStatus `json:"status"`
+	Payload             map[string]any        `json:"payload"`
+	CampaignRecipientId *int32                `json:"campaign_recipient_id"`
+	AttachmentURL       string                `json:"attachment_url,omitempty"`
+	Billable            bool                  `json:"billable"`
+	Category            string                `json:"category,omitempty"`
+	BillingType         string                `json:"billing_type,omitempty"`
+	Atempts             int32                 `json:"attempts"`
+	ErrorMessage        string                `json:"error_message"`
+	Token               string                `json:"token"`
 	// lazy loaded
 	Statuses        []MessageStatusEvent `json:"statuses,omitempty"`
 	PreviewHTML     string               `json:"preview_html,omitempty"`
@@ -34,19 +37,22 @@ func NewMessage(message dao_wa.Message) Message {
 			EntryDate:  message.EntryDate,
 			LastUpdate: message.LastUpdate,
 		},
-		Sending:       message.Sending,
-		Timestamp:     message.Timestamp,
-		PhoneNumberId: message.PhoneNumberId,
-		CustomerId:    message.CustomerId,
-		WAMessageId:   message.WAMessageId,
-		Type:          message.Type,
-		Status:        message.Status,
-		Payload:       message.Payload,
-		AttachmentURL: message.AttachmentURL,
-		Billable:      message.Billable,
-		BillingType:   message.BillingType,
-		Category:      message.Category,
-		CampaignId:    message.CampaignId,
+		Sending:             message.Sending,
+		Timestamp:           message.Timestamp,
+		PhoneNumberId:       message.PhoneNumberId,
+		CustomerId:          message.CustomerId,
+		WAMessageId:         message.WAMessageId,
+		Type:                message.Type,
+		Status:              message.Status,
+		Payload:             message.Payload,
+		AttachmentURL:       message.AttachmentURL,
+		Billable:            message.Billable,
+		BillingType:         message.BillingType,
+		Category:            message.Category,
+		CampaignRecipientId: message.CampaignRecipientId,
+		Atempts:             message.Attempts,
+		ErrorMessage:        message.ErrorMessage,
+		Token:               message.Token,
 	}
 	return d
 }

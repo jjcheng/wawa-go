@@ -176,36 +176,36 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	recipients := make([]dao_customer.CampaignRecipient, 0, len(customers))
 	for index, customer := range customers {
 		recipients = append(recipients, dao_customer.CampaignRecipient{
-			CampaignId:    campaign.Id,
-			CustomerId:    customer.Id,
-			Payload:       payloads[index],
-			Status:        types.CampaignRecipientStatusPending,
-			NextAttemptAt: &campaign.SendDate,
+			CampaignId: campaign.Id,
+			CustomerId: customer.Id,
+			Payload:    payloads[index],
+			Status:     types.CampaignRecipientStatusPending,
 		})
 	}
 	if err := transaction.CampaignRecipientRepository().InsertBulk(ctx, recipients); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	if cfg.Default().Site.Environment != types.EnvironmentDevelop {
+		_, err := dependencies.EventBridge.CreateEvent(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, campaign.Id)
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusServiceUnavailable, "campaign could not be scheduled, please try again")
+		}
+	}
 	if err := transaction.CommitTransaction(); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	committed = true
-	// if dependencies.EventBridge != nil {
-	// 	if _, err := dependencies.EventBridge.Schedule(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate); err != nil {
-	// 		dependencies.Logger.ErrorFunction(err, campaign.Id)
-	// 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusServiceUnavailable, "campaign was created but could not be scheduled")
-	// 	}
-	// }
-	result := dto_customer.NewCampaign(campaign)
-	// for debugging
+	// schedule the event in staging/production
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		// send immediately in development
 		for _, recipient := range recipients {
 			createMessage := feature_wa_message.Create{
-				CustomerId:    recipient.CustomerId,
-				Type:          feature_wa_message.MessageTypeTemplate,
-				Template:      &recipient.Payload,
-				AttachmentURL: attachmentUrl,
-				CampaignId:    &campaign.Id,
+				CustomerId:          recipient.CustomerId,
+				Type:                feature_wa_message.MessageTypeTemplate,
+				Template:            &recipient.Payload,
+				AttachmentURL:       attachmentUrl,
+				CampaignRecipientId: &recipient.Id,
 			}
 			createMessageResponse := createMessage.Handle(ctx, user, dependencies)
 			if !createMessageResponse.Success {
@@ -213,6 +213,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			}
 		}
 	}
+	result := dto_customer.NewCampaign(campaign)
 	return dto.NewSuccessResponse(&result)
 }
 

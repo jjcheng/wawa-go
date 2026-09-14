@@ -28,19 +28,19 @@ func (receive *Receive) Validate() []exception.InputException {
 	return errors
 }
 
-func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Dependencies) dto.Response[map[string]any] {
+func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Dependencies) dto.Response[any] {
 	if errors := receive.Validate(); len(errors) > 0 {
-		return dto.NewInvalidInputResponse[map[string]any](errors)
+		return dto.NewInvalidInputResponse[any](errors)
 	}
 	// save raw body to file receive.json
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		helper.WriteToFile(receive.RawBody, filepath.Join("files/wa", "receive.json"))
 	}
-	messageID, err := dependencies.MessageQueue.PublishMessage(receive.RawBody, 0, service.MessageQueuePriorityHighest)
+	_, err := dependencies.MessageQueue.PublishMessage(receive.RawBody, 0, service.MessageQueuePriorityHighest)
 	if err != nil {
-		return dto.NewFailedResponse[map[string]any](http.StatusInternalServerError, "failed to queue raw webhook body")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to queue raw webhook body")
 	}
-	return dto.NewSuccessResponse(map[string]any{"message_id": messageID})
+	return dto.NewEmptyResponse(true, http.StatusAccepted)
 }
 
 func (Receive) APISettings() feature.APISettings {

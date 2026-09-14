@@ -83,6 +83,8 @@ const (
 type WAMessageStatus string
 
 const (
+	WAMessageStatusUnaccepted               WAMessageStatus = "unaccepted" // this is created by us, maybe payload error
+	WAMessageSatusNoWAMID                   WAMessageStatus = "no_wa_mid"  // created by us, somehow no wa message id returned
 	WAMessageStatusAccepted                 WAMessageStatus = "accepted"
 	WAMessageStatusHeldForQualityAssessment WAMessageStatus = "held_for_quality_assessment"
 	WAMessageStatusPaused                   WAMessageStatus = "paused"

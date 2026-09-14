@@ -11,6 +11,7 @@ require (
 	github.com/alibabacloud-go/eventbridge-sdk v1.3.3
 	github.com/aliyun/aliyun-mns-go-sdk v1.0.11
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
+	github.com/aliyun/fc-runtime-go-sdk v0.3.1
 	github.com/dustin/go-humanize v1.0.1
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/gin-contrib/pprof v1.5.3

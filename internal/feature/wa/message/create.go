@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -42,26 +43,22 @@ const (
 )
 
 type Create struct {
-	// MessagingProduct string           `json:"messaging_product" val:"required" description:"always whatsapp, can leave empty"`
-	// RecipientType    RecipientType    `json:"recipient_type" val:"required" description:"type of the recipient. individual or group"`
-	// To               string           `json:"to" val:"required" description:"recipient's WA Id or BSUID" example:"6590000000"`
-	// PhoneNumberID    string           `json:"phone_number_id" description:"set dynamically based on current user, any value is ignored"`
-	CustomerId    int32            `json:"customer_id" val:"required" description:"id of the customer"`
-	Type          MessageType      `json:"type" val:"required" description:"one of the enum types"`
-	Context       *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
-	Text          *TextObject      `json:"text,omitempty" description:"only present if type is text"`
-	Image         *MediaObject     `json:"image,omitempty" description:"only present if type is image"`
-	Audio         *MediaObject     `json:"audio,omitempty" description:"only present if type is audio"`
-	Video         *MediaObject     `json:"video,omitempty" description:"only present if type is video"`
-	Document      *MediaObject     `json:"document,omitempty" description:"only present if type is document"`
-	Sticker       *MediaObject     `json:"sticker,omitempty" description:"only present if type is sticker"`
-	Location      *LocationObject  `json:"location,omitempty" description:"only present if type is location"`
-	Contacts      []map[string]any `json:"contacts,omitempty" description:"only present if type is contacts"`
-	Interactive   *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
-	Template      *map[string]any  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
-	Reaction      *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
-	AttachmentURL string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
-	CampaignId    *int32           `json:"campaign_id,omitempty" description:"if it's from a campaign"`
+	CustomerId          int32            `json:"customer_id" val:"required" description:"id of the customer"`
+	Type                MessageType      `json:"type" val:"required" description:"one of the enum types"`
+	Context             *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
+	Text                *TextObject      `json:"text,omitempty" description:"only present if type is text"`
+	Image               *MediaObject     `json:"image,omitempty" description:"only present if type is image"`
+	Audio               *MediaObject     `json:"audio,omitempty" description:"only present if type is audio"`
+	Video               *MediaObject     `json:"video,omitempty" description:"only present if type is video"`
+	Document            *MediaObject     `json:"document,omitempty" description:"only present if type is document"`
+	Sticker             *MediaObject     `json:"sticker,omitempty" description:"only present if type is sticker"`
+	Location            *LocationObject  `json:"location,omitempty" description:"only present if type is location"`
+	Contacts            []map[string]any `json:"contacts,omitempty" description:"only present if type is contacts"`
+	Interactive         *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
+	Template            *map[string]any  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
+	Reaction            *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
+	AttachmentURL       string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
+	CampaignRecipientId *int32           `json:"campaign_recipient_id,omitempty" description:"if it's from a campaign"`
 }
 
 type MessageContext struct {
@@ -255,31 +252,47 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	payload["recipient_type"] = "individual"
 	payload["to"] = customer.WAId
 	delete(payload, "customer_id")
+	token := strings.ReplaceAll(uuid.NewString(), "-", "")
+	payload["biz_opaque_callback_data"] = token
 	response, err := dependencies.Whatsapp.SendMessage(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, payload, user.WA.BusinessPortfolioAccessToken)
+	// always insert message to db
+	var sendError string
+	messageStatus := types.WAMessageStatusAccepted
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, err.Error())
-	}
-	if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadGateway, "WhatsApp did not return a message ID")
+		sendError = err.Error()
+		messageStatus = types.WAMessageStatusUnaccepted
+	} else if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
+		sendError = "WhatsApp did not return a message ID"
+		messageStatus = types.WAMessageSatusNoWAMID
 	}
 	timestamp := time.Now().Unix()
 	message := dao_wa.Message{
-		Sending:       true,
-		PhoneNumberId: user.WA.PhoneNumber_.Id,
-		CustomerId:    customer.Id,
-		WAMessageId:   response.Messages[0].ID,
-		Timestamp:     timestamp,
-		Type:          string(create.Type),
-		Payload:       payload,
-		Status:        types.WAMessageStatusAccepted,
-		AttachmentURL: create.AttachmentURL,
-		CampaignId:    create.CampaignId,
+		Sending:             true,
+		PhoneNumberId:       user.WA.PhoneNumber_.Id,
+		CustomerId:          customer.Id,
+		WAMessageId:         response.Messages[0].ID,
+		Timestamp:           timestamp,
+		Type:                string(create.Type),
+		Payload:             payload,
+		Status:              messageStatus,
+		AttachmentURL:       create.AttachmentURL,
+		CampaignRecipientId: create.CampaignRecipientId,
+		Attempts:            1,
+		ErrorMessage:        sendError,
+		Token:               token,
+	}
+	if len(response.Messages) > 0 && strings.TrimSpace(response.Messages[0].ID) != "" {
+		message.WAMessageId = strings.TrimSpace(response.Messages[0].ID)
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewMessage(message)
 	dependencies.Ably.Publish("message", helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token), result)
+	// TODO: if has error and this is from a campaign, schedule retry in SMQ, remember to check token becuase maybe the message was delivered successfully by the time it retries. normal message failure do not auto retry
+	if create.CampaignRecipientId != nil && sendError != "" {
+
+	}
 	return dto.NewSuccessResponse(&result)
 }
 

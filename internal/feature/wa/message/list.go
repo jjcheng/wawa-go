@@ -68,12 +68,12 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	// gather distinct campaignIds
-	campaignIds := helper.Distinct(helper.Map(helper.Filter(messages, func(m dao_wa.Message) bool {
-		return m.CampaignId != nil
-	}), func(m dao_wa.Message) int32 { return *m.CampaignId }))
+	// gather distinct campaignRecipientIds
+	campaignRecipientIds := helper.Distinct(helper.Map(helper.Filter(messages, func(m dao_wa.Message) bool {
+		return m.CampaignRecipientId != nil
+	}), func(m dao_wa.Message) int32 { return *m.CampaignRecipientId }))
 	// get the campaigns
-	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByIds(ctx, campaignIds)
+	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByRecipientIds(ctx, campaignRecipientIds)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -81,22 +81,33 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	page := make([]dto_wa.Message, 0, len(messages))
 	for _, message := range messages {
 		result := dto_wa.NewMessage(message)
-		if message.Type == "template" && message.CampaignId != nil {
-			campaign := helper.First(campaigns, func(c dao_customer.Campaign) bool {
-				return c.Id == *message.CampaignId
-			})
-			if campaign == nil {
-				continue
-			}
-			template, err := helper.ConvertJSON[dto_wa.Template](campaign.TemplatePayload)
-			if err != nil {
-				continue
-			}
+		if message.Type == "template" && message.CampaignRecipientId != nil {
 			sendTemplatePayload, ok := message.Payload["template"]
 			if !ok {
 				continue
 			}
 			sendTemplate, err := helper.ConvertJSON[dto_wa.SendTemplate](sendTemplatePayload)
+			if err != nil {
+				continue
+			}
+			var campaign *dao_customer.Campaign
+			if len(campaigns) == 1 {
+				campaign = &campaigns[0]
+			} else if sendTemplateMap, ok := sendTemplatePayload.(map[string]any); ok {
+				if templateName, ok := sendTemplateMap["name"].(string); ok && templateName != "" {
+					campaign = helper.First(campaigns, func(c dao_customer.Campaign) bool {
+						name, _ := c.TemplatePayload["name"].(string)
+						return name == templateName
+					})
+				}
+			}
+			if campaign == nil && len(campaigns) > 0 {
+				campaign = &campaigns[0]
+			}
+			if campaign == nil {
+				continue
+			}
+			template, err := helper.ConvertJSON[dto_wa.Template](campaign.TemplatePayload)
 			if err != nil {
 				continue
 			}

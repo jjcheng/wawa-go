@@ -1,6 +1,7 @@
 package dao_customer
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/dao"
@@ -27,4 +28,8 @@ func (Campaign) TableName() string {
 
 func (campaign Campaign) Base() dao.DAOBase {
 	return campaign.DAOBase
+}
+
+func (campaign *Campaign) EventName() string {
+	return fmt.Sprintf("campaign-%d", campaign.Id)
 }

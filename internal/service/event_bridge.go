@@ -13,6 +13,7 @@ import (
 	"github.com/alibabacloud-go/eventbridge-sdk/eventbridge"
 	"github.com/google/uuid"
 	"github.com/jjcheng/wawa-go/internal/cfg"
+	"github.com/jjcheng/wawa-go/internal/helper"
 )
 
 const eventBridgeBusNameExtension = "aliyuneventbusname"
@@ -33,41 +34,36 @@ type EventBridge struct {
 
 func NewEventBridge(logger *Logger) *EventBridge {
 	config := cfg.Default().AliyunEventBridge
-	service := &EventBridge{
+	eventBridge := &EventBridge{
 		logger:       logger,
 		eventBusName: strings.TrimSpace(config.EventBusName),
 		source:       strings.TrimSpace(config.Source),
 	}
-	if service.source == "" {
-		service.source = "wawa-go"
-	}
-	if strings.TrimSpace(config.Endpoint) == "" || strings.TrimSpace(config.AccessKeyID) == "" || strings.TrimSpace(config.AccessKeySecret) == "" || service.eventBusName == "" {
-		return service
+	if strings.TrimSpace(config.Endpoint) == "" || strings.TrimSpace(config.AccessKeyID) == "" || strings.TrimSpace(config.AccessKeySecret) == "" || eventBridge.eventBusName == "" {
+		panic("invalid EventBridge configuration")
 	}
 	client, err := eventbridge.NewClient(new(eventbridge.Config).
 		SetAccessKeyId(strings.TrimSpace(config.AccessKeyID)).
 		SetAccessKeySecret(strings.TrimSpace(config.AccessKeySecret)).
 		SetEndpoint(strings.TrimSpace(config.Endpoint)))
 	if err != nil {
-		logger.ErrorFunction(fmt.Errorf("create Alibaba EventBridge client: %w", err))
-		return service
+		panic(err)
 	}
-	service.client = client
+	eventBridge.client = client
 	scheduler, err := eventbridgeapi.NewClient(new(openapi.Config).
 		SetAccessKeyId(strings.TrimSpace(config.AccessKeyID)).
 		SetAccessKeySecret(strings.TrimSpace(config.AccessKeySecret)).
 		SetEndpoint(strings.TrimSpace(config.Endpoint)))
 	if err != nil {
-		logger.ErrorFunction(fmt.Errorf("create Alibaba EventBridge scheduler client: %w", err))
-		return service
+		panic(err)
 	}
-	service.scheduler = scheduler
-	return service
+	eventBridge.scheduler = scheduler
+	return eventBridge
 }
 
-// Schedule creates a one-time EventBridge scheduled event source.
+// CreateEvent creates a one-time EventBridge scheduled event source.
 // Configure an EventBridge rule to route scheduled events to Function Compute.
-func (eventBridge *EventBridge) Schedule(ctx context.Context, name string, sendAt time.Time) (string, error) {
+func (eventBridge *EventBridge) CreateEvent(ctx context.Context, name string, sendAt time.Time) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -79,12 +75,12 @@ func (eventBridge *EventBridge) Schedule(ctx context.Context, name string, sendA
 	}
 	schedule := fmt.Sprintf("at(%s)", sendAt.UTC().Format(time.RFC3339))
 	response, err := eventBridge.scheduler.CreateEventSource(&eventbridgeapi.CreateEventSourceRequest{
-		Description:     stringPtr(fmt.Sprintf("Scheduled event: %s", name)),
-		EventBusName:    stringPtr(eventBridge.eventBusName),
-		EventSourceName: stringPtr(name),
+		Description:     helper.ConvertToPointer(fmt.Sprintf("Scheduled event: %s", name)),
+		EventBusName:    helper.ConvertToPointer(eventBridge.eventBusName),
+		EventSourceName: helper.ConvertToPointer(name),
 		SourceScheduledEventParameters: &eventbridgeapi.CreateEventSourceRequestSourceScheduledEventParameters{
-			Schedule: stringPtr(schedule),
-			TimeZone: stringPtr("UTC"),
+			Schedule: helper.ConvertToPointer(schedule),
+			TimeZone: helper.ConvertToPointer("UTC"),
 		},
 	})
 	if err != nil {
@@ -94,6 +90,27 @@ func (eventBridge *EventBridge) Schedule(ctx context.Context, name string, sendA
 		return "", errors.New("EventBridge returned no scheduled event source")
 	}
 	return *response.Body.Data.EventSourceARN, nil
+}
+
+// DeleveEvent removes a scheduled event source by name.
+func (eventBridge *EventBridge) DeleveEvent(ctx context.Context, name string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if eventBridge == nil || eventBridge.scheduler == nil {
+		return errors.New("Alibaba EventBridge scheduler is not configured")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("scheduled event source name is required")
+	}
+	_, err := eventBridge.scheduler.DeleteEventSource(&eventbridgeapi.DeleteEventSourceRequest{
+		EventSourceName: helper.ConvertToPointer(name),
+	})
+	if err != nil {
+		return fmt.Errorf("delete EventBridge schedule: %w", err)
+	}
+	return nil
 }
 
 // Publish marshals payload as JSON and sends it as a CloudEvent.
@@ -148,8 +165,4 @@ func valueOrEmpty(value *string) string {
 		return ""
 	}
 	return *value
-}
-
-func stringPtr(value string) *string {
-	return &value
 }

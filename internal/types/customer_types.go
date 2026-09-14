@@ -33,8 +33,6 @@ type CampaignRecipientStatus string
 
 const (
 	CampaignRecipientStatusPending   CampaignRecipientStatus = "PENDING"   // ready or scheduled, not yet claimed.
-	CampaignRecipientStatusSending   CampaignRecipientStatus = "SENDING"   // worker claimed it; prevents duplicate sends
-	CampaignRecipientStatusAccepted  CampaignRecipientStatus = "ACCEPTED"  // Meta accepted the API request and returned a wamid
-	CampaignRecipientStatusFailed    CampaignRecipientStatus = "FAILED"    // final failure after retry limit or non-retryable Meta error
+	CampaignRecipientStatusCompleted CampaignRecipientStatus = "COMPLETED" // createMessage is called, status not cared
 	CampaignRecipientStatusCancelled CampaignRecipientStatus = "CANCELLED" // skipped because parent campaign was cancelled before Meta accepted it
 )

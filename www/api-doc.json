@@ -8480,7 +8480,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized to access a WhatsApp business portfolio, unauthorized access",
+                      "example": "you are not authorized, unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -8514,7 +8514,7 @@
                 }
               }
             },
-            "description": "you are not authorized to access a WhatsApp business portfolio, unauthorized access"
+            "description": "you are not authorized, unauthorized access"
           },
           "403": {
             "content": {
