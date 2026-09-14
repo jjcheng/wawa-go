@@ -38,7 +38,7 @@ func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNum
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	offset := (page - 1) * pageSize
-	if err = query.Order("timestamp DESC").Offset(offset).Limit(pageSize).Find(&messages).Error; err != nil {
+	if err = query.Order("timestamp").Offset(offset).Limit(pageSize).Find(&messages).Error; err != nil {
 		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerId, page, pageSize)
 		return nil, 0, 0, err
 	}

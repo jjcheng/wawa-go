@@ -5,11 +5,14 @@ import (
 	"errors"
 	"net/http"
 
+	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
+	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -49,7 +52,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.Message]](inputErrors)
 	}
 	if user.WA == nil || user.WA.PhoneNumber_ == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "you are not authorized")
 	}
 	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, list.CustomerId)
 	if err != nil {
@@ -59,15 +62,49 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if customer.UserId != user.Id {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "not your customer")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusNotFound, "customer not found")
 	}
 	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, user.WA.PhoneNumber_.Id, customer.Id, true, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
+	// gather distinct campaignIds
+	campaignIds := helper.Distinct(helper.Map(helper.Filter(messages, func(m dao_wa.Message) bool {
+		return m.CampaignId != nil
+	}), func(m dao_wa.Message) int32 { return *m.CampaignId }))
+	// get the campaigns
+	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByIds(ctx, campaignIds)
+	if err != nil {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	// bind the html for the messages
 	page := make([]dto_wa.Message, 0, len(messages))
 	for _, message := range messages {
-		page = append(page, dto_wa.NewMessage(message))
+		result := dto_wa.NewMessage(message)
+		if message.Type == "template" && message.CampaignId != nil {
+			campaign := helper.First(campaigns, func(c dao_customer.Campaign) bool {
+				return c.Id == *message.CampaignId
+			})
+			if campaign == nil {
+				continue
+			}
+			template, err := helper.ConvertJSON[dto_wa.Template](campaign.TemplatePayload)
+			if err != nil {
+				continue
+			}
+			sendTemplatePayload, ok := message.Payload["template"]
+			if !ok {
+				continue
+			}
+			sendTemplate, err := helper.ConvertJSON[dto_wa.SendTemplate](sendTemplatePayload)
+			if err != nil {
+				continue
+			}
+			template.ApplySendTemplate(sendTemplate)
+			result.PreviewHTML = template.HTML(true, false)
+			result.PreviewDarkHTML = template.HTML(true, true)
+		}
+		page = append(page, result)
 	}
 	response := dto.NewPagedListResponse(page, totalPages, totalCount)
 	return dto.NewSuccessResponse(&response)

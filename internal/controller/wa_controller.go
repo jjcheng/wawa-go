@@ -11,6 +11,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_account "github.com/jjcheng/wawa-go/internal/feature/wa/account"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
+	feature_wa_catalog "github.com/jjcheng/wawa-go/internal/feature/wa/catalog"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
 	feature_wa_sample_template "github.com/jjcheng/wawa-go/internal/feature/wa/sample_template"
@@ -76,6 +77,8 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*dto_wa.Template, feature_wa_template.Create](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.Template, feature_wa_template.CreateFromSample](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_template.Delete](routerGroup, dependencies, apiGenerator)
+	// catalog
+	registerRoute[[]service.WhatsAppProductCatalog, feature_wa_catalog.List](routerGroup, dependencies, apiGenerator)
 	// sample templates
 	registerRoute[[]dto_wa.SampleTemplate, feature_wa_sample_template.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.SampleTemplate, feature_wa_sample_template.Create](routerGroup, dependencies, apiGenerator)

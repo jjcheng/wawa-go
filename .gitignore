@@ -38,8 +38,7 @@ coverage.*
 .timestamp
 node_modules
 files/wa
-files/receive
-files/gamma
+files/receive*
 files/scraper
 # Google service account credentials
 google_service_account_json.json

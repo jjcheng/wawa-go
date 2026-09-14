@@ -56,6 +56,10 @@
     {
       "filePath": "internal/feature/wa/webhook/verify.go",
       "group": "Default"
+    },
+    {
+      "filePath": "internal/setup/services.go",
+      "group": "Default"
     }
   ],
   "groups": [

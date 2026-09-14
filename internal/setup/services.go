@@ -221,6 +221,10 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	if contact == nil {
 		return exception.NewCustomException(fmt.Sprintf("missing contact in WA incoming message: %s", incomingMessage.ID), http.StatusBadGateway)
 	}
+	// skip whatsapp offical message
+	if contact.Profile.Name == "WhatsApp Business" {
+		return nil
+	}
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	committed := false
 	defer func() {

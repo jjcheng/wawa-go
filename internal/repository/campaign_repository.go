@@ -12,4 +12,5 @@ type CampaignRepository interface {
 	Repository[dao_customer.Campaign]
 	ListByUserId(ctx context.Context, userId int32, name string, status types.CampaignStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Campaign], error)
 	CheckNameExist(ctx context.Context, userId int32, name string) (bool, error)
+	ListByIds(ctx context.Context, ids []int32) ([]dao_customer.Campaign, error)
 }

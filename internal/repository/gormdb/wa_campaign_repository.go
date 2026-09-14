@@ -64,3 +64,20 @@ func (campaignRepository *WACampaignRepository) CheckNameExist(ctx context.Conte
 	}
 	return count > 0, nil
 }
+
+func (campaignRepository *WACampaignRepository) ListByIds(ctx context.Context, ids []int32) ([]dao_customer.Campaign, error) {
+	if len(ids) == 0 {
+		return []dao_customer.Campaign{}, nil
+	}
+	var campaigns []dao_customer.Campaign
+	result := campaignRepository.db.WithContext(ctx).
+		Model(&dao_customer.Campaign{}).
+		Where("id IN ?", ids).
+		Order("id").
+		Find(&campaigns)
+	if result.Error != nil {
+		campaignRepository.logger.ErrorFunction(result.Error, ids)
+		return nil, result.Error
+	}
+	return campaigns, nil
+}

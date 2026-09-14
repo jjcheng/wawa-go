@@ -30,7 +30,17 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	log.Println("worker started")
-	setup.StartQueueListener(ctx, dependencies)
+	// extract the args
+	task := "queue"
+	if len(os.Args) > 1 && os.Args[1] != "" {
+		task = os.Args[1]
+	}
+	switch task {
+	case "queue":
+		setup.StartQueueListener(ctx, dependencies)
+	default:
+		log.Printf("unknown worker task: %s\n", task)
+	}
 	log.Println("worker stopped")
 	log.Println("server exiting")
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -25,7 +26,7 @@ type Create struct {
 	Name         string              `json:"name"`
 	SendDate     *time.Time          `json:"send_date"`
 	WATemplateId string              `json:"wa_template_id"`
-	SendTemplate dto_wa.SendTemplate `json:"sent_template"`
+	SendTemplate dto_wa.SendTemplate `json:"send_template"`
 	CustomerIds  []int32             `json:"customer_ids"`
 }
 
@@ -110,7 +111,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	// now generate a list of final payloads to send to meta
 	var payloads []map[string]any
 	for _, customer := range customers {
-		payload, err := create.SendTemplate.FinalPayload(template, customer, campaignToken)
+		// make deep copy of create.SendTemplate
+		sendTemplate, err := helper.DeepCopy(create.SendTemplate)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, create)
+			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		payload, err := sendTemplate.FinalPayload(template, customer, campaignToken)
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, create)
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

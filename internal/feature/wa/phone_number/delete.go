@@ -26,10 +26,11 @@ func (delete *Delete) Validate() []exception.InputException {
 }
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
-	return dto.NewFailedResponse[any](http.StatusNotImplemented, "not in use")
+	//return dto.NewFailedResponse[any](http.StatusNotImplemented, "not in use")
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
 	}
+	// only can delete if there is no message, no message event, no customer, no campaign
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}

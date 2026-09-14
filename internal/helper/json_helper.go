@@ -47,3 +47,19 @@ func DeserializeJSON[T any](string string) (*T, error) {
 	}
 	return &item, nil
 }
+
+func DeepCopy[T any](source T) (T, error) {
+	return ConvertJSON[T](source)
+}
+
+func ConvertJSON[T any](source any) (T, error) {
+	var copied T
+	data, err := json.Marshal(source)
+	if err != nil {
+		return copied, err
+	}
+	if err := json.Unmarshal(data, &copied); err != nil {
+		return copied, err
+	}
+	return copied, nil
+}

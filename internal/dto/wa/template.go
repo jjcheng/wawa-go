@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -67,6 +69,8 @@ func (templateBase TemplateBase) Payload() map[string]any {
 	}
 }
 
+// # region preview
+
 type templateTheme struct {
 	CanvasBackground string
 	CardBackground   string
@@ -117,12 +121,281 @@ func (template *Template) HTML(withExample bool, dark bool) string {
 			html.WriteString(componentHtml)
 		}
 	}
-	return fmt.Sprintf("<div style='box-sizing:border-box;width:100%%;max-width:360px;padding:12px 12px 20px;background:%s;font-family:Arial,sans-serif;'><div style='position:relative;overflow:hidden;width:100%%;max-width:330px;background:%s;border:1px solid %s;border-radius:8px;color:%s;'>%s</div></div>", theme.CanvasBackground, theme.CardBackground, theme.CardBorder, theme.TextPrimary, html.String())
+	return fmt.Sprintf("<div style='box-sizing:border-box;width:100%%;max-width:360px;padding:12px 12px 20px;background:%s;font-family:Arial,sans-serif;'><div style='position:relative;overflow:hidden;width:100%%;max-width:330px;background:%s;border:1px solid %s;border-radius:8px 3px 8px 8px;color:%s;'>%s</div></div>", theme.CanvasBackground, theme.CardBackground, theme.CardBorder, theme.TextPrimary, html.String())
 }
 
-// #end region
+func (template *Template) ApplySendTemplate(sendTemplate SendTemplate) {
+	for _, sendComponent := range sendTemplate.Components {
+		switch strings.ToLower(sendComponent.Type) {
+		case "header", "body":
+			component := template.component(sendComponent.Type)
+			if component == nil {
+				continue
+			}
+			if strings.EqualFold(sendComponent.Type, "header") && applyHeaderMedia(component, sendComponent.Parameters) {
+				continue
+			}
+			applyTextExamples(component, sendComponent.Parameters, template.ParameterFormat)
+		case "button":
+			template.applyButton(sendComponent)
+		}
+	}
+}
 
-// #region list
+func (template *Template) component(componentType string) *TemplateComponent {
+	for i := range template.Components {
+		if strings.EqualFold(string(template.Components[i].Type), componentType) {
+			return &template.Components[i]
+		}
+	}
+	return nil
+}
+
+func applyHeaderMedia(component *TemplateComponent, parameters []SendTemplateParameter) bool {
+	for _, parameter := range parameters {
+		var mediaURL string
+		switch strings.ToLower(parameter.Type) {
+		case "image":
+			if parameter.Image != nil {
+				mediaURL = parameter.Image.Link
+			}
+		case "video":
+			if parameter.Video != nil {
+				mediaURL = parameter.Video.Link
+			}
+		case "document":
+			if parameter.Document != nil {
+				mediaURL = parameter.Document.Link
+			}
+		case "location":
+			if parameter.Location != nil {
+				if component.Example == nil {
+					component.Example = &TemplateComponentExample{}
+				}
+				component.Example.HeaderLocation = parameter.Location
+				return true
+			}
+		}
+		if mediaURL != "" {
+			if component.Example == nil {
+				component.Example = &TemplateComponentExample{}
+			}
+			component.Example.HeaderHandle = []string{mediaURL}
+			return true
+		}
+	}
+	return false
+}
+
+func applyTextExamples(component *TemplateComponent, parameters []SendTemplateParameter, parameterFormat types.WATemplateParameterFormat) {
+	values := make([]string, 0, len(parameters))
+	names := make([]string, 0, len(parameters))
+	isNamed := parameterFormat == types.WATemplateParameterFormatNamed
+	for index, parameter := range parameters {
+		value, ok := sendTemplateParameterText(parameter)
+		if !ok {
+			continue
+		}
+		values = append(values, value)
+		name := parameter.ParameterName
+		if name != "" {
+			isNamed = true
+		}
+		if name == "" && component.Example != nil {
+			if component.Type == types.WATemplateComponentTypeHeader && index < len(component.Example.HeaderTextNamedParams) {
+				name = component.Example.HeaderTextNamedParams[index].ParamName
+				isNamed = true
+			} else if component.Type == types.WATemplateComponentTypeBody && index < len(component.Example.BodyTextNamedParams) {
+				name = component.Example.BodyTextNamedParams[index].ParamName
+				isNamed = true
+			}
+		}
+		names = append(names, name)
+	}
+	if len(values) == 0 {
+		return
+	}
+	if component.Example == nil {
+		component.Example = &TemplateComponentExample{}
+	}
+	if isNamed {
+		namedValues := make([]TemplateComponentTextNamedParam, 0, len(values))
+		for i, value := range values {
+			namedValues = append(namedValues, TemplateComponentTextNamedParam{ParamName: names[i], Example: value})
+		}
+		if component.Type == types.WATemplateComponentTypeHeader {
+			component.Example.HeaderText = nil
+			component.Example.HeaderTextNamedParams = namedValues
+		} else {
+			component.Example.BodyText = nil
+			component.Example.BodyTextNamedParams = namedValues
+		}
+		return
+	}
+	if component.Type == types.WATemplateComponentTypeHeader {
+		component.Example.HeaderTextNamedParams = nil
+		component.Example.HeaderText = values
+	} else {
+		component.Example.BodyTextNamedParams = nil
+		component.Example.BodyText = [][]string{values}
+	}
+}
+
+func sendTemplateParameterText(parameter SendTemplateParameter) (string, bool) {
+	switch strings.ToLower(parameter.Type) {
+	case "text":
+		return parameter.Text, true
+	case "currency":
+		if parameter.Currency != nil {
+			return parameter.Currency.FallbackValue, true
+		}
+	case "date_time":
+		if parameter.DateTime != nil {
+			return parameter.DateTime.FallbackValue, true
+		}
+	}
+	return "", false
+}
+
+func (template *Template) applyButton(sendComponent SendTemplateComponent) {
+	buttonIndex, err := strconv.Atoi(sendComponent.Index)
+	if err != nil || buttonIndex < 0 {
+		return
+	}
+	buttons := template.component(string(types.WATemplateComponentTypeButtons))
+	if buttons == nil || buttonIndex >= len(buttons.Buttons) {
+		return
+	}
+	for _, parameter := range sendComponent.Parameters {
+		if strings.EqualFold(sendComponent.SubType, "url") && strings.EqualFold(parameter.Type, "text") {
+			buttons.Buttons[buttonIndex].Example = []string{parameter.Text}
+			buttons.Buttons[buttonIndex].Url = strings.Replace(buttons.Buttons[buttonIndex].Url, "{{1}}", parameter.Text, 1)
+			return
+		}
+	}
+}
+
+func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (string, error) {
+	theme := whatsappTemplateTheme(dark)
+	switch templateComponent.Type {
+	case types.WATemplateComponentTypeHeader:
+		switch templateComponent.Format {
+		case types.WATemplateComponentFormatText:
+			headerText := templateComponent.Text
+			if withExample {
+				if templateComponent.Example != nil {
+					if len(templateComponent.Example.HeaderText) > 0 {
+						for i, text := range templateComponent.Example.HeaderText {
+							position := i + 1
+							headerText = strings.Replace(headerText, fmt.Sprintf("{{%d}}", position), text, 1)
+						}
+					} else if len(templateComponent.Example.HeaderTextNamedParams) > 0 {
+						for _, param := range templateComponent.Example.HeaderTextNamedParams {
+							headerText = strings.ReplaceAll(headerText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
+						}
+					}
+				}
+				if strings.Contains(headerText, "{{") {
+					return "", errors.New("no header_text or header_text_named_params in example")
+				}
+			}
+			return fmt.Sprintf("<div style='padding:8px 9px 0;font-size:14.2px;font-weight:600;color:%s;line-height:19px;'>%s</div>", theme.TextPrimary, formatWhatsAppText(headerText)), nil
+		case types.WATemplateComponentFormatImage:
+			if templateComponent.Example == nil || len(templateComponent.Example.HeaderHandle) == 0 {
+				return "", errors.New("no example or no header_handle")
+			}
+			return fmt.Sprintf("<div style='margin:0;overflow:hidden;border-radius:0;line-height:0;'><img src='%s' alt='Template header' style='display:block;width:100%%;height:auto;max-height:260px;object-fit:cover;border-radius:0;'></div>", templateComponent.Example.HeaderHandle[0]), nil
+		case types.WATemplateComponentFormatVideo:
+			if templateComponent.Example == nil || len(templateComponent.Example.HeaderHandle) == 0 {
+				return "", errors.New("no example or no header_handle")
+			}
+			return fmt.Sprintf("<div style='padding:0;'><video controls preload='metadata' playsinline src='%s' style='display:block;width:100%%;max-height:260px;object-fit:cover;border-radius:0;background:#0b141a;'></video></div>", templateComponent.Example.HeaderHandle[0]), nil
+		case types.WATemplateComponentFormatDocument:
+			if templateComponent.Example == nil || len(templateComponent.Example.HeaderHandle) == 0 {
+				return "", errors.New("no example or no header_handle")
+			}
+			documentURL := templateComponent.Example.HeaderHandle[0]
+			if strings.HasSuffix(strings.ToLower(documentURL), ".pdf") {
+				return fmt.Sprintf("<div style='padding:0;'><iframe src='%s' title='PDF preview' loading='lazy' style='display:block;width:100%%;height:220px;border:0;border-radius:0;background:%s;'></iframe><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:8px;margin-top:2px;padding:9px 10px;border-radius:0;background:%s;color:%s;text-decoration:none;font-size:13px;'><span style='font-size:20px;'>📄</span><span>Open PDF</span></a></div>", documentURL, theme.MutedBackground, documentURL, theme.MutedBackground, theme.TextPrimary), nil
+			}
+			documentType := classifyDocumentType(documentURL)
+			documentIcon := documentIconForType(documentType)
+			return fmt.Sprintf("<div style='padding:0;'><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:10px;padding:12px;border-radius:0;background:%s;color:%s;text-decoration:none;font-size:13px;'><span style='font-size:26px;line-height:1;'>%s</span><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>%s document</span></a></div>", documentURL, theme.MutedBackground, theme.TextPrimary, documentIcon, strings.ToUpper(documentType)), nil
+		case types.WATemplateComponentFormatLocation:
+			location := &SendTemplateParameterLocation{Latitude: 1.3521, Longitude: 103.844, Name: "Location name", Address: "Location address"}
+			if templateComponent.Example != nil && templateComponent.Example.HeaderLocation != nil {
+				location = templateComponent.Example.HeaderLocation
+			}
+			mapQuery := url.Values{}
+			mapQuery.Set("center", fmt.Sprintf("%f,%f", location.Latitude, location.Longitude))
+			mapQuery.Set("zoom", "15")
+			mapQuery.Set("size", "450x170")
+			mapQuery.Set("scale", "2")
+			mapQuery.Set("maptype", "roadmap")
+			mapQuery.Set("markers", fmt.Sprintf("color:red|%f,%f", location.Latitude, location.Longitude))
+			mapQuery.Set("key", cfg.Default().Site.GoogleMapAPIKey)
+			mapURL := "https://maps.googleapis.com/maps/api/staticmap?" + mapQuery.Encode()
+			return fmt.Sprintf("<div style='padding:0;'><img src='%s' alt='Location map' style='display:block;width:100%%;height:170px;object-fit:cover;border-radius:0;'><div style='padding:8px 9px;background:%s;border-radius:0;'><div style='font-weight:600;font-size:13.5px;line-height:18px;color:%s;'>%s</div><div style='margin-top:2px;font-size:12px;line-height:16px;color:%s;'>%s</div></div></div>", mapURL, theme.MutedBackground, theme.TextPrimary, html.EscapeString(location.Name), theme.TextSecondary, html.EscapeString(location.Address)), nil
+		default:
+			return "", errors.New("unsupported header format")
+		}
+
+	case types.WATemplateComponentTypeBody:
+		bodyText := templateComponent.Text
+		if withExample {
+			if templateComponent.Example != nil {
+				if len(templateComponent.Example.BodyText) > 0 && len(templateComponent.Example.BodyText[0]) > 0 {
+					for i, text := range templateComponent.Example.BodyText[0] {
+						position := i + 1
+						bodyText = strings.Replace(bodyText, fmt.Sprintf("{{%d}}", position), text, 1)
+					}
+				} else if len(templateComponent.Example.BodyTextNamedParams) > 0 {
+					for _, param := range templateComponent.Example.BodyTextNamedParams {
+						bodyText = strings.ReplaceAll(bodyText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
+					}
+				}
+			}
+			if strings.Contains(bodyText, "{{") {
+				return "", errors.New("no body_text or body_text_named_params in example")
+			}
+		}
+		return fmt.Sprintf("<div style='padding:6px 9px 8px;color:%s;font-size:14.2px;line-height:19px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", theme.TextPrimary, formatWhatsAppText(bodyText)), nil
+	case types.WATemplateComponentTypeFooter:
+		return fmt.Sprintf("<div style='padding:4px 9px 7px;color:%s;font-size:12px;line-height:16px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", theme.TextSecondary, formatWhatsAppText(templateComponent.Text)), nil
+	case types.WATemplateComponentTypeButtons:
+		if len(templateComponent.Buttons) == 0 {
+			return "", errors.New("no buttons in component")
+		}
+		buttonStyle := fmt.Sprintf("display:block;width:100%%;padding:10px 12px;border:0;border-top:1px solid %s;background:%s;color:%s;font-size:14px;font-weight:500;line-height:20px;text-align:center;", theme.ActionBorder, theme.ActionBackground, theme.ActionText)
+		var buttonHTML []string
+		for _, button := range templateComponent.Buttons {
+			switch button.Type {
+			case types.WATemplateButtonTypeURL:
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='%s' target='_blank' rel='noopener noreferrer' style='%s'>↗&nbsp; %s</a>", button.Url, buttonStyle, button.Text))
+			case types.WATemplateButtonTypePhoneNumber:
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='tel:%s' style='%s'>☎&nbsp; %s</a>", button.PhoneNumber, buttonStyle, button.Text))
+			case types.WATemplateButtonTypeQuickReply:
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>↩&nbsp; %s</button>", buttonStyle, button.Text))
+			case types.WATemplateButtonTypeVoiceCall:
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>☎&nbsp; %s</button>", buttonStyle, button.Text))
+			case types.WATemplateButtonTypeCopyCode:
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>⧉&nbsp; %s</button>", buttonStyle, button.Text))
+			default:
+				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>%s</button>", buttonStyle, button.Text))
+			}
+		}
+		return fmt.Sprintf("<div style='margin-top:3px;background:%s;'>%s</div>", theme.ActionBackground, strings.Join(buttonHTML, "")), nil
+	case types.WATemplateComponentTypeCallPermissionRequest:
+		return fmt.Sprintf("<div style='margin:9px 9px 0;padding:16px;background:%s;display:flex;align-items:flex-start;gap:12px;'><div style='box-sizing:border-box;flex:0 0 58px;width:58px;height:58px;border-radius:50%%;background:%s;display:flex;align-items:center;justify-content:center;color:%s;'><svg viewBox='0 0 24 24' width='25' height='25' aria-hidden='true' style='display:block;fill:currentColor;'><path d='M6.62 10.79a15.5 15.5 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2Z'></path></svg></div><div style='min-width:0;flex:1;padding-top:2px;'><div style='color:%s;font-size:16px;font-weight:700;line-height:21px;'>Can {BIZ_NAME} call you?</div><div style='margin-top:3px;color:%s;font-size:15px;font-weight:400;line-height:22px;'>You can update your<br>preference at any time<br>in the business profile. <span style='display:inline-block;margin-left:8px;font-size:12px;line-height:16px;white-space:nowrap;'>04:18</span></div></div></div><div style='height:54px;display:flex;align-items:center;justify-content:center;gap:12px;background:%s;color:%s;font-size:15px;font-weight:500;line-height:20px;border-top:1px solid %s;'>Choose preference<span aria-hidden='true' style='display:inline-block;width:10px;height:10px;border-right:2px solid %s;border-bottom:2px solid %s;transform:rotate(45deg) translateY(-3px);'></span></div>", theme.MutedBackground, theme.ActionBackground, theme.TextPrimary, theme.TextPrimary, theme.TextSecondary, theme.ActionBackground, theme.ActionText, theme.ActionBorder, theme.ActionText, theme.ActionText), nil
+
+	default:
+		return "", errors.New("unsupported template component type")
+	}
+}
+
+// #endregion
+
+// # region list
 
 type TemplateListResponse struct {
 	Data   []Template      `json:"data"`
@@ -140,9 +413,10 @@ type TemplatePagingCursors struct {
 	After  string `json:"after,omitempty"`
 }
 
-// #endregion
+// # end region
 
 // #region usage
+
 type TemplateAnalytics struct {
 	WABATimezone   string                       `json:"waba_timezone,omitempty"`
 	Granularity    string                       `json:"granularity,omitempty"`
@@ -193,6 +467,7 @@ type TemplateComponentExample struct {
 	HeaderHandle          []string                          `json:"header_handle,omitempty" description:"present if format is IMAGE, VIDEO, DOCUMENT"`
 	HeaderText            []string                          `json:"header_text,omitempty" description:"present if parameter type is POSITIONAL"`
 	BodyText              [][]string                        `json:"body_text,omitempty" description:"present if parameter type is POSITIONAL"`
+	HeaderLocation        *SendTemplateParameterLocation    `json:"header_location,omitempty"`
 }
 
 type TemplateComponentTextNamedParam struct {
@@ -293,7 +568,6 @@ func formatWhatsAppText(text string) string {
 				continue
 			}
 		}
-
 		nextSpecial := strings.IndexAny(text, "*_~`")
 		if placeholderIndex := strings.Index(text, "{{"); placeholderIndex >= 0 && (nextSpecial < 0 || placeholderIndex < nextSpecial) {
 			nextSpecial = placeholderIndex
@@ -328,119 +602,16 @@ func indexOutsideTemplatePlaceholder(text string, marker string, start int) int 
 	return -1
 }
 
-func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (string, error) {
-	theme := whatsappTemplateTheme(dark)
-	switch templateComponent.Type {
-	case types.WATemplateComponentTypeHeader:
-		switch templateComponent.Format {
-		case types.WATemplateComponentFormatText:
-			headerText := templateComponent.Text
-			if withExample {
-				if templateComponent.Example != nil {
-					if len(templateComponent.Example.HeaderText) > 0 {
-						for i, text := range templateComponent.Example.HeaderText {
-							position := i + 1
-							headerText = strings.Replace(headerText, fmt.Sprintf("{{%d}}", position), text, 1)
-						}
-					} else if len(templateComponent.Example.HeaderTextNamedParams) > 0 {
-						for _, param := range templateComponent.Example.HeaderTextNamedParams {
-							headerText = strings.ReplaceAll(headerText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
-						}
-					}
-				}
-				if strings.Contains(headerText, "{{") {
-					return "", errors.New("no header_text or header_text_named_params in example")
-				}
-			}
-			return fmt.Sprintf("<div style='padding:8px 9px 0;font-size:14.2px;font-weight:600;color:%s;line-height:19px;'>%s</div>", theme.TextPrimary, formatWhatsAppText(headerText)), nil
-		case types.WATemplateComponentFormatImage:
-			if templateComponent.Example == nil || len(templateComponent.Example.HeaderHandle) == 0 {
-				return "", errors.New("no example or no header_handle")
-			}
-			return fmt.Sprintf("<div style='margin:0;overflow:hidden;border-radius:6px;line-height:0;'><img src='%s' alt='Template header' style='display:block;width:100%%;height:auto;max-height:260px;object-fit:cover;'></div>", templateComponent.Example.HeaderHandle[0]), nil
-		case types.WATemplateComponentFormatVideo:
-			if templateComponent.Example == nil || len(templateComponent.Example.HeaderHandle) == 0 {
-				return "", errors.New("no example or no header_handle")
-			}
-			return fmt.Sprintf("<div style='padding:0;'><video controls preload='metadata' playsinline src='%s' style='display:block;width:100%%;max-height:260px;object-fit:cover;border-radius:6px;background:#0b141a;'></video></div>", templateComponent.Example.HeaderHandle[0]), nil
-		case types.WATemplateComponentFormatDocument:
-			if templateComponent.Example == nil || len(templateComponent.Example.HeaderHandle) == 0 {
-				return "", errors.New("no example or no header_handle")
-			}
-			documentURL := templateComponent.Example.HeaderHandle[0]
-			if strings.HasSuffix(strings.ToLower(documentURL), ".pdf") {
-				return fmt.Sprintf("<div style='padding:0;'><iframe src='%s' title='PDF preview' loading='lazy' style='display:block;width:100%%;height:220px;border:0;border-radius:6px;background:%s;'></iframe><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:8px;margin-top:2px;padding:9px 10px;border-radius:4px;background:%s;color:%s;text-decoration:none;font-size:13px;'><span style='font-size:20px;'>📄</span><span>Open PDF</span></a></div>", documentURL, theme.MutedBackground, documentURL, theme.MutedBackground, theme.TextPrimary), nil
-			}
-			documentType := classifyDocumentType(documentURL)
-			documentIcon := documentIconForType(documentType)
-			return fmt.Sprintf("<div style='padding:0;'><a href='%s' target='_blank' rel='noopener noreferrer' style='display:flex;align-items:center;gap:10px;padding:12px;border-radius:6px;background:%s;color:%s;text-decoration:none;font-size:13px;'><span style='font-size:26px;line-height:1;'>%s</span><span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>%s document</span></a></div>", documentURL, theme.MutedBackground, theme.TextPrimary, documentIcon, strings.ToUpper(documentType)), nil
-		default:
-			return fmt.Sprintf("<div style='padding:0;'><img src='%s' alt='Location map' style='display:block;width:100%%;height:170px;object-fit:cover;border-radius:6px 6px 0 0;'><div style='padding:8px 9px;background:%s;border-radius:0 0 6px 6px;'><div style='font-weight:600;font-size:13.5px;line-height:18px;color:%s;'>%s</div><div style='margin-top:2px;font-size:12px;line-height:16px;color:%s;'>%s</div></div></div>", "https://www.onemap.gov.sg/api/staticmap/getStaticImage?layerchosen=default&zoom=15&height=450&width=450&lat=1.3521&lng=103.844", theme.MutedBackground, theme.TextPrimary, "Location name", theme.TextSecondary, "Location address"), nil
-		}
-
-	case types.WATemplateComponentTypeBody:
-		bodyText := templateComponent.Text
-		if withExample {
-			if templateComponent.Example != nil {
-				if len(templateComponent.Example.BodyText) > 0 && len(templateComponent.Example.BodyText[0]) > 0 {
-					for i, text := range templateComponent.Example.BodyText[0] {
-						position := i + 1
-						bodyText = strings.Replace(bodyText, fmt.Sprintf("{{%d}}", position), text, 1)
-					}
-				} else if len(templateComponent.Example.BodyTextNamedParams) > 0 {
-					for _, param := range templateComponent.Example.BodyTextNamedParams {
-						bodyText = strings.ReplaceAll(bodyText, fmt.Sprintf("{{%s}}", param.ParamName), param.Example)
-					}
-				}
-			}
-			if strings.Contains(bodyText, "{{") {
-				return "", errors.New("no body_text or body_text_named_params in example")
-			}
-		}
-		return fmt.Sprintf("<div style='padding:6px 9px 8px;color:%s;font-size:14.2px;line-height:19px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", theme.TextPrimary, formatWhatsAppText(bodyText)), nil
-	case types.WATemplateComponentTypeFooter:
-		return fmt.Sprintf("<div style='padding:4px 9px 7px;color:%s;font-size:12px;line-height:16px;white-space:pre-wrap;overflow-wrap:anywhere;'>%s</div>", theme.TextSecondary, formatWhatsAppText(templateComponent.Text)), nil
-	case types.WATemplateComponentTypeButtons:
-		if len(templateComponent.Buttons) == 0 {
-			return "", errors.New("no buttons in component")
-		}
-		buttonStyle := fmt.Sprintf("display:block;width:100%%;padding:10px 12px;border:0;border-top:1px solid %s;background:%s;color:%s;font-size:14px;font-weight:500;line-height:20px;text-align:center;", theme.ActionBorder, theme.ActionBackground, theme.ActionText)
-		var buttonHTML []string
-		for _, button := range templateComponent.Buttons {
-			switch button.Type {
-			case types.WATemplateButtonTypeURL:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='%s' target='_blank' rel='noopener noreferrer' style='%s'>↗&nbsp; %s</a>", button.Url, buttonStyle, button.Text))
-			case types.WATemplateButtonTypePhoneNumber:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<a href='tel:%s' style='%s'>☎&nbsp; %s</a>", button.PhoneNumber, buttonStyle, button.Text))
-			case types.WATemplateButtonTypeQuickReply:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>↩&nbsp; %s</button>", buttonStyle, button.Text))
-			case types.WATemplateButtonTypeVoiceCall:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>☎&nbsp; %s</button>", buttonStyle, button.Text))
-			case types.WATemplateButtonTypeCopyCode:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>⧉&nbsp; %s</button>", buttonStyle, button.Text))
-			default:
-				buttonHTML = append(buttonHTML, fmt.Sprintf("<button type='button' style='%scursor:pointer;'>%s</button>", buttonStyle, button.Text))
-			}
-		}
-		return fmt.Sprintf("<div style='margin-top:3px;background:%s;'>%s</div>", theme.ActionBackground, strings.Join(buttonHTML, "")), nil
-	case types.WATemplateComponentTypeCallPermissionRequest:
-		return fmt.Sprintf("<div style='margin:9px 9px 0;padding:16px;background:%s;display:flex;align-items:flex-start;gap:12px;'><div style='box-sizing:border-box;flex:0 0 58px;width:58px;height:58px;border-radius:50%%;background:%s;display:flex;align-items:center;justify-content:center;color:%s;'><svg viewBox='0 0 24 24' width='25' height='25' aria-hidden='true' style='display:block;fill:currentColor;'><path d='M6.62 10.79a15.5 15.5 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2Z'></path></svg></div><div style='min-width:0;flex:1;padding-top:2px;'><div style='color:%s;font-size:16px;font-weight:700;line-height:21px;'>Can {BIZ_NAME} call you?</div><div style='margin-top:3px;color:%s;font-size:15px;font-weight:400;line-height:22px;'>You can update your<br>preference at any time<br>in the business profile. <span style='display:inline-block;margin-left:8px;font-size:12px;line-height:16px;white-space:nowrap;'>04:18</span></div></div></div><div style='height:54px;display:flex;align-items:center;justify-content:center;gap:12px;background:%s;color:%s;font-size:15px;font-weight:500;line-height:20px;border-top:1px solid %s;'>Choose preference<span aria-hidden='true' style='display:inline-block;width:10px;height:10px;border-right:2px solid %s;border-bottom:2px solid %s;transform:rotate(45deg) translateY(-3px);'></span></div>", theme.MutedBackground, theme.ActionBackground, theme.TextPrimary, theme.TextPrimary, theme.TextSecondary, theme.ActionBackground, theme.ActionText, theme.ActionBorder, theme.ActionText, theme.ActionText), nil
-
-	default:
-		return "", errors.New("unsupported template component type")
-	}
-}
-
 // #endregion
 
-// for front end to know how to send
+// #region for front end to know how to send
 
 type SendTemplate struct {
 	Components []SendTemplateComponent `json:"components"`
 }
 
 // to payload to be sent to Meta, use concrete SendTemplate
-func (sendTemplate SendTemplate) FinalPayload(template *Template, customer dao_customer.Customer, campaignToken string) (map[string]any, error) {
+func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_customer.Customer, campaignToken string) (map[string]any, error) {
 	// load customer data
 	for _, component := range sendTemplate.Components {
 		for i, parameter := range component.Parameters {
@@ -509,6 +680,7 @@ func (sendTemplate SendTemplate) FinalPayload(template *Template, customer dao_c
 		for ii := range component.Parameters {
 			sendTemplate.Components[i].Parameters[ii].InputIndex = 0
 			sendTemplate.Components[i].Parameters[ii].InputRequired = false
+			sendTemplate.Components[i].Parameters[ii].InputMaxLength = 0
 			sendTemplate.Components[i].Parameters[ii].InputTitle = ""
 			sendTemplate.Components[i].Parameters[ii].Source = ""
 		}
@@ -569,9 +741,10 @@ type SendTemplateParameter struct {
 	CouponCode string                       `json:"coupon_code,omitempty"` // component.sub_type = copy_code, type = coupon_code
 	Action     *SendTemplateParameterAction `json:"action,omitempty"`      // component.sub_type = flow, type = "action"
 	// let user see, omitempty becuase it will be compiled to final payload to Meta
-	InputIndex    int    `json:"input_index,omitempty"`    // one-based variable position in this component
-	InputTitle    string `json:"input_title,omitempty"`    // Coupon Code, Quick Reply Payload etc...
-	InputRequired bool   `json:"input_required,omitempty"` // if an input is required from user
+	InputIndex     int    `json:"input_index,omitempty"`      // one-based variable position in this component
+	InputTitle     string `json:"input_title,omitempty"`      // Coupon Code, Quick Reply Payload etc...
+	InputRequired  bool   `json:"input_required,omitempty"`   // if an input is required from user
+	InputMaxLength int    `json:"input_max_length,omitempty"` // limit the length, e.g. coupon code
 }
 
 type SendTemplateMedia struct {
@@ -645,6 +818,7 @@ func (template *Template) GetSendComponents() []SendTemplateComponent {
 					parameter.Type = "coupon_code"
 					parameter.InputTitle = "Conpon Code"
 					parameter.InputRequired = true
+					parameter.InputMaxLength = 20
 				default:
 					continue
 				}
@@ -694,3 +868,5 @@ func templateTextSendParameters(text string, parameterFormat types.WATemplatePar
 	}
 	return parameters
 }
+
+// # endregion
