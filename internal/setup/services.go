@@ -129,10 +129,19 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 			transaction.Rollback()
 		}
 	}()
-	messageStatus := types.WAMessageStatus(status.Status)
+	messageStatus := types.WAMessageStatus(strings.ToUpper(status.Status))
 	message, err := transaction.WAMessageRepository().GetByWAMessageId(ctx, status.ID)
 	if err != nil {
-		return exception.NewCustomException(fmt.Sprintf("message not found with status ID: %s", status.ID), http.StatusNotFound)
+		// it's possible that the message was stored without wa message id, use biz_opaque_callback_data to check
+		if status.BizOpaqueCallbackData != "" {
+			message, err = transaction.WAMessageRepository().GetByToken(ctx, status.BizOpaqueCallbackData)
+		}
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return exception.NewCustomException(fmt.Sprintf("message not found with status ID: %s", status.ID), http.StatusNotFound)
+			}
+			return exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)
+		}
 	}
 	event := dao_wa.MessageStatusEvent{
 		WAMessageId: status.ID,
@@ -160,6 +169,7 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 	// This prevents stale sent, delivered, or failed callbacks from regressing read/played.
 	if helper.CanTransitionWAMessageStatus(message.Status, messageStatus) {
 		message.Status = messageStatus
+		message.WAMessageId = status.ID // ensure waMessageId is there
 		if status.Pricing != nil {
 			message.Billable = status.Pricing.Billable
 			message.BillingType = status.Pricing.Type

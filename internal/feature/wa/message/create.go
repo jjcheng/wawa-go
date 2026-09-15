@@ -260,28 +260,30 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	messageStatus := types.WAMessageStatusAccepted
 	if err != nil {
 		sendError = err.Error()
-		messageStatus = types.WAMessageStatusUnaccepted
+		messageStatus = types.WAMessageStatusRejected
 	} else if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
 		sendError = "WhatsApp did not return a message ID"
-		messageStatus = types.WAMessageSatusNoWAMID
+		messageStatus = types.WAMessageStatusRejected
 	}
 	timestamp := time.Now().Unix()
 	message := dao_wa.Message{
-		Sending:             true,
-		PhoneNumberId:       user.WA.PhoneNumber_.Id,
-		CustomerId:          customer.Id,
-		WAMessageId:         response.Messages[0].ID,
-		Timestamp:           timestamp,
-		Type:                string(create.Type),
-		Payload:             payload,
-		Status:              messageStatus,
-		AttachmentURL:       create.AttachmentURL,
-		CampaignRecipientId: create.CampaignRecipientId,
-		Attempts:            1,
-		ErrorMessage:        sendError,
-		Token:               token,
+		Sending:       true,
+		PhoneNumberId: user.WA.PhoneNumber_.Id,
+		CustomerId:    customer.Id,
+		Timestamp:     timestamp,
+		Type:          string(create.Type),
+		Payload:       payload,
+		Status:        messageStatus,
+		AttachmentURL: create.AttachmentURL,
+		Attempts:      1,
+		ErrorMessage:  sendError,
+		Token:         token,
 	}
-	if len(response.Messages) > 0 && strings.TrimSpace(response.Messages[0].ID) != "" {
+	if sendError != "" {
+		nextAttemptAt := time.Now().UTC().Add(5 * time.Minute)
+		message.NextAttemptAt = &nextAttemptAt
+	}
+	if response != nil && len(response.Messages) > 0 && strings.TrimSpace(response.Messages[0].ID) != "" {
 		message.WAMessageId = strings.TrimSpace(response.Messages[0].ID)
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {

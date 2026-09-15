@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -112,11 +113,14 @@ func migrateSchema(ctx context.Context) ([]string, []string) {
 		if shouldSkip {
 			continue
 		}
-		ups = append(ups, cmd)
+		ups = append(ups, normalizeGeneratedSchemaSQL(cmd))
 		// down
 		reverseStmts, err := stmt.ReverseStmts()
 		if err != nil {
 			panic(err.Error())
+		}
+		for i := range reverseStmts {
+			reverseStmts[i] = normalizeGeneratedSchemaSQL(reverseStmts[i])
 		}
 		downs = append(downs, reverseStmts...)
 	}
@@ -210,6 +214,12 @@ const createVectorExtension = `CREATE EXTENSION IF NOT EXISTS vector`
 const createCITextExtension = `CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public`
 
 // utilities
+var schemaQualifiedCITextPattern = regexp.MustCompile(`(?i)(?:"[^"]+"|[a-z_][a-z0-9_]*)\.citext\b`)
+
+func normalizeGeneratedSchemaSQL(sql string) string {
+	return schemaQualifiedCITextPattern.ReplaceAllString(sql, "public.citext")
+}
+
 func checkExtensionExists(ctx context.Context, client *sqlclient.Client, extensionName string) (bool, error) {
 	query := fmt.Sprintf(`SELECT EXISTS(
 		SELECT 1 FROM pg_extension 

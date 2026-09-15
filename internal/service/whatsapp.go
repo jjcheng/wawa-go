@@ -164,15 +164,21 @@ type WhatsAppBusinessUseCaseUsageEntry struct {
 }
 
 type WhatsAppGraphAPIError struct {
-	Message        string `json:"message"`
-	Type           string `json:"type"`
-	Code           int    `json:"code"`
-	ErrorSubcode   int    `json:"error_subcode,omitempty"`
-	FBTraceID      string `json:"fbtrace_id,omitempty"`
-	IsTransient    bool   `json:"is_transient,omitempty"`
-	ErrorUserTitle string `json:"error_user_title,omitempty"`
-	ErrorUserMsg   string `json:"error_user_msg,omitempty"`
-	ErrorData      string `json:"error_data,omitempty"`
+	Message        string                     `json:"message"`
+	Type           string                     `json:"type"`
+	Code           int                        `json:"code"`
+	ErrorSubcode   int                        `json:"error_subcode,omitempty"`
+	FBTraceID      string                     `json:"fbtrace_id,omitempty"`
+	IsTransient    bool                       `json:"is_transient,omitempty"`
+	ErrorUserTitle string                     `json:"error_user_title,omitempty"`
+	ErrorUserMsg   string                     `json:"error_user_msg,omitempty"`
+	ErrorData      *WhatsAppGraphAPIErrorData `json:"error_data,omitempty"`
+}
+
+// {\"messaging_product\":\"whatsapp\",\"details\":\"WhatsApp provided number needs display name approval before message can be sent.\"}
+type WhatsAppGraphAPIErrorData struct {
+	MessageProduct string `json:"message_product"`
+	Details        string `json:"details"`
 }
 
 type WhatsAppAPIError struct {
@@ -185,20 +191,24 @@ type WhatsAppRateLimitError struct {
 }
 
 func (err *WhatsAppRateLimitError) Error() string {
-	return fmt.Sprintf("WhatsApp rate limited; retry after %d seconds", err.RetryAfterSeconds)
+	return fmt.Sprintf("WhatsApp rate limit hit. Retry after %d seconds", err.RetryAfterSeconds)
 }
 
 func (err *WhatsAppAPIError) Error() string {
-	if err.GraphError.ErrorUserMsg != "" {
-		if err.GraphError.ErrorData != "" {
-			return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg, err.GraphError.ErrorData)
-		}
-		return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg)
+	if err.GraphError.ErrorData != nil {
+		return fmt.Sprintf("WhatsApp API error: %s", err.GraphError.ErrorData.Details)
 	}
-	if err.GraphError.ErrorData != "" {
-		return fmt.Sprintf("whatsapp api error %d (subcode %d): %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorData)
-	}
-	return fmt.Sprintf("whatsapp api error %d (subcode %d): %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message)
+	return fmt.Sprintf("WhatsApp API error: %s", err.GraphError.Message)
+	// if err.GraphError.ErrorUserMsg != "" {
+	// 	if err.GraphError.ErrorData != "" {
+	// 		return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg, err.GraphError.ErrorData)
+	// 	}
+	// 	return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg)
+	// }
+	// if err.GraphError.ErrorData != "" {
+	// 	return fmt.Sprintf("whatsapp api error %d (subcode %d): %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorData)
+	// }
+	// return fmt.Sprintf("whatsapp api error %d (subcode %d): %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message)
 }
 
 type WhatsAppBusinessResponse struct {
@@ -1101,11 +1111,11 @@ func saveWhatsAppRawResponse(requestType string, endpoint string, method string,
 
 func parseWhatsAppAPIError(statusCode int, responseBody *string) error {
 	if responseBody == nil || strings.TrimSpace(*responseBody) == "" {
-		return fmt.Errorf("whatsapp api request failed with status %d", statusCode)
+		return fmt.Errorf("WhatsApp API request failed with status %d", statusCode)
 	}
 	parsed, err := helper.DeserializeJSON[WhatsAppGraphAPIErrorResponse](*responseBody)
 	if err != nil || parsed == nil || parsed.Error.Message == "" {
-		return fmt.Errorf("whatsapp api request failed with status %d: %s", statusCode, strings.TrimSpace(*responseBody))
+		return fmt.Errorf("WhatsApp API request failed with status %d: %s", statusCode, strings.TrimSpace(*responseBody))
 	}
 	return &WhatsAppAPIError{StatusCode: statusCode, GraphError: parsed.Error}
 }

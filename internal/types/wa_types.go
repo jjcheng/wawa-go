@@ -83,16 +83,12 @@ const (
 type WAMessageStatus string
 
 const (
-	WAMessageStatusUnaccepted               WAMessageStatus = "unaccepted" // this is created by us, maybe payload error
-	WAMessageSatusNoWAMID                   WAMessageStatus = "no_wa_mid"  // created by us, somehow no wa message id returned
-	WAMessageStatusAccepted                 WAMessageStatus = "accepted"
-	WAMessageStatusHeldForQualityAssessment WAMessageStatus = "held_for_quality_assessment"
-	WAMessageStatusPaused                   WAMessageStatus = "paused"
-	WAMessageStatusSent                     WAMessageStatus = "sent"
-	WAMessageStatusDelivered                WAMessageStatus = "delivered"
-	WAMessageStatusRead                     WAMessageStatus = "read"
-	WAMessageStatusPlayed                   WAMessageStatus = "played"
-	WAMessageStatusFailed                   WAMessageStatus = "failed"
+	WAMessageStatusRejected  WAMessageStatus = "REJECTED" // this is created by us, maybe payload or settings error
+	WAMessageStatusAccepted  WAMessageStatus = "ACCEPTED"
+	WAMessageStatusSent      WAMessageStatus = "SENT"
+	WAMessageStatusDelivered WAMessageStatus = "DELIVERED"
+	WAMessageStatusRead      WAMessageStatus = "READ"
+	WAMessageStatusFailed    WAMessageStatus = "FAILED"
 )
 
 type WAAnalyticsGranularity string

@@ -68,12 +68,9 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	// gather distinct campaignRecipientIds
-	campaignRecipientIds := helper.Distinct(helper.Map(helper.Filter(messages, func(m dao_wa.Message) bool {
-		return m.CampaignRecipientId != nil
-	}), func(m dao_wa.Message) int32 { return *m.CampaignRecipientId }))
+	messageIds := helper.Map(messages, func(message dao_wa.Message) int32 { return message.Id })
 	// get the campaigns
-	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByRecipientIds(ctx, campaignRecipientIds)
+	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByMessageIds(ctx, messageIds)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -81,7 +78,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	page := make([]dto_wa.Message, 0, len(messages))
 	for _, message := range messages {
 		result := dto_wa.NewMessage(message)
-		if message.Type == "template" && message.CampaignRecipientId != nil {
+		if message.Type == "template" {
 			sendTemplatePayload, ok := message.Payload["template"]
 			if !ok {
 				continue

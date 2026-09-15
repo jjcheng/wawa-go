@@ -16,7 +16,6 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -179,14 +178,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			CampaignId: campaign.Id,
 			CustomerId: customer.Id,
 			Payload:    payloads[index],
-			Status:     types.CampaignRecipientStatusPending,
 		})
 	}
 	if err := transaction.CampaignRecipientRepository().InsertBulk(ctx, recipients); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	if cfg.Default().Site.Environment != types.EnvironmentDevelop {
-		_, err := dependencies.EventBridge.CreateEvent(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate)
+		_, err = dependencies.EventBridge.CreateEvent(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate)
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, campaign.Id)
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusServiceUnavailable, "campaign could not be scheduled, please try again")
@@ -196,21 +194,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	committed = true
-	// schedule the event in staging/production
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
-		// send immediately in development
-		for _, recipient := range recipients {
-			createMessage := feature_wa_message.Create{
-				CustomerId:          recipient.CustomerId,
-				Type:                feature_wa_message.MessageTypeTemplate,
-				Template:            &recipient.Payload,
-				AttachmentURL:       attachmentUrl,
-				CampaignRecipientId: &recipient.Id,
-			}
-			createMessageResponse := createMessage.Handle(ctx, user, dependencies)
-			if !createMessageResponse.Success {
-				dependencies.Logger.Warnf("campaign recipient send failed: campaign_id=%d recipient_id=%d err=%v", campaign.Id, recipient.CustomerId, createMessageResponse.Message)
-			}
+		err := Process(ctx, campaign.Id, dependencies)
+		if err != nil {
+			dependencies.Logger.Warnf("failed to run campaign worker locally: campaign_id=%d err=%v", campaign.Id, err)
 		}
 	}
 	result := dto_customer.NewCampaign(campaign)

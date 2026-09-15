@@ -82,19 +82,19 @@ func (campaignRepository *WACampaignRepository) ListByIds(ctx context.Context, i
 	return campaigns, nil
 }
 
-func (campaignRepository *WACampaignRepository) ListByRecipientIds(ctx context.Context, recipientIds []int32) ([]dao_customer.Campaign, error) {
-	if len(recipientIds) == 0 {
+func (campaignRepository *WACampaignRepository) ListByMessageIds(ctx context.Context, messageIds []int32) ([]dao_customer.Campaign, error) {
+	if len(messageIds) == 0 {
 		return []dao_customer.Campaign{}, nil
 	}
 	var campaigns []dao_customer.Campaign
 	result := campaignRepository.db.WithContext(ctx).
 		Table("customer.campaigns AS c").
 		Joins("JOIN customer.campaign_recipients AS cr ON cr.campaign_id = c.id").
-		Where("cr.id IN ?", recipientIds).
+		Where("cr.message_id IN ?", messageIds).
 		Distinct("c.*").
 		Find(&campaigns)
 	if result.Error != nil {
-		campaignRepository.logger.ErrorFunction(result.Error, recipientIds)
+		campaignRepository.logger.ErrorFunction(result.Error, messageIds)
 		return nil, result.Error
 	}
 	return campaigns, nil

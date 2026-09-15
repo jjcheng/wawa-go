@@ -25,7 +25,9 @@ env:
 	sed -i '' "s|\$${WHATSAPP_WEBHOOK_VERIFY_TOKEN}|$${WHATSAPP_WEBHOOK_VERIFY_TOKEN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${META_APP_ID}|$${META_APP_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${META_APP_SECRET}|$${META_APP_SECRET//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ABLY_API_KEY}|$${ABLY_API_KEY//&/\\&}|g" .env;
+	sed -i '' "s|\$${ABLY_API_KEY}|$${ABLY_API_KEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID}|$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET}|$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET//&/\\&}|g" .env;
 	@echo ".env generated from $(ENV_SOURCE)"
 run-api:
 	@make env
@@ -58,14 +60,14 @@ test:
 restore-db:
 	@make env
 	go run cmd/cli/main.go restore-db
-deploy-staging-fc:
+deploy-staging-api:
 	@make env target=staging
-	@echo "Running staging deployment to Aliyun FC..."
-	@chmod +x deploy_staging_fc.sh
-	@./scripts/deploy_staging_fc.sh
+	@echo "Running staging API deployment to Aliyun FC..."
+	@chmod +x ./scripts/deploy_staging_api.sh
+	@./scripts/deploy_staging_api.sh
 deploy-staging-db:
 	@echo "Running staging database migration..."
-	@chmod +x deploy_staging_db.sh
+	@chmod +x ./scripts/deploy_staging_db.sh
 	@./scripts/deploy_staging_db.sh
 init-debugging:
 	@make env

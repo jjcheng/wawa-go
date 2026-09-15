@@ -2637,7 +2637,7 @@
             }
           },
           {
-            "description": "optional recipient status filter",
+            "description": "optional recipient status filter, use message status each recipient is tied to a message",
             "example": "",
             "in": "query",
             "name": "status",
@@ -2684,10 +2684,6 @@
                         "items": {
                           "items": {
                             "properties": {
-                              "attempts": {
-                                "format": "int32",
-                                "type": "integer"
-                              },
                               "campaign_id": {
                                 "format": "int32",
                                 "type": "integer"
@@ -2715,24 +2711,142 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_error": {
-                                "type": "string"
-                              },
                               "last_update": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
                               },
+                              "message": {
+                                "properties": {
+                                  "attachment_url": {
+                                    "type": "string"
+                                  },
+                                  "attempts": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "billable": {
+                                    "type": "boolean"
+                                  },
+                                  "billing_type": {
+                                    "type": "string"
+                                  },
+                                  "category": {
+                                    "type": "string"
+                                  },
+                                  "customer_id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "entry_date": {
+                                    "example": "2025-10-01T08:08:00Z",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "error_message": {
+                                    "type": "string"
+                                  },
+                                  "id": {
+                                    "example": 1,
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "last_update": {
+                                    "example": "2025-10-01T08:08:00Z",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "next_attempt_at": {
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "payload": {
+                                    "additionalProperties": {
+                                      "type": "object"
+                                    },
+                                    "type": "object"
+                                  },
+                                  "phone_number_id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "preview_dark_html": {
+                                    "type": "string"
+                                  },
+                                  "preview_html": {
+                                    "type": "string"
+                                  },
+                                  "sending": {
+                                    "type": "boolean"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "statuses": {
+                                    "items": {
+                                      "properties": {
+                                        "entry_date": {
+                                          "example": "2025-10-01T08:08:00Z",
+                                          "format": "date-time",
+                                          "type": "string"
+                                        },
+                                        "error_message": {
+                                          "type": "string"
+                                        },
+                                        "id": {
+                                          "example": 1,
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        "last_update": {
+                                          "example": "2025-10-01T08:08:00Z",
+                                          "format": "date-time",
+                                          "type": "string"
+                                        },
+                                        "status": {
+                                          "type": "string"
+                                        },
+                                        "timestamp": {
+                                          "format": "int64",
+                                          "type": "integer"
+                                        },
+                                        "wa_message_id": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "entry_date",
+                                        "last_update"
+                                      ],
+                                      "type": "object"
+                                    },
+                                    "type": "array"
+                                  },
+                                  "timestamp": {
+                                    "format": "int64",
+                                    "type": "integer"
+                                  },
+                                  "token": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "string"
+                                  },
+                                  "wa_message_id": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "entry_date",
+                                  "last_update"
+                                ],
+                                "type": "object"
+                              },
                               "message_id": {
                                 "format": "int32",
                                 "type": "integer"
-                              },
-                              "next_attempt_at": {
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "status": {
-                                "type": "string"
                               }
                             },
                             "required": [
@@ -3980,6 +4094,322 @@
           }
         ],
         "summary": "Cancel WhatsApp campaign",
+        "tags": [
+          "WA"
+        ]
+      }
+    },
+    "/v1/campaigns/{id}/statistics": {
+      "get": {
+        "description": "Gets message status statistics for a campaign belonging to the authenticated user.",
+        "parameters": [
+          {
+            "description": "id of the campaign",
+            "example": "",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "additionalProperties": {
+                        "format": "int32",
+                        "type": "integer"
+                      },
+                      "description": "the actual API returned data, empty if not success",
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "campaign not found",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 404,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "campaign not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Get WhatsApp campaign statistics",
         "tags": [
           "WA"
         ]
@@ -9397,15 +9827,15 @@
                               "attachment_url": {
                                 "type": "string"
                               },
+                              "attempts": {
+                                "format": "int32",
+                                "type": "integer"
+                              },
                               "billable": {
                                 "type": "boolean"
                               },
                               "billing_type": {
                                 "type": "string"
-                              },
-                              "campaign_id": {
-                                "format": "int32",
-                                "type": "integer"
                               },
                               "category": {
                                 "type": "string"
@@ -9419,6 +9849,9 @@
                                 "format": "date-time",
                                 "type": "string"
                               },
+                              "error_message": {
+                                "type": "string"
+                              },
                               "id": {
                                 "example": 1,
                                 "format": "int32",
@@ -9426,6 +9859,10 @@
                               },
                               "last_update": {
                                 "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
+                              "next_attempt_at": {
                                 "format": "date-time",
                                 "type": "string"
                               },
@@ -9495,6 +9932,9 @@
                               "timestamp": {
                                 "format": "int64",
                                 "type": "integer"
+                              },
+                              "token": {
+                                "type": "string"
                               },
                               "type": {
                                 "type": "string"
@@ -9803,7 +10243,7 @@
                     },
                     "type": "object"
                   },
-                  "campaign_id": {
+                  "campaign_recipient_id": {
                     "description": "if it's from a campaign",
                     "format": "int32",
                     "nullable": true,
@@ -10200,15 +10640,15 @@
                         "attachment_url": {
                           "type": "string"
                         },
+                        "attempts": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
                         "billable": {
                           "type": "boolean"
                         },
                         "billing_type": {
                           "type": "string"
-                        },
-                        "campaign_id": {
-                          "format": "int32",
-                          "type": "integer"
                         },
                         "category": {
                           "type": "string"
@@ -10222,6 +10662,9 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "error_message": {
+                          "type": "string"
+                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -10229,6 +10672,10 @@
                         },
                         "last_update": {
                           "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "next_attempt_at": {
                           "format": "date-time",
                           "type": "string"
                         },
@@ -10298,6 +10745,9 @@
                         "timestamp": {
                           "format": "int64",
                           "type": "integer"
+                        },
+                        "token": {
+                          "type": "string"
                         },
                         "type": {
                           "type": "string"
@@ -11053,15 +11503,15 @@
                         "attachment_url": {
                           "type": "string"
                         },
+                        "attempts": {
+                          "format": "int32",
+                          "type": "integer"
+                        },
                         "billable": {
                           "type": "boolean"
                         },
                         "billing_type": {
                           "type": "string"
-                        },
-                        "campaign_id": {
-                          "format": "int32",
-                          "type": "integer"
                         },
                         "category": {
                           "type": "string"
@@ -11075,6 +11525,9 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "error_message": {
+                          "type": "string"
+                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -11082,6 +11535,10 @@
                         },
                         "last_update": {
                           "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "next_attempt_at": {
                           "format": "date-time",
                           "type": "string"
                         },
@@ -11151,6 +11608,9 @@
                         "timestamp": {
                           "format": "int64",
                           "type": "integer"
+                        },
+                        "token": {
+                          "type": "string"
                         },
                         "type": {
                           "type": "string"

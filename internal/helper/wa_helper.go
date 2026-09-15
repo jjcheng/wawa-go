@@ -84,7 +84,7 @@ func CanTransitionWAMessageStatus(current types.WAMessageStatus, next types.WAMe
 	}
 	if next == types.WAMessageStatusFailed {
 		switch current {
-		case types.WAMessageStatusAccepted, types.WAMessageStatusHeldForQualityAssessment, types.WAMessageStatusPaused, types.WAMessageStatusSent:
+		case types.WAMessageStatusAccepted, types.WAMessageStatusSent, types.WAMessageStatusRejected:
 			return true
 		default:
 			return false
@@ -98,7 +98,7 @@ func CanTransitionWAMessageStatus(current types.WAMessageStatus, next types.WAMe
 
 func waMessageStatusRank(status types.WAMessageStatus) int {
 	switch status {
-	case types.WAMessageStatusAccepted, types.WAMessageStatusHeldForQualityAssessment, types.WAMessageStatusPaused:
+	case types.WAMessageStatusAccepted:
 		return 1
 	case types.WAMessageStatusSent:
 		return 2
@@ -106,8 +106,6 @@ func waMessageStatusRank(status types.WAMessageStatus) int {
 		return 3
 	case types.WAMessageStatusRead:
 		return 4
-	case types.WAMessageStatusPlayed:
-		return 5
 	default:
 		return 0
 	}

@@ -17,11 +17,11 @@ import (
 )
 
 type List struct {
-	Name       string                        `form:"name" description:"name of the customer to filter"`
-	CampaignId int32                         `form:"campaign_id" val:"required" description:"id of the campaign"`
-	Status     types.CampaignRecipientStatus `form:"status" description:"optional recipient status filter"`
-	Page       int                           `form:"page" description:"page number from 1"`
-	PageSize   int                           `form:"page_size" description:"number per page"`
+	Name       string                `form:"name" description:"name of the customer to filter"`
+	CampaignId int32                 `form:"campaign_id" val:"required" description:"id of the campaign"`
+	Status     types.WAMessageStatus `form:"status" description:"optional recipient status filter, use message status each recipient is tied to a message"`
+	Page       int                   `form:"page" description:"page number from 1"`
+	PageSize   int                   `form:"page_size" description:"number per page"`
 }
 
 func (list *List) Validate() []exception.InputException {
@@ -55,7 +55,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if campaign.UserId != user.Id {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.CampaignRecipient]](http.StatusNotFound, "campaign not found")
 	}
-	recipients, totalCount, totalPages, err := dependencies.UnitOfWork.CampaignRecipientRepository().ListByCampaignId(ctx, list.CampaignId, list.Name, list.Status, list.Page, list.PageSize)
+	recipients, totalCount, totalPages, err := dependencies.UnitOfWork.CampaignRecipientRepository().ListByCampaignId(ctx, list.CampaignId, list.Name, list.Status, false, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.CampaignRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

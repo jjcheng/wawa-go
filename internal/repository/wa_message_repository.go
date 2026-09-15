@@ -10,4 +10,5 @@ type WAMessageRepository interface {
 	Repository[dao_wa.Message]
 	List(ctx context.Context, phoneNumberId int32, customerId int32, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error)
 	GetByWAMessageId(ctx context.Context, waMessageId string) (*dao_wa.Message, error)
+	GetByToken(ctx context.Context, token string) (*dao_wa.Message, error)
 }

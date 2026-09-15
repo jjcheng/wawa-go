@@ -32,7 +32,7 @@ const (
 type CampaignRecipientStatus string
 
 const (
-	CampaignRecipientStatusPending   CampaignRecipientStatus = "PENDING"   // ready or scheduled, not yet claimed.
-	CampaignRecipientStatusCompleted CampaignRecipientStatus = "COMPLETED" // createMessage is called, status not cared
-	CampaignRecipientStatusCancelled CampaignRecipientStatus = "CANCELLED" // skipped because parent campaign was cancelled before Meta accepted it
+	CampaignRecipientStatusPending   CampaignRecipientStatus = "PENDING"
+	CampaignRecipientStatusCompleted CampaignRecipientStatus = "COMPLETED"
+	CampaignRecipientStatusCancelled CampaignRecipientStatus = "CANCELLED"
 )

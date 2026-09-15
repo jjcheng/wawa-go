@@ -54,3 +54,13 @@ func (messageRepository *WAMessageRepository) GetByWAMessageId(ctx context.Conte
 	}
 	return &message, nil
 }
+
+func (messageRepository *WAMessageRepository) GetByToken(ctx context.Context, token string) (*dao_wa.Message, error) {
+	var message dao_wa.Message
+	if err := messageRepository.db.WithContext(ctx).
+		Where("token = ?", strings.TrimSpace(token)).
+		First(&message).Error; err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
