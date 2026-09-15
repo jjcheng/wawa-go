@@ -20,6 +20,17 @@ print_step() { echo -e "${BLUE}$1${NC}"; }
 print_success() { echo -e "${GREEN}$1${NC}"; }
 print_error() { echo -e "${RED}$1${NC}"; }
 
+is_deploy_only_env_key() {
+    case "$1" in
+        ALIYUN_FC_ACCESS_KEY_ID|ALIYUN_FC_ACCESS_KEY_SECRET)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 check_prerequisites() {
     print_step "Checking prerequisites..."
     if ! command -v aliyun >/dev/null 2>&1; then print_error "Aliyun CLI not found"; exit 1; fi
@@ -42,6 +53,7 @@ deploy() {
     # 1. Build Env Var JSON
     print_step "Parsing .env..."
     ENV_JSON="{}"
+    SEEN_KEYS=""
     AK=""
     SK=""
     OSS_AK=""
@@ -71,6 +83,20 @@ deploy() {
         value="${value%\'}"
         value="${value#\'}"
 
+        if [ -z "$key" ]; then
+            continue
+        fi
+        if echo "$value" | grep -Eq '\$\{[^}]+\}'; then
+            print_error "Unresolved placeholder in .env for $key. Run 'make env target=staging' and check .env.staging."
+            exit 1
+        fi
+        if printf '%s\n' "$SEEN_KEYS" | grep -Fxq "$key"; then
+            print_error "Duplicate key in .env: $key"
+            exit 1
+        fi
+        SEEN_KEYS="${SEEN_KEYS}${key}
+"
+
         case "$key" in
             ALIYUN_FC_ACCESS_KEY_ID)
                 AK="$value"
@@ -92,12 +118,12 @@ deploy() {
                 ;;
             ALIYUN_OSS_ENDPOINT)
                 OSS_ENDPOINT="$value"
-                ENV_JSON=$(echo "$ENV_JSON" | jq --arg k "$key" --arg v "$value" '. + {($k): $v}')
-                ;;
-            *)
-                ENV_JSON=$(echo "$ENV_JSON" | jq --arg k "$key" --arg v "$value" '. + {($k): $v}')
                 ;;
         esac
+
+        if ! is_deploy_only_env_key "$key"; then
+            ENV_JSON=$(echo "$ENV_JSON" | jq --arg k "$key" --arg v "$value" '. + {($k): $v}')
+        fi
     done < "$ENV_FILE"
 
     # 1.1 Inject Dynamic Versioning
@@ -143,6 +169,19 @@ deploy() {
     ALIBABA_CLOUD_ACCESS_KEY_ID="$AK" \
     ALIBABA_CLOUD_ACCESS_KEY_SECRET="$SK" \
     aliyun fc UpdateFunction --region "$FC_REGION" --functionName "$FUNC_NAME" --body "$UPDATE_BODY" >/dev/null
+
+    print_step "Verifying deployed environment variables..."
+    REMOTE_ENV_JSON=$(ALIBABA_CLOUD_ACCESS_KEY_ID="$AK" \
+        ALIBABA_CLOUD_ACCESS_KEY_SECRET="$SK" \
+        aliyun fc GetFunction --region "$FC_REGION" --functionName "$FUNC_NAME" |
+        jq -c '.environmentVariables // .body.environmentVariables // .data.environmentVariables // {}')
+    EXPECTED_ENV_SORTED=$(echo "$ENV_JSON" | jq -S -c '.')
+    REMOTE_ENV_SORTED=$(echo "$REMOTE_ENV_JSON" | jq -S -c '.')
+    if [ "$EXPECTED_ENV_SORTED" != "$REMOTE_ENV_SORTED" ]; then
+        print_error "Deployed environment variables do not match .env runtime variables."
+        diff <(echo "$EXPECTED_ENV_SORTED" | jq -S '.') <(echo "$REMOTE_ENV_SORTED" | jq -S '.') || true
+        exit 1
+    fi
 
     rm -f main main.zip
 

@@ -20,20 +20,20 @@ This generates migration SQL files in `migration/`; it does not update a remote 
 Staging uses the same committed `migration/` history. `deploy_staging_db.sh` obtains its remote connection settings from `DB_HOST_EXTERNAL`, `DB_USER_EXTERNAL`, `DB_PASSWORD_EXTERNAL`, `DB_NAME`, `DB_PORT`, and `DB_SSLMODE` in `.env.staging` or `.env`; it never contains database credentials in source.
 
 
-## grant permissions to the web user wawa_web
+## grant permissions to the user wawa_api
 
 -- Grant usage on the schema
-GRANT USAGE ON SCHEMA public TO wawa_web;
+GRANT USAGE ON SCHEMA public TO wawa_api;
 
 -- Grant select, insert, update, delete on all existing tables
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO wawa_web;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO wawa_api;
 
 -- Grant usage/select on all sequences (needed for serial/identity columns)
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO wawa_web;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO wawa_api;
 
 -- Ensure future tables also have these permissions
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO wawa_web;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO wawa_web;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO wawa_api;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO wawa_api;
 
 ## deploy fc
 if there is a change of fc_user in RAM, call 

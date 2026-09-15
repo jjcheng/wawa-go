@@ -11,6 +11,8 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dao"
+	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
+	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -91,7 +93,23 @@ func migrateData(ctx context.Context, targetUnitOfWork repository.UnitOfWork, so
 	tables := []string{}
 	maxIds := []int32{}
 	//4. migrate table data
-	dataRunners := []func() error{}
+	dataRunners := []func() error{
+		func() error {
+			return migrateTableData[dao_account.User](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_account.Setting](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_wa.BusinessPortfolio](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_wa.BusinessAccount](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_wa.PhoneNumber](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+	}
 	//run them now
 	for _, run := range dataRunners {
 		if err := run(); err != nil {

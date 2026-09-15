@@ -1,0 +1,27 @@
+BEGIN;
+ALTER TABLE account.users DISABLE TRIGGER USER;
+INSERT INTO "account"."users" ("entry_date","last_update","name","country_code","phone_number","password_hash","email","description","type","status","id") VALUES ('2026-09-14 03:30:08.144','2026-09-14 03:30:31.055','Becca''s Cafe','65','80993376','$2a$10$./u0JNt9cBywxU9NEDytQeCeh7pR6y2IG0gGX5s5oJ55.U0cPTwz6','','created by WhatsApp embedded signup','MASTER','ACTIVE',22) RETURNING "id";
+INSERT INTO "account"."users" ("entry_date","last_update","name","country_code","phone_number","password_hash","email","description","type","status","id") VALUES ('2026-09-14 05:25:25.514','2026-09-14 05:26:53.272','Becca''s Cafe','1','5553356958','$2a$10$IFsLmL7AiKczlcehA1HdfO/CQ9IDYEPpQq.i9s2XzW12gMgqcxPOK','','created by WhatsApp embedded signup','MASTER','ACTIVE',23) RETURNING "id";
+INSERT INTO "account"."users" ("entry_date","last_update","name","country_code","phone_number","password_hash","email","description","type","status","id") VALUES ('2026-09-15 01:31:12.782','2026-09-15 01:31:34.339','Becca''s Cafe','1','5554095624','$2a$10$ZNrmQBuICZ0xuwzuKzQArOk1HPe1Z9wZN/gDpTiN43qpJmXqdq6nm','','created by WhatsApp embedded signup','OPERATOR','ACTIVE',24) RETURNING "id";
+ALTER TABLE account.users ENABLE TRIGGER USER;
+ALTER TABLE wa.business_portfolios DISABLE TRIGGER USER;
+INSERT INTO "wa"."business_portfolios" ("entry_date","last_update","meta_business_portfolio_id","name","access_token","id") VALUES ('2026-09-14 03:30:05.871','2026-09-14 03:30:05.871','967693769603545','Becca''s Cafe','EAAWM5ByCKEABSQBOBpv3d1T0QrgwbxUKZCJZAltyJoRAiBaT6davYimAYHgVKwOX5A4Mnp0KHJ3dFRX78rkOZApCZCEfNaoWnl8ZBrTjHkEU4NAOLxBwUu0UAlQbjGr27KwnkAu4qBNPFdZALXBSVfyHr4hWlNo87Kr9d3hMw3zQPmGVuGbX48WicGW5QCbZCYiL4E4FJr8OmsvlxSJuWWcmVZA1ptXYZAm7nLrBRnNMnYeTgQG9BVytGx07yBUpbiI8hZCXOL5w4olCxuLBXo9gfaX0BWHHHKnyKn7KpCB0ZASZCNhmtc6Ap1JKmsYSDRUC0dB3djDpLDEZD',9) RETURNING "id";
+ALTER TABLE wa.business_portfolios ENABLE TRIGGER USER;
+ALTER TABLE wa.business_accounts DISABLE TRIGGER USER;
+INSERT INTO "wa"."business_accounts" ("entry_date","last_update","business_portfolio_id","waba_id","name","timezone_id","currency","id") VALUES ('2026-09-14 03:30:08.066','2026-09-14 03:30:08.066',9,'1552803366068366','Becca''s Cafe','42','',12) RETURNING "id";
+INSERT INTO "wa"."business_accounts" ("entry_date","last_update","business_portfolio_id","waba_id","name","timezone_id","currency","id") VALUES ('2026-09-14 05:25:16.617','2026-09-14 05:25:16.617',9,'1623708289357874','Becca''s Cafe','42','',13) RETURNING "id";
+ALTER TABLE wa.business_accounts ENABLE TRIGGER USER;
+ALTER TABLE wa.phone_numbers DISABLE TRIGGER USER;
+INSERT INTO "wa"."phone_numbers" ("entry_date","last_update","business_account_id","meta_phone_number_id","display_phone_number","wa_id","name","user_id","status","registration_pin","id") VALUES ('2026-09-14 03:30:08.149','2026-09-14 03:30:21.658',12,'1281660415036152','+65 80993376','6580993376','Becca''s Cafe',22,'CONNECTED','465714',20) RETURNING "id";
+INSERT INTO "wa"."phone_numbers" ("entry_date","last_update","business_account_id","meta_phone_number_id","display_phone_number","wa_id","name","user_id","status","registration_pin","id") VALUES ('2026-09-14 05:25:28.189','2026-09-14 05:25:53.437',13,'1268771556325577','+1 555-335-6958','15553356958','Becca''s Cafe',23,'CONNECTED','844066',21) RETURNING "id";
+INSERT INTO "wa"."phone_numbers" ("entry_date","last_update","business_account_id","meta_phone_number_id","display_phone_number","wa_id","name","user_id","status","registration_pin","id") VALUES ('2026-09-15 01:31:12.788','2026-09-15 01:31:24.742',13,'1359753253878130','+1 555-409-5624','15554095624','Becca''s Cafe',24,'CONNECTED','791340',22) RETURNING "id";
+ALTER TABLE wa.phone_numbers ENABLE TRIGGER USER;
+-- Reset identity sequences after inserting records with explicit IDs;
+-- This ensures auto-increment starts from the correct value after existing data;
+SELECT setval(pg_get_serial_sequence('account.users', 'id'), (SELECT MAX(id) FROM account.users));
+SELECT setval(pg_get_serial_sequence('wa.business_portfolios', 'id'), (SELECT MAX(id) FROM wa.business_portfolios));
+SELECT setval(pg_get_serial_sequence('wa.business_accounts', 'id'), (SELECT MAX(id) FROM wa.business_accounts));
+SELECT setval(pg_get_serial_sequence('wa.phone_numbers', 'id'), (SELECT MAX(id) FROM wa.phone_numbers));
+
+COMMIT;
+ANALYZE;
