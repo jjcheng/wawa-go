@@ -46,3 +46,4 @@ google_service_account_json.json
 exports
 s.yaml
 bootstrap
+worker

@@ -13,7 +13,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/controller"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/setup"
-	"github.com/jjcheng/wawa-go/internal/types"
 )
 
 func main() {
@@ -44,13 +43,6 @@ func main() {
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      0,
 		IdleTimeout:       120 * time.Second,
-	}
-	// start listening to queue
-	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
-		log.Println("start listening to queues")
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		go setup.StartQueueListener(ctx, dependencies)
 	}
 	go func() {
 		log.Printf("server is running on port %s", cfg.Default().Site.Port)

@@ -27,7 +27,8 @@ env:
 	sed -i '' "s|\$${META_APP_SECRET}|$${META_APP_SECRET//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ABLY_API_KEY}|$${ABLY_API_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID}|$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET}|$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET//&/\\&}|g" .env;
+	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET}|$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ENDPOINT}|$${ALIYUN_EVENTBRIDGE_ENDPOINT//&/\\&}|g" .env;
 	@echo ".env generated from $(ENV_SOURCE)"
 run-api:
 	@make env
@@ -65,6 +66,11 @@ deploy-staging-api:
 	@echo "Running staging API deployment to Aliyun FC..."
 	@chmod +x ./scripts/deploy_staging_api.sh
 	@./scripts/deploy_staging_api.sh
+deploy-staging-worker:
+	@make env target=staging
+	@echo "Running staging worker deployment to Aliyun FC..."
+	@chmod +x ./scripts/deploy_staging_worker.sh
+	@./scripts/deploy_staging_worker.sh
 deploy-staging-db:
 	@echo "Running staging database migration..."
 	@chmod +x ./scripts/deploy_staging_db.sh

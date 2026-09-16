@@ -66,6 +66,7 @@ type AliyunEventBridgeConfig struct {
 	AccessKeyID     string
 	AccessKeySecret string
 	EventBusName    string
+	EventSourceName string
 }
 
 type AblyConfig struct {
@@ -137,6 +138,7 @@ func Default() *Config {
 				AccessKeyID:     os.Getenv("ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID"),
 				AccessKeySecret: os.Getenv("ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET"),
 				EventBusName:    os.Getenv("ALIYUN_EVENTBRIDGE_EVENT_BUS_NAME"),
+				EventSourceName: os.Getenv("ALIYUN_EVENTBRIDGE_EVENT_SOURCE_NAME"),
 			},
 			Ably: AblyConfig{
 				APIKey: os.Getenv("ABLY_API_KEY"),

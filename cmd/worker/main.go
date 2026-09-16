@@ -2,31 +2,31 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/aliyun/fc-runtime-go-sdk/fc"
 	"github.com/jjcheng/wawa-go/internal/cfg"
-	feature_campaign "github.com/jjcheng/wawa-go/internal/feature/campaign"
+	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/setup"
 )
 
 type EventBridgeEvent struct {
-	ID              string         `json:"id"`
-	Source          string         `json:"source"`
-	Type            string         `json:"type"`
-	Subject         string         `json:"subject"`
-	Time            string         `json:"time"`
-	EventSourceName string         `json:"eventsourcename"`
-	Task            string         `json:"task"` // campaign
-	Data            map[string]any `json:"data"`
+	ID              string            `json:"id"`
+	Source          string            `json:"source"`
+	Type            string            `json:"type"`
+	Subject         string            `json:"subject"`
+	Time            string            `json:"time"`
+	EventSourceName string            `json:"eventsourcename"`
+	Data            map[string]string `json:"data"` // task: "campaign"
 }
 
 func main() {
@@ -45,54 +45,52 @@ func main() {
 	}
 	dependencies := setup.SetupServices(unitOfWork, logger)
 
-	// If CLI arguments are provided, run the task directly (useful for local CLI testing)
-	if len(os.Args) > 1 && os.Args[1] != "" {
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
-		runCLITask(ctx, os.Args[1:], dependencies)
-		return
-	}
-
 	// Standard Function Compute Go Runtime Handler
-	handleEvent := func(ctx context.Context, event EventBridgeEvent) (string, error) {
-		campaignId := parseCampaignIdFromEvent(event)
-		if campaignId <= 0 {
-			err := fmt.Errorf("no valid campaign id found in event: %+v", event)
-			dependencies.Logger.Error(err)
-			return "", err
+	handleEvent := func(ctx context.Context, raw []byte) error {
+		rawStr := string(raw)
+		dependencies.Logger.Infof("new task: %s", rawStr)
+		var envelope map[string]any
+		if err := json.Unmarshal(raw, &envelope); err != nil {
+			return err
 		}
-		dependencies.Logger.Infof("FC received event: type=%s, subject=%s, campaignId=%d\n", event.Type, event.Subject, campaignId)
-		if err := feature_campaign.Process(ctx, campaignId, dependencies); err != nil {
-			return "", err
+		// triggered by time
+		if _, ok := envelope["triggerName"].(string); ok {
+
+		} else if _, ok := envelope["messageBody"]; ok { // triggered by SMQ
+			var message service.MessageQueueMessage
+			if err := json.Unmarshal(raw, &message); err != nil {
+				return err
+			}
+			body := []byte(strings.TrimSpace(message.Body))
+			if decodedBody, err := base64.StdEncoding.DecodeString(message.Body); err == nil && json.Valid(decodedBody) {
+				body = decodedBody
+			}
+			queueJob, err := helper.DeserializeJSON[service.QueueJob](string(body))
+			if err != nil {
+				dependencies.Logger.ErrorFunction(err, message.MessageID)
+				return err
+			}
+			switch queueJob.Type {
+			case "wa_incoming":
+				return feature_wa_message.ProcessIncoming(ctx, string(queueJob.Data), &message, dependencies)
+			case "retry_send_message":
+				return feature_wa_message.RetrySendingMessage(ctx, string(queueJob.Data), &message, dependencies)
+			}
 		}
-		return fmt.Sprintf("campaign %d processed successfully", campaignId), nil
+		return fmt.Errorf("unidentified type: %s", rawStr)
 	}
 	fc.Start(handleEvent)
 }
 
-func parseCampaignIdFromEvent(event EventBridgeEvent) int32 {
-	// 1. Check direct "id" or "campaign_id" in event.Data
+func parseCampaignIdFromEvent(event EventBridgeEvent) (int32, error) {
 	if len(event.Data) > 0 {
 		if id, ok := event.Data["id"]; ok {
 			if parsed := convertToInt32(id); parsed > 0 {
-				return parsed
-			}
-		}
-		if id, ok := event.Data["campaign_id"]; ok {
-			if parsed := convertToInt32(id); parsed > 0 {
-				return parsed
+				return parsed, nil
 			}
 		}
 	}
-	// 2. Check event.EventSourceName, event.Source, or event.Subject for prefix "campaign-"
-	for _, text := range []string{event.EventSourceName, event.Source, event.Subject} {
-		if strings.HasPrefix(text, "campaign-") {
-			if id, err := strconv.Atoi(strings.TrimPrefix(text, "campaign-")); err == nil && id > 0 {
-				return int32(id)
-			}
-		}
-	}
-	return 0
+	return 0, fmt.Errorf("unable to parse campaign id: %v", event.Data)
 }
 
 func convertToInt32(v any) int32 {
@@ -111,25 +109,4 @@ func convertToInt32(v any) int32 {
 		}
 	}
 	return 0
-}
-
-func runCLITask(ctx context.Context, args []string, dependencies *service.Dependencies) {
-	log.Println("running CLI worker task:", args[0])
-	switch args[0] {
-	case "campaign":
-		if len(args) < 2 || args[1] == "" {
-			log.Println("missing campaign ID argument")
-			return
-		}
-		id, err := strconv.Atoi(args[1])
-		if err != nil || id <= 0 {
-			dependencies.Logger.Warnf("invalid campaign ID: %s\n", args[1])
-			return
-		}
-		if err := feature_campaign.Process(ctx, int32(id), dependencies); err != nil {
-			dependencies.Logger.ErrorFunction(err, id)
-		}
-	default:
-		dependencies.Logger.Warnf("unknown worker task: %s\n", args[0])
-	}
 }

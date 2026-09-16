@@ -10,6 +10,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -32,13 +33,16 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 	if errors := receive.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	// save raw body to file receive.json
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		helper.WriteToFile(receive.RawBody, filepath.Join("files/wa", "receive.json"))
-	}
-	_, err := dependencies.MessageQueue.PublishJob("wa_receive", receive.RawBody, 0, service.MessageQueuePriorityHighest)
-	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to queue raw webhook body")
+		if err := feature_wa_message.ProcessIncoming(ctx, receive.RawBody, &service.MessageQueueMessage{}, dependencies); err != nil {
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, err.Error())
+		}
+	} else {
+		_, err := dependencies.MessageQueue.PublishJob("wa_incoming", receive.RawBody, 0, service.MessageQueuePriorityHighest)
+		if err != nil {
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to queue raw webhook body")
+		}
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }

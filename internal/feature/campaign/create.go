@@ -183,8 +183,12 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if err := transaction.CampaignRecipientRepository().InsertBulk(ctx, recipients); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if cfg.Default().Site.Environment != types.EnvironmentDevelop {
-		_, err = dependencies.EventBridge.CreateEvent(ctx, fmt.Sprintf("campaign-%d", campaign.Id), campaign.SendDate)
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		userData := map[string]*string{
+			"task": helper.ConvertToPointer("campaign"),
+			"id":   helper.ConvertToPointer(fmt.Sprint(campaign.Id)),
+		}
+		_, err = dependencies.EventBridge.CreateEvent(ctx, fmt.Sprintf("campaign-%d", campaign.Id), "new-campaign", "New campaign event scheduled", campaign.SendDate, userData)
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, campaign.Id)
 			return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusServiceUnavailable, "campaign could not be scheduled, please try again")
@@ -194,6 +198,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_customer.Campaign](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	committed = true
+	// process after commit because this is like a process of event which happens in fc task
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		err := Process(ctx, campaign.Id, dependencies)
 		if err != nil {

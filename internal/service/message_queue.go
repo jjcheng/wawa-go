@@ -31,13 +31,13 @@ const (
 )
 
 type MessageQueueMessage struct {
-	MessageID     string
-	ReceiptHandle string
-	Body          string
-	BodyMD5       string
-	EnqueueTime   int64
-	DequeueCount  int64
-	Priority      int64
+	MessageID     string `json:"messageId"`
+	ReceiptHandle string `json:"receiptHandle"`
+	Body          string `json:"messageBody"`
+	BodyMD5       string `json:"messageBodyMD5"`
+	EnqueueTime   int64  `json:"enqueueTime"`
+	DequeueCount  int64  `json:"dequeueCount"`
+	Priority      int64  `json:"priority"`
 }
 
 type QueueJob struct {
