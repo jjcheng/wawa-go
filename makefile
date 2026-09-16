@@ -25,10 +25,7 @@ env:
 	sed -i '' "s|\$${WHATSAPP_WEBHOOK_VERIFY_TOKEN}|$${WHATSAPP_WEBHOOK_VERIFY_TOKEN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${META_APP_ID}|$${META_APP_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${META_APP_SECRET}|$${META_APP_SECRET//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ABLY_API_KEY}|$${ABLY_API_KEY//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID}|$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_ID//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET}|$${ALIYUN_EVENTBRIDGE_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ALIYUN_EVENTBRIDGE_ENDPOINT}|$${ALIYUN_EVENTBRIDGE_ENDPOINT//&/\\&}|g" .env;
+	sed -i '' "s|\$${ABLY_API_KEY}|$${ABLY_API_KEY//&/\\&}|g" .env;
 	@echo ".env generated from $(ENV_SOURCE)"
 run-api:
 	@make env
@@ -71,6 +68,11 @@ deploy-staging-worker:
 	@echo "Running staging worker deployment to Aliyun FC..."
 	@chmod +x ./scripts/deploy_staging_worker.sh
 	@./scripts/deploy_staging_worker.sh
+deploy-staging-dispatcher:
+	@make env target=staging
+	@echo "Running staging dispatcher deployment to Aliyun FC..."
+	@chmod +x ./scripts/deploy_staging_dispatcher.sh
+	@./scripts/deploy_staging_dispatcher.sh
 deploy-staging-db:
 	@echo "Running staging database migration..."
 	@chmod +x ./scripts/deploy_staging_db.sh

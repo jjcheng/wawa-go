@@ -19,7 +19,6 @@ import (
 )
 
 // will call CreateMessage for each recipient, whether it's successful or failed, the campaign will be marked completed
-// no another event bridge will be scheduled, the retry will be at message level
 func Process(ctx context.Context, campaignId int32, dependencies *service.Dependencies) (processErr error) {
 	dependencies.Logger.Infof("processing campaign ID: %d", campaignId)
 	var campaign *dao_customer.Campaign
@@ -177,13 +176,6 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, campaign.Id)
 		return fmt.Errorf("failed to set campaign %d status as COMPLETED: %w", campaign.Id, err)
-	}
-	// remove the event from EventBridge
-	err = retry(ctx, 3, 1000*time.Millisecond, func() error {
-		return dependencies.EventBridge.DeleteEvent(ctx, campaign.EventName())
-	})
-	if err != nil {
-		dependencies.Logger.Warnf("failed to delete EventBridge schedule for campaign %d: %v", campaign.Id, err)
 	}
 	return nil
 }

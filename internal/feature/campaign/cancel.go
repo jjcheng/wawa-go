@@ -65,11 +65,6 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	committed = true
-	if dependencies.EventBridge != nil {
-		if err := dependencies.EventBridge.DeleteEvent(ctx, campaign.EventName()); err != nil {
-			dependencies.Logger.Warnf("failed to delete EventBridge schedule for campaign %d: %v", campaign.Id, err)
-		}
-	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 

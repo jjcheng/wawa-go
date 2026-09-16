@@ -5,29 +5,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/aliyun/fc-runtime-go-sdk/fc"
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/setup"
 )
-
-type EventBridgeEvent struct {
-	ID              string            `json:"id"`
-	Source          string            `json:"source"`
-	Type            string            `json:"type"`
-	Subject         string            `json:"subject"`
-	Time            string            `json:"time"`
-	EventSourceName string            `json:"eventsourcename"`
-	Data            map[string]string `json:"data"` // task: "campaign"
-}
 
 func main() {
 	// set timezone to utc so no need to call .UTC() everytime
@@ -37,26 +27,38 @@ func main() {
 	log.Println("starting worker")
 	log.Printf("environment: %s\n", cfg.Default().Site.Environment)
 
-	// setup database
 	logger := service.NewLogger()
-	unitOfWork, err := setup.SetupDatabase(cfg.Default().Database.DSN(), logger)
-	if err != nil {
-		log.Fatalf("failed to setup database: %v", err)
-	}
-	dependencies := setup.SetupServices(unitOfWork, logger)
+	dependenciesReady := make(chan struct{})
+	var dependencies *service.Dependencies
+	var setupErr error
+	go func() {
+		defer close(dependenciesReady)
+		unitOfWork, err := setup.SetupDatabase(cfg.Default().Database.DSN(), logger)
+		if err != nil {
+			setupErr = fmt.Errorf("failed to setup database: %w", err)
+			log.Print(setupErr)
+			return
+		}
+		dependencies = setup.SetupServices(unitOfWork, logger)
+	}()
 
-	// Standard Function Compute Go Runtime Handler
+	// FC custom runtime handler. dispatcher function will be triggered by time-trigger here
 	handleEvent := func(ctx context.Context, raw []byte) error {
+		select {
+		case <-dependenciesReady:
+			if setupErr != nil {
+				return setupErr
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 		rawStr := string(raw)
-		dependencies.Logger.Infof("new task: %s", rawStr)
+		logger.Infof("======== NEW TASK ========\n%s", rawStr)
 		var envelope map[string]any
 		if err := json.Unmarshal(raw, &envelope); err != nil {
 			return err
 		}
-		// triggered by time
-		if _, ok := envelope["triggerName"].(string); ok {
-
-		} else if _, ok := envelope["messageBody"]; ok { // triggered by SMQ
+		if _, ok := envelope["messageBody"]; ok { // triggered by SMQ
 			var message service.MessageQueueMessage
 			if err := json.Unmarshal(raw, &message); err != nil {
 				return err
@@ -79,34 +81,31 @@ func main() {
 		}
 		return fmt.Errorf("unidentified type: %s", rawStr)
 	}
-	fc.Start(handleEvent)
-}
 
-func parseCampaignIdFromEvent(event EventBridgeEvent) (int32, error) {
-	if len(event.Data) > 0 {
-		if id, ok := event.Data["id"]; ok {
-			if parsed := convertToInt32(id); parsed > 0 {
-				return parsed, nil
-			}
+	http.HandleFunc("/invoke", func(response http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost {
+			response.Header().Set("Allow", http.MethodPost)
+			http.Error(response, "method not allowed", http.StatusMethodNotAllowed)
+			return
 		}
-	}
-	return 0, fmt.Errorf("unable to parse campaign id: %v", event.Data)
-}
+		raw, err := io.ReadAll(request.Body)
+		if err != nil {
+			http.Error(response, "failed to read request body", http.StatusBadRequest)
+			return
+		}
+		if err := handleEvent(request.Context(), raw); err != nil {
+			dependencies.Logger.ErrorFunction(err, request.Header.Get("X-Fc-Request-Id"))
+			http.Error(response, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		response.WriteHeader(http.StatusOK)
+	})
 
-func convertToInt32(v any) int32 {
-	switch n := v.(type) {
-	case float64:
-		return int32(n)
-	case int:
-		return int32(n)
-	case int32:
-		return n
-	case int64:
-		return int32(n)
-	case string:
-		if id, err := strconv.Atoi(n); err == nil {
-			return int32(id)
-		}
-	}
-	return 0
+	http.HandleFunc("/", func(response http.ResponseWriter, request *http.Request) {
+		response.WriteHeader(http.StatusOK)
+	})
+
+	port := cfg.Default().Site.Port
+	log.Printf("starting worker function HTTP server on port %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# deploy-staging-worker.sh - Deploy the worker function to Aliyun Function Compute 3.0
-# NOTE: Updates worker function code (binary) and environment variables.
+# deploy-staging-dispatcher.sh - Deploy the dispatcher function to Aliyun Function Compute 3.0
+# NOTE: Updates dispatcher function code (binary) and environment variables.
 # NOTE: This script does NOT run database migrations. Use deploy-staging-db.sh for that.
 
 set -e
 set -o pipefail
 
 # Configuration
-FUNC_NAME="wawa-worker-function"
+FUNC_NAME="wawa-dispatcher-function"
 FC_REGION="ap-southeast-1"
 # Colors
 RED='\033[0;31m'
@@ -142,10 +142,10 @@ deploy() {
         exit 1
     fi
 
-    print_step "Building Go worker main..."
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o main cmd/worker/main.go
+    print_step "Building Go dispatcher main..."
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o main cmd/dispatcher/main.go
 
-    print_step "Zipping worker main..."
+    print_step "Zipping dispatcher main..."
     zip -q main.zip main
 
     OSS_OBJECT="fc-deploy/${FUNC_NAME}/${CURRENT_VERSION}/main.zip"
@@ -165,7 +165,7 @@ deploy() {
         --arg object "$OSS_OBJECT" \
         '{environmentVariables: $env, code: {ossBucketName: $bucket, ossObjectName: $object}}')
 
-    print_step "Updating worker function code and environment variables..."
+    print_step "Updating dispatcher function code and environment variables..."
     ALIBABA_CLOUD_ACCESS_KEY_ID="$AK" \
     ALIBABA_CLOUD_ACCESS_KEY_SECRET="$SK" \
     aliyun fc UpdateFunction --region "$FC_REGION" --functionName "$FUNC_NAME" --body "$UPDATE_BODY" >/dev/null
@@ -185,7 +185,7 @@ deploy() {
 
     rm -f main main.zip
 
-    print_success "Worker function code and environment variables updated for ${FUNC_NAME}. Version: ${CURRENT_VERSION}"
+    print_success "Dispatcher function code and environment variables updated for ${FUNC_NAME}. Version: ${CURRENT_VERSION}"
 }
 
 check_prerequisites

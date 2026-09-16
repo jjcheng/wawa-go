@@ -99,3 +99,17 @@ func (campaignRepository *WACampaignRepository) ListByMessageIds(ctx context.Con
 	}
 	return campaigns, nil
 }
+
+func (campaignRepository *WACampaignRepository) ListPendingCampaigns(ctx context.Context) ([]dao_customer.Campaign, error) {
+	var campaigns []dao_customer.Campaign
+	result := campaignRepository.db.WithContext(ctx).
+		Model(&dao_customer.Campaign{}).
+		Where("status = ? AND send_date <= NOW()", types.CampaignStatusPending).
+		Order("send_date, id").
+		Find(&campaigns)
+	if result.Error != nil {
+		campaignRepository.logger.ErrorFunction(result.Error)
+		return nil, result.Error
+	}
+	return campaigns, nil
+}

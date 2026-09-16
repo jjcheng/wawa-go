@@ -14,4 +14,5 @@ type CampaignRepository interface {
 	CheckNameExist(ctx context.Context, userId int32, name string) (bool, error)
 	ListByIds(ctx context.Context, ids []int32) ([]dao_customer.Campaign, error)
 	ListByMessageIds(ctx context.Context, messageIds []int32) ([]dao_customer.Campaign, error)
+	ListPendingCampaigns(ctx context.Context) ([]dao_customer.Campaign, error)
 }

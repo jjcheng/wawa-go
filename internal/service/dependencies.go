@@ -9,18 +9,16 @@ type Dependencies struct {
 	Logger       *Logger
 	File         *File
 	MessageQueue *MessageQueue
-	EventBridge  *EventBridge
 	Ably         *Ably
 	Whatsapp     *Whatsapp
 }
 
-func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *File, messageQueue *MessageQueue, eventBridge *EventBridge, ably *Ably, whatsapp *Whatsapp) *Dependencies {
+func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *File, messageQueue *MessageQueue, ably *Ably, whatsapp *Whatsapp) *Dependencies {
 	return &Dependencies{
 		UnitOfWork:   unitOfWork,
 		Logger:       logger,
 		File:         file,
 		MessageQueue: messageQueue,
-		EventBridge:  eventBridge,
 		Ably:         ably,
 		Whatsapp:     whatsapp,
 	}

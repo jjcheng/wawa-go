@@ -44,6 +44,14 @@ func SetupDatabase(dsn string, loggerService *service.Logger) (repository.UnitOf
 	}
 	// Set the session timezone to UTC for display
 	db.Exec("SET timezone = 'UTC'")
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("get database pool: %w", err)
+	}
+	sqlDB.SetMaxOpenConns(4)                   // at most 4 DB connections per function instance
+	sqlDB.SetMaxIdleConns(2)                   // retain up to 2 idle connections for warm invocations
+	sqlDB.SetConnMaxLifetime(15 * time.Minute) // recycle connections periodically
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)  // release unused connections sooner
 	return gormdb.NewUnitOfWork(db, loggerService), nil
 }
 

@@ -6,7 +6,6 @@ require (
 	ariga.io/atlas v0.37.0
 	github.com/JohannesKaufmann/html-to-markdown v1.6.0
 	github.com/ably/ably-go v1.4.1
-	github.com/alibabacloud-go/eventbridge-sdk v1.3.3
 	github.com/aliyun/aliyun-mns-go-sdk v1.0.11
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/aliyun/fc-runtime-go-sdk v0.3.1
@@ -46,8 +45,6 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/ably/vcdiff-go v0.0.2 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/alibabacloud-go/eventbridge-util v1.0.4 // indirect
-	github.com/alibabacloud-go/tea-utils v1.4.5 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
