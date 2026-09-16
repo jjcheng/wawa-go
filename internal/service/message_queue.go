@@ -40,6 +40,11 @@ type MessageQueueMessage struct {
 	Priority      int64
 }
 
+type QueueJob struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
 func NewMessageQueue(logger *Logger) *MessageQueue {
 	config := cfg.Default().AliyunSMQ
 	queueName := strings.TrimSpace(config.QueueName)
@@ -60,7 +65,7 @@ func NewMessageQueue(logger *Logger) *MessageQueue {
 	}
 }
 
-func (mq *MessageQueue) PublishMessage(body string, delaySeconds int64, priority MessageQueuePriority) (string, error) {
+func (mq *MessageQueue) publishMessage(body string, delaySeconds int64, priority MessageQueuePriority) (string, error) {
 	if strings.TrimSpace(body) == "" {
 		return "", errors.New("message body cannot be empty")
 	}
@@ -87,12 +92,20 @@ func (mq *MessageQueue) PublishMessage(body string, delaySeconds int64, priority
 	return resp.MessageId, nil
 }
 
-func (mq *MessageQueue) PublishJSON(v any, delaySeconds int64, priority MessageQueuePriority) (string, error) {
+func (mq *MessageQueue) publishJSON(v any, delaySeconds int64, priority MessageQueuePriority) (string, error) {
 	body, err := json.Marshal(v)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal message payload: %w", err)
 	}
-	return mq.PublishMessage(string(body), delaySeconds, priority)
+	return mq.publishMessage(string(body), delaySeconds, priority)
+}
+
+func (mq *MessageQueue) PublishJob(jobType string, data any, delaySeconds int64, priority MessageQueuePriority) (string, error) {
+	payload, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal queue job data: %w", err)
+	}
+	return mq.publishJSON(QueueJob{Type: jobType, Data: payload}, delaySeconds, priority)
 }
 
 func (mq *MessageQueue) ReceiveMessage(ctx context.Context) (*MessageQueueMessage, error) {

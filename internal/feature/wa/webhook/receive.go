@@ -36,11 +36,11 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		helper.WriteToFile(receive.RawBody, filepath.Join("files/wa", "receive.json"))
 	}
-	_, err := dependencies.MessageQueue.PublishMessage(receive.RawBody, 0, service.MessageQueuePriorityHighest)
+	_, err := dependencies.MessageQueue.PublishJob("wa_receive", receive.RawBody, 0, service.MessageQueuePriorityHighest)
 	if err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to queue raw webhook body")
 	}
-	return dto.NewEmptyResponse(true, http.StatusAccepted)
+	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 
 func (Receive) APISettings() feature.APISettings {

@@ -21,7 +21,7 @@ import (
 // will call CreateMessage for each recipient, whether it's successful or failed, the campaign will be marked completed
 // no another event bridge will be scheduled, the retry will be at message level
 func Process(ctx context.Context, campaignId int32, dependencies *service.Dependencies) (processErr error) {
-	dependencies.Logger.Infof("processing campaign ID: %d\n", campaignId)
+	dependencies.Logger.Infof("processing campaign ID: %d", campaignId)
 	var campaign *dao_customer.Campaign
 	err := retry(ctx, 3, 1000*time.Millisecond, func() error {
 		var e error
@@ -38,7 +38,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 	}
 	// only process if the status is PENIDNG or SENDING
 	if campaign.Status != types.CampaignStatusPending && campaign.Status != types.CampaignStatusSending {
-		dependencies.Logger.Infof("campaign %d is %s, skip\n", campaignId, campaign.Status)
+		dependencies.Logger.Infof("campaign %d is %s, skip", campaignId, campaign.Status)
 		return nil
 	}
 	errorMessage := strings.TrimSpace(campaign.ErrorMessage)
@@ -59,7 +59,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 				"error_message": strings.TrimSpace(errorMessage),
 			})
 		}); err != nil {
-			dependencies.Logger.Warnf("failed to update campaign %d error message: %v\n", campaign.Id, err)
+			dependencies.Logger.Warnf("failed to update campaign %d error message: %v", campaign.Id, err)
 		}
 	}()
 
@@ -99,7 +99,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 		BusinessPortfolio:            &businessPortfolioDTO,
 		BusinessPortfolioAccessToken: businessPortfolio.AccessToken,
 	}
-	dependencies.Logger.Infof("starting campaign %d\n", campaignId)
+	dependencies.Logger.Infof("starting campaign %d", campaignId)
 	page := 1
 	// set campaign status to SENDING
 	campaign.Status = types.CampaignStatusSending
@@ -183,7 +183,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 		return dependencies.EventBridge.DeleteEvent(ctx, campaign.EventName())
 	})
 	if err != nil {
-		dependencies.Logger.Warnf("failed to delete EventBridge schedule for campaign %d: %v\n", campaign.Id, err)
+		dependencies.Logger.Warnf("failed to delete EventBridge schedule for campaign %d: %v", campaign.Id, err)
 	}
 	return nil
 }

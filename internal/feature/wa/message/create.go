@@ -150,17 +150,12 @@ type InteractiveRow struct {
 }
 
 func (create *Create) Validate() []exception.InputException {
-	// create.To = strings.TrimSpace(create.To)
-	// create.PhoneNumberID = strings.TrimSpace(create.PhoneNumberID)
 	// origin and vcard are not part of Meta’s WhatsApp Cloud API contacts[] schema.
 	for _, contact := range create.Contacts {
 		delete(contact, "origin")
 		delete(contact, "vcard")
 	}
 	inputErrors := []exception.InputException{}
-	// if create.To == "" {
-	// 	inputErrors = append(inputErrors, exception.NewInputException("to", "missing recipient"))
-	// }
 	if create.CustomerId <= 0 {
 		inputErrors = append(inputErrors, exception.NewInputException("customer_id", "missing customer_id"))
 	}
@@ -229,7 +224,6 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.WA == nil || user.WA.PhoneNumber_ == nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
 	}
-	//create.PhoneNumberID = user.WA.PhoneNumber_.MetaPhoneNumberId
 	if strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
 	}
@@ -279,9 +273,14 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		ErrorMessage:  sendError,
 		Token:         token,
 	}
+	var needRetry bool
 	if sendError != "" {
-		nextAttemptAt := time.Now().UTC().Add(5 * time.Minute)
-		message.NextAttemptAt = &nextAttemptAt
+		// only retry 5 min later if it's a campaign message and the error is a http request error, for any Meta returned error, no need to retry
+		var requestHTTPError *helper.RequestHTTPError
+		if create.CampaignRecipientId != nil && errors.As(err, &requestHTTPError) {
+			message.NextAttemptAt = helper.ConvertToPointer(time.Now().UTC().Add(5 * time.Minute))
+			needRetry = true
+		}
 	}
 	if response != nil && len(response.Messages) > 0 && strings.TrimSpace(response.Messages[0].ID) != "" {
 		message.WAMessageId = strings.TrimSpace(response.Messages[0].ID)
@@ -290,10 +289,15 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewMessage(message)
+	// publish the message even if it has error, so user is aware
 	dependencies.Ably.Publish("message", helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token), result)
-	// TODO: if has error and this is from a campaign, schedule retry in SMQ, remember to check token becuase maybe the message was delivered successfully by the time it retries. normal message failure do not auto retry
-	if create.CampaignRecipientId != nil && sendError != "" {
-
+	// schedule retry in SMQ, remember to check token becuase maybe the message was delivered successfully by the time it retries
+	if needRetry {
+		retrySendMessage := dto_wa.RetrySendMessage{MessageId: message.Id}
+		_, err := dependencies.MessageQueue.PublishJob("retry_send_message", retrySendMessage, 5*60, service.MessageQueuePriorityHighest)
+		if err != nil {
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
 	}
 	return dto.NewSuccessResponse(&result)
 }

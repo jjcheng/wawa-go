@@ -73,26 +73,35 @@ func StartQueueListener(ctx context.Context, dependencies *service.Dependencies)
 		if decodedBody, err := base64.StdEncoding.DecodeString(message.Body); err == nil && json.Valid(decodedBody) {
 			body = decodedBody
 		}
-		incoming, err := helper.DeserializeJSON[dto_wa.Incoming](string(body))
+		queueJob, err := helper.DeserializeJSON[service.QueueJob](string(body))
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, message.MessageID)
 			continue
 		}
-		messageCtx, messageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		ex := processWAIncoming(messageCtx, dependencies, *incoming)
-		messageCancel()
-		if ex != nil {
-			// delete the queued message if already stored
-			if strings.Contains(ex.Message, "duplicate key value violates") {
-				if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
-					dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
-				}
+		if queueJob.Type == "wa_receive" {
+			messageCtx, messageCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			incoming, err := helper.DeserializeJSON[dto_wa.Incoming](string(queueJob.Data))
+			if err != nil {
+				messageCancel()
+				dependencies.Logger.ErrorFunction(err, message.MessageID)
+				continue
 			}
-			continue
+			ex := processWAIncoming(messageCtx, dependencies, *incoming)
+			messageCancel()
+			if ex != nil {
+				// delete the queued message if already stored
+				if strings.Contains(ex.Message, "duplicate key value violates") {
+					if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
+						dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
+					}
+				}
+				continue
+			}
+			if err := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); err != nil {
+				dependencies.Logger.ErrorFunction(err, message.MessageID)
+			}
 		}
-		if err := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); err != nil {
-			dependencies.Logger.ErrorFunction(err, message.MessageID)
-		}
+
 	}
 }
 
