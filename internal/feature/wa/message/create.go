@@ -276,7 +276,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	// retry 3 min later if it's a campaign message and the error is a http request error (payload never go to Meta)
 	// for any Meta returned error, no need to retry
 	// set it to at least 3 mins becuase if the error was becuase meta did not return an id, it will return it in next 1-2 mins
-	var requestHTTPError *helper.RequestHTTPError
+	var requestHTTPError *helper.HTTPRequestError
 	if sendError != "" && create.CampaignRecipientId != nil && errors.As(err, &requestHTTPError) {
 		message.NextAttemptAt = helper.ConvertToPointer(time.Now().UTC().Add(3 * time.Minute))
 	}

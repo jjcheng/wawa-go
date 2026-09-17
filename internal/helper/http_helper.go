@@ -11,13 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type RequestHTTPError struct {
+type HTTPRequestError struct {
 	StatusCode int
 	Message    string
 }
 
-func (requestHTTPError *RequestHTTPError) Error() string {
-	return requestHTTPError.Message
+func (httpRequestError *HTTPRequestError) Error() string {
+	return httpRequestError.Message
 }
 
 func RequestHTTP(ctx context.Context, url string, method string, headers *map[string]string, jsonObject *map[string]any) (int, *string, *http.Header, error) {
@@ -27,7 +27,7 @@ func RequestHTTP(ctx context.Context, url string, method string, headers *map[st
 		encoder := json.NewEncoder(buffer)
 		encoder.SetEscapeHTML(false)
 		if err := encoder.Encode(jsonObject); err != nil {
-			return http.StatusInternalServerError, nil, nil, &RequestHTTPError{
+			return http.StatusInternalServerError, nil, nil, &HTTPRequestError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    fmt.Sprintf("failed to marshal request JSON: %s", err.Error()),
 			}
@@ -37,7 +37,7 @@ func RequestHTTP(ctx context.Context, url string, method string, headers *map[st
 	// Create request with context
 	request, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return http.StatusInternalServerError, nil, nil, &RequestHTTPError{
+		return http.StatusInternalServerError, nil, nil, &HTTPRequestError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("failed to create http request: %s", err.Error()),
 		}
@@ -55,12 +55,12 @@ func RequestHTTP(ctx context.Context, url string, method string, headers *map[st
 		// Check if context was cancelled or timed out
 		if ctx.Err() != nil {
 			msg, status := getStatusCodeFromContext(ctx)
-			return status, nil, nil, &RequestHTTPError{
+			return status, nil, nil, &HTTPRequestError{
 				StatusCode: status,
 				Message:    msg,
 			}
 		}
-		return http.StatusInternalServerError, nil, nil, &RequestHTTPError{
+		return http.StatusInternalServerError, nil, nil, &HTTPRequestError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    fmt.Sprintf("http request failed: %s", err.Error()),
 		}
@@ -69,26 +69,35 @@ func RequestHTTP(ctx context.Context, url string, method string, headers *map[st
 		defer response.Body.Close()
 	}
 	if response == nil {
-		return http.StatusInternalServerError, nil, nil, &RequestHTTPError{
+		return http.StatusInternalServerError, nil, nil, &HTTPRequestError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "http response is null",
 		}
 	}
 	responseBytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return response.StatusCode, nil, &response.Header, &RequestHTTPError{
+		return response.StatusCode, nil, &response.Header, &HTTPRequestError{
 			StatusCode: response.StatusCode,
 			Message:    fmt.Sprintf("failed to read http response body: %s", err.Error()),
 		}
 	}
+	var responseString string
 	if responseBytes != nil {
-		responseString := string(responseBytes)
-		return response.StatusCode, &responseString, &response.Header, nil
+		responseString = string(responseBytes)
+	} else {
+		return response.StatusCode, nil, &response.Header, &HTTPRequestError{
+			StatusCode: response.StatusCode,
+			Message:    "http response bytes is null",
+		}
 	}
-	return response.StatusCode, nil, &response.Header, &RequestHTTPError{
-		StatusCode: response.StatusCode,
-		Message:    "http response bytes is empty",
+	// check for http 429 too many request
+	if response.StatusCode == http.StatusTooManyRequests {
+		return response.StatusCode, &responseString, &response.Header, &HTTPRequestError{
+			StatusCode: response.StatusCode,
+			Message:    "you have hit a rate limit",
+		}
 	}
+	return response.StatusCode, &responseString, &response.Header, nil
 }
 
 func getStatusCodeFromContext(ctx context.Context) (string, int) {
