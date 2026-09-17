@@ -199,17 +199,22 @@ func (err *WhatsAppAPIError) Error() string {
 	if err.GraphError.ErrorData != nil {
 		return fmt.Sprintf("WhatsApp API error: %s", err.GraphError.ErrorData.Details)
 	}
-	return fmt.Sprintf("WhatsApp API error: %s", err.GraphError.Message)
-	// if err.GraphError.ErrorUserMsg != "" {
-	// 	if err.GraphError.ErrorData != "" {
-	// 		return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg, err.GraphError.ErrorData)
-	// 	}
-	// 	return fmt.Sprintf("whatsapp api error %d (subcode %d): %s - %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorUserMsg)
-	// }
-	// if err.GraphError.ErrorData != "" {
-	// 	return fmt.Sprintf("whatsapp api error %d (subcode %d): %s (%s)", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message, err.GraphError.ErrorData)
-	// }
-	// return fmt.Sprintf("whatsapp api error %d (subcode %d): %s", err.GraphError.Code, err.GraphError.ErrorSubcode, err.GraphError.Message)
+	var errors []string
+	if err.GraphError.ErrorUserTitle != "" {
+		errors = append(errors, err.GraphError.ErrorUserTitle)
+	}
+	if err.GraphError.ErrorUserMsg != "" {
+		errors = append(errors, err.GraphError.ErrorUserMsg)
+	}
+	if len(errors) == 0 {
+		if err.GraphError.ErrorData != nil {
+			errors = append(errors, err.GraphError.ErrorData.Details)
+		}
+	}
+	if len(errors) == 0 {
+		errors = append(errors, err.GraphError.Message)
+	}
+	return fmt.Sprintf("WhatsApp API error:\n%s", strings.Join(errors, "\n"))
 }
 
 type WhatsAppBusinessResponse struct {
@@ -469,6 +474,10 @@ func (whatsapp *Whatsapp) DownloadFile(ctx context.Context, fileURL string, busi
 }
 
 func (whatsapp *Whatsapp) UploadTemplateHeaderSample(ctx context.Context, filename string, contentType string, content []byte, businessAccessToken string) (string, error) {
+	return whatsapp.ResumableUpload(ctx, filename, contentType, content, businessAccessToken)
+}
+
+func (whatsapp *Whatsapp) ResumableUpload(ctx context.Context, filename string, contentType string, content []byte, businessAccessToken string) (string, error) {
 	filename = strings.TrimSpace(filename)
 	contentType = strings.TrimSpace(contentType)
 	if filename == "" {
@@ -493,7 +502,7 @@ func (whatsapp *Whatsapp) UploadTemplateHeaderSample(ctx context.Context, filena
 	if strings.TrimSpace(sessionResponse.ID) == "" {
 		return "", fmt.Errorf("upload session ID is missing from Meta response")
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(sessionResponse.ID)), bytes.NewReader(content))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, sessionResponse.ID), bytes.NewReader(content))
 	if err != nil {
 		return "", fmt.Errorf("failed to create template header sample upload request: %w", err)
 	}
@@ -755,7 +764,7 @@ func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, name
 		Data   []dto_wa.Template `json:"data"`
 		Paging *WhatsAppPaging   `json:"paging,omitempty"`
 	}
-	if err := whatsapp.doJSONRequest(ctx, "list_templates_page", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+	if err := whatsapp.doJSONRequest(ctx, "list_templates", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
 		return nil, nil, err
 	}
@@ -878,7 +887,26 @@ func (whatsapp *Whatsapp) CreateTemplate(ctx context.Context, wabaId string, pay
 		whatsapp.logger.ErrorFunction(err, wabaId, payload)
 		return nil, err
 	}
+	response.ByAPI = true
 	return &response, nil
+}
+
+func (whatsapp *Whatsapp) UpdateTemplate(ctx context.Context, templateID string, payload map[string]any, businessAccessToken string) error {
+	if len(payload) == 0 {
+		return fmt.Errorf("template update payload is required")
+	}
+	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(templateID))
+	var response struct {
+		Success bool `json:"success"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, "update_template", http.MethodPost, endpoint, payload, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, templateID)
+		return err
+	}
+	if !response.Success {
+		return fmt.Errorf("Meta did not confirm template update success")
+	}
+	return nil
 }
 
 func (whatsapp *Whatsapp) DeleteTemplate(ctx context.Context, wabaId string, name string, templateId string, businessAccessToken string) error {

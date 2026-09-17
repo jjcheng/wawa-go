@@ -12,7 +12,7 @@ func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := uuid.NewString()
 		c.Set(cfg.Default().Site.HTTPRequestIdKey, id)
-		c.Writer.Header().Set("x-jotter-request-Id", id)
+		c.Writer.Header().Set("x-request-id", id)
 		c.Next()
 	}
 }

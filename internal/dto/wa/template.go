@@ -25,6 +25,11 @@ type Template struct {
 	RejectedReason      string                 `json:"rejected_reason,omitempty"`
 	PreviousCategory    string                 `json:"previous_category,omitempty"`
 	MetaEditTemplateUrl string                 `json:"meta_edit_template_url"`
+	ByAPI               bool                   `json:"by_api"`
+}
+
+func (template *Template) GetMetaEditTemplateUrl(metaBusinessPortfolioId string, wabaId string) string {
+	return fmt.Sprintf("https://business.facebook.com/latest/whatsapp_manager/message_templates/?business_id=%s&tab=message-templates&childRoute=CAPI&id=%s&nav_ref=whatsapp_manager&asset_id=%s", metaBusinessPortfolioId, template.ID, wabaId)
 }
 
 type TemplateBase struct {
@@ -39,6 +44,10 @@ type TemplateBase struct {
 	PreviewDarkHTML string                  `json:"preview_dark_html,omitempty"`
 	RawDarkHTML     string                  `json:"raw_dark_html,omitempty"`
 	SendComponents  []SendTemplateComponent `json:"send_components"`
+}
+
+func (templateBase *TemplateBase) ByAPI() bool {
+	return strings.HasPrefix(templateBase.Name, "api_")
 }
 
 func (templateBase *TemplateBase) Validate() []exception.InputException {

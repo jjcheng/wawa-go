@@ -14,31 +14,39 @@ import (
 )
 
 type Delete struct {
-	Id   string `json:"id" val:"required" description:"template id"`
-	Name string `json:"name" val:"required" description:"name of the template"`
+	Id string `json:"id" val:"required" description:"template id"`
 }
 
 func (delete *Delete) Validate() []exception.InputException {
 	delete.Id = strings.TrimSpace(delete.Id)
-	delete.Name = strings.TrimSpace(delete.Name)
 	errors := []exception.InputException{}
 	if delete.Id == "" {
 		errors = append(errors, exception.NewInputException("id", "missing id"))
-	}
-	if delete.Name == "" {
-		errors = append(errors, exception.NewInputException("name", "missing name"))
 	}
 	return errors
 }
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
-	if user == nil || user.WA == nil || user.WA.BusinessAccount == nil {
+	if user == nil {
+		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+	}
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
+	}
+	if user.WA == nil || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
 	}
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	if err := dependencies.Whatsapp.DeleteTemplate(ctx, user.WA.BusinessAccount.WABAId, delete.Name, delete.Id, user.WA.BusinessPortfolioAccessToken); err != nil {
+	template, err := dependencies.Whatsapp.GetTemplate(ctx, delete.Id, user.WA.BusinessPortfolioAccessToken)
+	if err != nil {
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+	}
+	if template == nil {
+		return dto.NewFailedResponse[any](http.StatusBadGateway, "template not found")
+	}
+	if err := dependencies.Whatsapp.DeleteTemplate(ctx, user.WA.BusinessAccount.WABAId, template.Name, delete.Id, user.WA.BusinessPortfolioAccessToken); err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
