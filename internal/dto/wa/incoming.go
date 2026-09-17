@@ -34,24 +34,23 @@ type IncomingMetadata struct {
 
 type IncomingContact struct {
 	Profile IncomingProfile `json:"profile"`
-	WaID    string          `json:"wa_id"`
-	UserID  string          `json:"user_id,omitempty"`
+	WaID    string          `json:"wa_id,omitempty"` // empty if user opt in for username only
+	UserID  string          `json:"user_id"`         // this always return
 }
 
 type IncomingProfile struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	UserName string `json:"username,omitempty"` // if user opt in for username only
 }
 
 type IncomingMessage struct {
-	PhoneNumberID string               `json:"phone_number_id,omitempty"`
-	From          string               `json:"from"`
-	FromUserID    string               `json:"from_user_id,omitempty"`
-	ID            string               `json:"id"`
-	Text          *IncomingMessageText `json:"text,omitempty"`
-	Timestamp     string               `json:"timestamp"`
-	Type          string               `json:"type"`
-	Errors        []StatusError        `json:"errors,omitempty"`
-	Payload       map[string]any       `json:"-"`
+	ID         string         `json:"id"`
+	From       string         `json:"from,omitempty"` // empty if user opt in for username only
+	FromUserID string         `json:"from_user_id"`   // always return
+	Timestamp  string         `json:"timestamp"`
+	Type       string         `json:"type"`
+	Errors     []StatusError  `json:"errors,omitempty"`
+	Payload    map[string]any `json:"-"`
 }
 
 func (message *IncomingMessage) UnmarshalJSON(data []byte) error {

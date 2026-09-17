@@ -244,7 +244,12 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	payload["messaging_product"] = "whatsapp"
 	payload["recipient_type"] = "individual"
-	payload["to"] = customer.WAId
+	// use meta_user_id to send if not empty
+	if customer.MetaUserId != "" {
+		payload["to"] = customer.MetaUserId
+	} else {
+		payload["to"] = customer.WAId
+	}
 	delete(payload, "customer_id")
 	token := strings.ReplaceAll(uuid.NewString(), "-", "")
 	payload["biz_opaque_callback_data"] = token

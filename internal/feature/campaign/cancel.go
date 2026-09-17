@@ -58,9 +58,6 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	}); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if err := transaction.CampaignRecipientRepository().CancelByCampaignId(ctx, campaign.Id); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
 	if err := transaction.CommitTransaction(); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

@@ -2,7 +2,6 @@ package gormdb
 
 import (
 	"context"
-	"time"
 
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
@@ -109,18 +108,4 @@ func (campaignRecipientRepository *CampaignRecipientRepository) CountMessageStat
 		counts[row.Status] = row.Count
 	}
 	return counts, nil
-}
-
-func (campaignRecipientRepository *CampaignRecipientRepository) CancelByCampaignId(ctx context.Context, campaignID int32) error {
-	if err := campaignRecipientRepository.db.WithContext(ctx).
-		Model(&dao_customer.CampaignRecipient{}).
-		Where("campaign_id = ? AND status = ?", campaignID, types.CampaignRecipientStatusPending).
-		Updates(map[string]any{
-			"status":      types.CampaignRecipientStatusCancelled,
-			"last_update": time.Now(),
-		}).Error; err != nil {
-		campaignRecipientRepository.logger.ErrorFunction(err, campaignID)
-		return err
-	}
-	return nil
 }

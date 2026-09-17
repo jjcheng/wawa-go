@@ -22,6 +22,7 @@ import (
 
 // do not parse rawBody to dto_wa.Incoming before here as we are receiving raw data from Meta
 func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, message *service.MessageQueueMessage, dependencies *service.Dependencies) error {
+	dependencies.Logger.Infof("processing WA incoming: %s", message.MessageID)
 	messageCtx, messageCancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer messageCancel()
 	acknowledge := func() {
@@ -198,11 +199,16 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	// if no existing customer, create new
 	var customerDTO dto_customer.Customer
 	if existingCustomer == nil {
-		countryCode, phoneNumber, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessage.From)
-		if err != nil {
-			dependencies.Logger.ErrorFunction(err, metadata.DisplayPhoneNumber)
-			countryCode = "."
-			phoneNumber = incomingMessage.From
+		var countryCode, phoneNumber string
+		if incomingMessage.From != "" {
+			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessage.From)
+			if err != nil {
+				dependencies.Logger.ErrorFunction(err, metadata.DisplayPhoneNumber)
+				cc = "."
+				pn = incomingMessage.From
+			}
+			countryCode = cc
+			phoneNumber = pn
 		}
 		createCustomer := feature_customer.Create{
 			DisplayName:   contact.Profile.Name, // set same as wa display name
@@ -302,7 +308,7 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 		return nil
 	}
 	resetNextAttemptAt := func() error {
-		message.NextAttemptAt = helper.ConvertToPointer(time.Now().Add(time.Minute * 1))
+		message.NextAttemptAt = helper.ConvertToPointer(now.Add(time.Minute))
 		if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
 			return err
 		}
@@ -329,7 +335,9 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return stopRetry("phone number not found")
 		}
-		resetNextAttemptAt()
+		if resetErr := resetNextAttemptAt(); resetErr != nil {
+			return fmt.Errorf("reset retry schedule after phone number lookup: %w", resetErr)
+		}
 		return err
 	}
 	businessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, phoneNumber.UserId)
@@ -338,7 +346,9 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return stopRetry("business portfolio not found")
 		}
-		resetNextAttemptAt()
+		if resetErr := resetNextAttemptAt(); resetErr != nil {
+			return fmt.Errorf("reset retry schedule after business portfolio lookup: %w", resetErr)
+		}
 		return err
 	}
 	if businessPortfolio == nil {
@@ -355,7 +365,8 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 		message.Attempts += 1
 		message.ErrorMessage = err.Error()
 		message.Status = types.WAMessageStatusRejected
-		message.NextAttemptAt = helper.ConvertToPointer(now.Add(5 * time.Minute))
+		// schedule the next retry with linear backoff
+		message.NextAttemptAt = helper.ConvertToPointer(now.Add(5 * time.Duration(message.Attempts) * time.Minute))
 		if updateErr := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); updateErr != nil {
 			return updateErr
 		}

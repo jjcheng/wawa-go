@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -113,6 +114,9 @@ func waMessageStatusRank(status types.WAMessageStatus) int {
 
 // waid = 6590000000
 func GetCountryCodeAndPhoneNumberFromWAId(waID string) (string, string, error) {
+	if strings.TrimSpace(waID) == "" {
+		return "", "", errors.New("waId is empty")
+	}
 	phoneNumber, err := phonenumbers.Parse("+"+waID, "")
 	if err != nil || !phonenumbers.IsValidNumber(phoneNumber) {
 		return "", "", fmt.Errorf("invalid WhatsApp ID %q", waID)

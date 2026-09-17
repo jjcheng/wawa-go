@@ -56,7 +56,6 @@ func main() {
 		if decodedBody, err := base64.StdEncoding.DecodeString(message.MessageBody); err == nil && json.Valid(decodedBody) {
 			body = decodedBody
 		}
-		log.Printf("------- message body --------\n%s", string(body))
 		queueJob, err := helper.DeserializeJSON[service.MessageQueueJob](string(body))
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, message.MessageID)
@@ -64,11 +63,15 @@ func main() {
 		}
 		switch queueJob.Type {
 		case "handle_wa_incoming":
-			var waIncoming dto_wa.Incoming
-			if err := json.Unmarshal(queueJob.Data, &waIncoming); err != nil {
+			var rawBody string
+			if err := json.Unmarshal(queueJob.Data, &rawBody); err != nil {
 				return fmt.Errorf("invalid handle_wa_incoming data: %w", err)
 			}
-			return feature_wa_message.ProcessIncoming(ctx, waIncoming, &message, dependencies)
+			var incoming dto_wa.Incoming
+			if err := json.Unmarshal([]byte(rawBody), &incoming); err != nil {
+				return fmt.Errorf("invalid handle_wa_incoming payload: %w", err)
+			}
+			return feature_wa_message.ProcessIncoming(ctx, incoming, &message, dependencies)
 		case "retry_send_message":
 			var messageId int32
 			if err := json.Unmarshal(queueJob.Data, &messageId); err != nil {
