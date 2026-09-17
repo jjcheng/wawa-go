@@ -3,10 +3,12 @@ package gormdb
 import (
 	"context"
 	"strings"
+	"time"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
 )
 
@@ -63,4 +65,32 @@ func (messageRepository *WAMessageRepository) GetByToken(ctx context.Context, to
 		return nil, err
 	}
 	return &message, nil
+}
+
+func (messageRepository *WAMessageRepository) ListNeedResend(ctx context.Context) ([]dao_wa.Message, error) {
+	var messages []dao_wa.Message
+	result := messageRepository.db.WithContext(ctx).
+		Model(&dao_wa.Message{}).
+		Where("status = ? AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW()", "REJECTED").
+		Order("next_attempt_at, id").
+		Find(&messages)
+	if result.Error != nil {
+		messageRepository.logger.ErrorFunction(result.Error)
+		return nil, result.Error
+	}
+	return messages, nil
+}
+
+func (messageRepository *WAMessageRepository) UpdateNextAttemptAt(ctx context.Context, id int32, nextAttemptAt time.Time) (bool, error) {
+	result := messageRepository.db.WithContext(ctx).
+		Model(&dao_wa.Message{}).
+		Where("id = ? AND status = ? AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW()", id, types.WAMessageStatusRejected).
+		Updates(map[string]any{
+			"next_attempt_at": nextAttemptAt,
+		})
+	if result.Error != nil {
+		messageRepository.logger.ErrorFunction(result.Error, id)
+		return false, result.Error
+	}
+	return result.RowsAffected == 1, nil
 }

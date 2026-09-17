@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
+	feature_campaign "github.com/jjcheng/wawa-go/internal/feature/campaign"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -28,11 +29,11 @@ func main() {
 	log.Printf("environment: %s\n", cfg.Default().Site.Environment)
 
 	logger := service.NewLogger()
-	dependenciesReady := make(chan struct{})
+	dependenciesReadyChannel := make(chan struct{})
 	var dependencies *service.Dependencies
 	var setupErr error
 	go func() {
-		defer close(dependenciesReady)
+		defer close(dependenciesReadyChannel)
 		unitOfWork, err := setup.SetupDatabase(cfg.Default().Database.DSN(), logger)
 		if err != nil {
 			setupErr = fmt.Errorf("failed to setup database: %w", err)
@@ -45,7 +46,7 @@ func main() {
 	// FC custom runtime handler. dispatcher function will be triggered by time-trigger here
 	handleEvent := func(ctx context.Context, raw []byte) error {
 		select {
-		case <-dependenciesReady:
+		case <-dependenciesReadyChannel:
 			if setupErr != nil {
 				return setupErr
 			}
@@ -73,10 +74,20 @@ func main() {
 				return err
 			}
 			switch queueJob.Type {
-			case "wa_incoming":
+			case "handle_wa_incoming":
 				return feature_wa_message.ProcessIncoming(ctx, string(queueJob.Data), &message, dependencies)
 			case "retry_send_message":
-				return feature_wa_message.RetrySendingMessage(ctx, string(queueJob.Data), &message, dependencies)
+				var messageId int32
+				if err := json.Unmarshal(queueJob.Data, &messageId); err != nil {
+					return fmt.Errorf("invalid retry_send_message data: %w", err)
+				}
+				return feature_wa_message.RetrySendingMessage(ctx, messageId, &message, dependencies)
+			case "start_campaign":
+				var campaignID int32
+				if err := json.Unmarshal(queueJob.Data, &campaignID); err != nil {
+					return fmt.Errorf("invalid start_campaign data: %w", err)
+				}
+				return feature_campaign.Process(ctx, campaignID, dependencies)
 			}
 		}
 		return fmt.Errorf("unidentified type: %s", rawStr)

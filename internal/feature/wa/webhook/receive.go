@@ -39,7 +39,7 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, err.Error())
 		}
 	} else {
-		_, err := dependencies.MessageQueue.PublishJob("wa_incoming", receive.RawBody, 0, service.MessageQueuePriorityHighest)
+		_, err := dependencies.MessageQueue.PublishJob("handle_wa_incoming", receive.RawBody, 0, service.MessageQueuePriorityHighest)
 		if err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to queue raw webhook body")
 		}

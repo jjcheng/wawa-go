@@ -273,14 +273,12 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		ErrorMessage:  sendError,
 		Token:         token,
 	}
-	var needRetry bool
-	if sendError != "" {
-		// only retry 5 min later if it's a campaign message and the error is a http request error, for any Meta returned error, no need to retry
-		var requestHTTPError *helper.RequestHTTPError
-		if create.CampaignRecipientId != nil && errors.As(err, &requestHTTPError) {
-			message.NextAttemptAt = helper.ConvertToPointer(time.Now().UTC().Add(5 * time.Minute))
-			needRetry = true
-		}
+	// retry 3 min later if it's a campaign message and the error is a http request error (payload never go to Meta)
+	// for any Meta returned error, no need to retry
+	// set it to at least 3 mins becuase if the error was becuase meta did not return an id, it will return it in next 1-2 mins
+	var requestHTTPError *helper.RequestHTTPError
+	if sendError != "" && create.CampaignRecipientId != nil && errors.As(err, &requestHTTPError) {
+		message.NextAttemptAt = helper.ConvertToPointer(time.Now().UTC().Add(3 * time.Minute))
 	}
 	if response != nil && len(response.Messages) > 0 && strings.TrimSpace(response.Messages[0].ID) != "" {
 		message.WAMessageId = strings.TrimSpace(response.Messages[0].ID)
@@ -289,16 +287,9 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewMessage(message)
-	// publish the message even if it has error, so user is aware
+	// publish the message even if it has error, so user is aware, this applies to campaign messages as well
+	// if user is currently on the chat page
 	dependencies.Ably.Publish("message", helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token), result)
-	// schedule retry in SMQ, remember to check token becuase maybe the message was delivered successfully by the time it retries
-	if needRetry {
-		retrySendMessage := dto_wa.RetrySendMessage{MessageId: message.Id}
-		_, err := dependencies.MessageQueue.PublishJob("retry_send_message", retrySendMessage, 5*60, service.MessageQueuePriorityHighest)
-		if err != nil {
-			return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-		}
-	}
 	return dto.NewSuccessResponse(&result)
 }
 

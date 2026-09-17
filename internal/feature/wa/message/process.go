@@ -2,7 +2,6 @@ package feature_wa_message
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -21,6 +20,7 @@ import (
 	"gorm.io/gorm"
 )
 
+// do not parse rawBody to dto_wa.Incoming before here as we are receiving raw data from Meta
 func ProcessIncoming(ctx context.Context, rawBody string, message *service.MessageQueueMessage, dependencies *service.Dependencies) error {
 	messageCtx, messageCancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer messageCancel()
@@ -29,21 +29,23 @@ func ProcessIncoming(ctx context.Context, rawBody string, message *service.Messa
 		dependencies.Logger.ErrorFunction(err, message.MessageID)
 		return err
 	}
+	acknowledge := func() {
+		if message.ReceiptHandle == "" {
+			return
+		}
+		if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
+			dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
+		}
+	}
 	err = processWAIncoming(messageCtx, dependencies, *incoming)
 	if err != nil {
 		// delete the queued message if already stored
 		if strings.Contains(err.Error(), "duplicate key value violates") {
-			if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
-				dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
-			}
+			acknowledge()
 		}
 		return err
 	}
-	if message.ReceiptHandle != "" {
-		if err := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); err != nil {
-			dependencies.Logger.ErrorFunction(err, message.MessageID)
-		}
-	}
+	acknowledge()
 	return nil
 }
 
@@ -269,91 +271,120 @@ func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependenc
 	return nil
 }
 
-func RetrySendingMessage(ctx context.Context, rawBody string, message *service.MessageQueueMessage, dependencies *service.Dependencies) error {
-	if message == nil {
+func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *service.MessageQueueMessage, dependencies *service.Dependencies) error {
+	if mqMessage == nil {
 		return errors.New("message queue message is required")
 	}
-	job := dto_wa.RetrySendMessage{}
-	if err := json.Unmarshal([]byte(rawBody), &job); err != nil {
-		return err
+	acknowledge := func() {
+		if mqMessage.ReceiptHandle != "" {
+			if deleteErr := dependencies.MessageQueue.DeleteMessage(mqMessage.ReceiptHandle); deleteErr != nil {
+				dependencies.Logger.ErrorFunction(deleteErr, mqMessage.MessageID)
+			}
+		}
 	}
-	if job.MessageId <= 0 {
-		return fmt.Errorf("invalid message id in retry queue payload: %s", rawBody)
-	}
-	storedMessage, err := dependencies.UnitOfWork.WAMessageRepository().GetById(ctx, job.MessageId)
+	message, err := dependencies.UnitOfWork.WAMessageRepository().GetById(ctx, messageId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			if message.ReceiptHandle != "" {
-				if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
-					dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
-				}
-			}
+			acknowledge()
 			return nil
 		}
+		// returning error will make SQM retry automatcially
 		return err
 	}
-	if !shouldRetryWAMessageStatus(storedMessage.Status) {
-		if message.ReceiptHandle != "" {
-			if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
-				dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
-			}
+	now := time.Now().UTC()
+	if !shouldRetryWAMessageStatus(message.Status) || message.NextAttemptAt == nil || message.NextAttemptAt.After(now) {
+		acknowledge()
+		return nil
+	}
+	stopRetry := func(reason string) error {
+		message.Status = types.WAMessageStatusFailed
+		message.NextAttemptAt = nil
+		message.ErrorMessage = reason
+		if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
+			return err
+		}
+		acknowledge()
+		return nil
+	}
+	resetNextAttemptAt := func() error {
+		message.NextAttemptAt = helper.ConvertToPointer(time.Now().Add(time.Minute * 1))
+		if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
+			return err
 		}
 		return nil
 	}
-	if storedMessage.PhoneNumberId == 0 {
-		return fmt.Errorf("missing phone number id for retry message %d", storedMessage.Id)
+	if message.Attempts >= 3 {
+		return stopRetry("maximum send attempts reached")
 	}
-	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, storedMessage.PhoneNumberId)
+	// quickly update next_attempt_at to 15 min later so other worker won't pick it up
+	updated, err := dependencies.UnitOfWork.WAMessageRepository().UpdateNextAttemptAt(ctx, message.Id, now.Add(10*time.Minute))
 	if err != nil {
+		return err
+	}
+	if !updated {
+		acknowledge()
+		return nil
+	}
+	if message.PhoneNumberId == 0 {
+		return stopRetry("missing phone number ID")
+	}
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, message.PhoneNumberId)
+	if err != nil {
+		// if phone number not found, don't retry
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return stopRetry("phone number not found")
+		}
+		resetNextAttemptAt()
 		return err
 	}
 	businessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, phoneNumber.UserId)
 	if err != nil {
+		// if no business assets, don't retry
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return stopRetry("business portfolio not found")
+		}
+		resetNextAttemptAt()
 		return err
 	}
 	if businessPortfolio == nil {
-		return fmt.Errorf("missing business portfolio for retry message %d", storedMessage.Id)
+		return stopRetry("business portfolio not found")
 	}
 	if strings.TrimSpace(businessPortfolio.AccessToken) == "" {
-		return fmt.Errorf("missing WhatsApp business portfolio access token for retry message %d", storedMessage.Id)
+		return stopRetry("missing WhatsApp business portfolio access token")
 	}
-	response, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumber.MetaPhoneNumberId, storedMessage.Payload, businessPortfolio.AccessToken)
+	response, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumber.MetaPhoneNumberId, message.Payload, businessPortfolio.AccessToken)
+	if err == nil && (response == nil || len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "") {
+		err = errors.New("WhatsApp did not return a message ID")
+	}
 	if err != nil {
-		storedMessage.Attempts += 1
-		storedMessage.ErrorMessage = err.Error()
-		storedMessage.Status = types.WAMessageStatusRejected
-		storedMessage.NextAttemptAt = helper.ConvertToPointer(time.Now().UTC().Add(5 * time.Minute))
-		if updateErr := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, storedMessage); updateErr != nil {
+		message.Attempts += 1
+		message.ErrorMessage = err.Error()
+		message.Status = types.WAMessageStatusRejected
+		message.NextAttemptAt = helper.ConvertToPointer(now.Add(5 * time.Minute))
+		if updateErr := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); updateErr != nil {
 			return updateErr
 		}
-		if message.ReceiptHandle != "" {
-			if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
-				dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
-			}
-		}
-		return err
+		acknowledge()
+		// if nextAttemptAt is set successfully, no need to return error for retry
+		return nil
 	}
 	if response != nil && len(response.Messages) > 0 && strings.TrimSpace(response.Messages[0].ID) != "" {
-		storedMessage.WAMessageId = strings.TrimSpace(response.Messages[0].ID)
+		message.WAMessageId = strings.TrimSpace(response.Messages[0].ID)
 	}
-	storedMessage.Attempts += 1
-	storedMessage.ErrorMessage = ""
-	storedMessage.Status = types.WAMessageStatusAccepted
-	storedMessage.NextAttemptAt = nil
-	if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, storedMessage); err != nil {
+	message.Attempts += 1
+	message.ErrorMessage = ""
+	message.Status = types.WAMessageStatusAccepted
+	message.NextAttemptAt = nil
+	if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
 		return err
 	}
-	if message.ReceiptHandle != "" {
-		if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
-			dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
-		}
-	}
+	acknowledge()
 	return nil
 }
 
 func shouldRetryWAMessageStatus(status types.WAMessageStatus) bool {
 	switch status {
-	case types.WAMessageStatusRejected, types.WAMessageStatusFailed:
+	case types.WAMessageStatusRejected:
 		return true
 	default:
 		return false

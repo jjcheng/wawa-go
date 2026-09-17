@@ -103,6 +103,7 @@ func (mq *MessageQueue) publishJSON(v any, delaySeconds int64, priority MessageQ
 func (mq *MessageQueue) PublishJob(jobType string, data any, delaySeconds int64, priority MessageQueuePriority) (string, error) {
 	payload, err := json.Marshal(data)
 	if err != nil {
+		mq.logger.ErrorFunction(err, jobType, data, delaySeconds, priority)
 		return "", fmt.Errorf("failed to marshal queue job data: %w", err)
 	}
 	return mq.publishJSON(QueueJob{Type: jobType, Data: payload}, delaySeconds, priority)
@@ -160,7 +161,6 @@ func (mq *MessageQueue) DeleteMessage(receiptHandle string) error {
 	if strings.TrimSpace(receiptHandle) == "" {
 		return errors.New("receipt handle cannot be empty")
 	}
-
 	err := mq.queue.DeleteMessage(receiptHandle)
 	if err != nil {
 		return fmt.Errorf("failed to delete message from queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
