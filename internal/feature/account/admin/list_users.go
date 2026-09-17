@@ -1,30 +1,59 @@
 package feature_account_admin
 
-// type List struct {
-// }
+import (
+	"context"
+	"net/http"
 
-// func (list *List) Validate() []exception.InputException {
-// 	return nil
-// }
+	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	"github.com/jjcheng/wawa-go/internal/exception"
+	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
+)
 
-// func (list List) Handle(ctx context.Context, user *dto_ai.User, dependencies *service.Dependencies) dto.Response[[]dto_ai.User] {
-// 	if user.Type != types.UserTypeMaster && user.Type != types.UserTypeAdmin {
-// 		return dto.NewFailedResponse[[]dto_ai.User](http.StatusUnauthorized, "you are not admin")
-// 	}
-// 	if errors := list.Validate(); len(errors) > 0 {
-// 		return dto.NewInvalidInputResponse[[]dto_ai.User](errors)
-// 	}
-// 	var items []dto_ai.User
-// 	userDAOs, ex := dependencies.UnitOfWork.AIUserRepository().ListByAppId(ctx, user.App.Id)
-// 	if ex != nil {
-// 		return dto.NewFailedResponse[[]dto_ai.User](ex.StatusCode, ex.Message)
-// 	}
-// 	for i := range userDAOs {
-// 		items = append(items, dto_ai.NewUser(userDAOs[i], nil))
-// 	}
-// 	return dto.NewSuccessResponse(items)
-// }
+type ListUsers struct {
+}
 
-// func (List) APISettings() feature.APISettings {
-// 	return feature.NewAPISettings("List users", "List all users with their associated apps. Only admin can list users.", types.HttpRequestTypeQuery, "GET", "/users/v1", true, false, types.APITagAccount, nil)
-// }
+func (ListUsers) Validate() []exception.InputException {
+	return nil
+}
+
+func (listUsers ListUsers) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_account.User] {
+	if user == nil {
+		return dto.NewFailedResponse[[]dto_account.User](http.StatusForbidden, "you are not authenticated")
+	}
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[[]dto_account.User](http.StatusUnauthorized, "you are not authorized")
+	}
+	if inputErrors := listUsers.Validate(); len(inputErrors) > 0 {
+		return dto.NewInvalidInputResponse[[]dto_account.User](inputErrors)
+	}
+	users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessPortfolioId(ctx, user.WA.BusinessPortfolio.Id)
+	if err != nil {
+		return dto.NewFailedResponse[[]dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+	}
+	var ds []dto_account.User = make([]dto_account.User, len(users))
+	for i := range users {
+		ds[i] = dto_account.NewUser(users[i])
+	}
+	return dto.NewSuccessResponse(ds)
+}
+
+func (ListUsers) APISettings() feature.APISettings {
+	return feature.NewAPISettings(
+		"List users",
+		"Lists all users. Only master users can access this endpoint.",
+		types.HttpRequestTypeNone,
+		http.MethodGet,
+		"/v1/admin/users",
+		true,
+		true,
+		types.APITagAccount,
+		[]feature.APIError{
+			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
+		},
+	)
+}

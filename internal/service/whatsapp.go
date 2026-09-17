@@ -588,21 +588,21 @@ func (whatsapp *Whatsapp) ReconnectPhoneNumber(ctx context.Context, phoneNumberI
 }
 
 // GetWABA owner_business_info includes id and name
-// func (whatsapp *Whatsapp) GetBusinessPortfolio(ctx context.Context, metaBusinessPortfolioId string, businessAccessToken string) (string, error) {
-// 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaBusinessPortfolioId))
-// 	query := url.Values{}
-// 	query.Set("fields", "name")
-// 	endpoint += "?" + query.Encode()
-// 	var response WhatsAppBusinessResponse
-// 	if err := whatsapp.doJSONRequest(ctx, "get_business_portfolio", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-// 		whatsapp.logger.ErrorFunction(err, metaBusinessPortfolioId)
-// 		return "", err
-// 	}
-// 	if strings.TrimSpace(response.Name) == "" {
-// 		return "", fmt.Errorf("business name is missing from the WhatsApp API response")
-// 	}
-// 	return response.Name, nil
-// }
+func (whatsapp *Whatsapp) GetBusinessPortfolio(ctx context.Context, metaBusinessPortfolioId string, businessAccessToken string) (string, error) {
+	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(metaBusinessPortfolioId))
+	query := url.Values{}
+	query.Set("fields", "name")
+	endpoint += "?" + query.Encode()
+	var response WhatsAppBusinessResponse
+	if err := whatsapp.doJSONRequest(ctx, "get_business_portfolio", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, metaBusinessPortfolioId)
+		return "", err
+	}
+	if strings.TrimSpace(response.Name) == "" {
+		return "", fmt.Errorf("business name is missing from the WhatsApp API response")
+	}
+	return response.Name, nil
+}
 
 // GetWABA reads the WABA together with its owning business portfolio. Unlike the business portfolio
 // edges this only needs whatsapp_business_management, not business_management.

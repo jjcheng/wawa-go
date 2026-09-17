@@ -32,6 +32,7 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 	// register routes
 	registerAuthController(routerGroup, dependencies, apiGenerator)
 	registerAccountController(routerGroup, dependencies, apiGenerator)
+	registerAdminController(routerGroup, dependencies, apiGenerator)
 	registerCustomerController(routerGroup, dependencies, apiGenerator)
 	registerCampaignController(routerGroup, dependencies, apiGenerator)
 	registerWAController(routerGroup, dependencies, apiGenerator)

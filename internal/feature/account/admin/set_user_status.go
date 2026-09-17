@@ -14,17 +14,17 @@ import (
 	"gorm.io/gorm"
 )
 
-type UpdateStatus struct {
+type SetUserStatus struct {
 	UserId int              `json:"id" val:"required" description:"id of the user"`
 	Status types.UserStatus `json:"status" val:"required" description:"new status of the user"`
 }
 
-func (updateStatus *UpdateStatus) Validate() []exception.InputException {
+func (setUserStatus *SetUserStatus) Validate() []exception.InputException {
 	errors := []exception.InputException{}
-	if updateStatus.UserId <= 0 {
+	if setUserStatus.UserId <= 0 {
 		errors = append(errors, exception.NewInputException("id", "missing user id"))
 	}
-	switch updateStatus.Status {
+	switch setUserStatus.Status {
 	case "":
 		errors = append(errors, exception.NewInputException("status", "missing status"))
 	case types.UserStatusPendingPassword:
@@ -36,37 +36,43 @@ func (updateStatus *UpdateStatus) Validate() []exception.InputException {
 	return errors
 }
 
-func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+func (setUserStatus SetUserStatus) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+	if user == nil {
+		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+	}
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
 	}
 	if user.WA == nil {
 		return dto.NewFailedResponse[any](http.StatusNotFound, "user's WhatsApp not found")
 	}
-	if errors := updateStatus.Validate(); len(errors) > 0 {
+	if errors := setUserStatus.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	if user.Id == int32(updateStatus.UserId) {
+	if user.Id == int32(setUserStatus.UserId) {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot update status of yourself")
 	}
-	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, int32(updateStatus.UserId))
+	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, int32(setUserStatus.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "user not found")
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	targetBusinessPortfolio, targetBusinessAccount, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(updateStatus.UserId))
+	if existingUser.Type == types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
+	}
+	targetBusinessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(setUserStatus.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if user.WA.BusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId || user.WA.BusinessAccount.WABAId != targetBusinessAccount.WABAId {
+	if user.WA.BusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to update this user")
 	}
-	existingUser.Status = updateStatus.Status
+	existingUser.Status = setUserStatus.Status
 	err = dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existingUser)
 	if err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
@@ -74,8 +80,8 @@ func (updateStatus UpdateStatus) Handle(ctx context.Context, user *dto_account.U
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 
-func (UpdateStatus) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Admin update user status", "Enable or disable a user. Only admin can update user status.", types.HttpRequestTypeJSON, "PATCH", "/v1/account/admin/user-status", true, false, types.APITagAccount, []feature.APIError{
+func (SetUserStatus) APISettings() feature.APISettings {
+	return feature.NewAPISettings("Admin update user status", "Enable or disable a user. Only admin can update user status.", types.HttpRequestTypeJSON, "PATCH", "/v1/admin/user-status", true, false, types.APITagAccount, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("you cannot update status of yourself", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),

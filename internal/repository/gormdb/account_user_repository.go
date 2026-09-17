@@ -53,6 +53,23 @@ func (accountUserRepository *AccountUserRepository) HasMasterUser(ctx context.Co
 	return count > 0, nil
 }
 
+func (accountUserRepository *AccountUserRepository) ListByBusinessPortfolioId(ctx context.Context, businessPortfolioId int32) ([]dao_account.User, error) {
+	var users []dao_account.User
+	result := accountUserRepository.db.WithContext(ctx).
+		Table("account.users").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = account.users.id").
+		Joins("JOIN wa.business_accounts ON wa.business_accounts.id = wa.phone_numbers.business_account_id").
+		Where("wa.business_accounts.business_portfolio_id = ?", businessPortfolioId).
+		Distinct("account.users.*").
+		Order("account.users.id").
+		Find(&users)
+	if result.Error != nil {
+		accountUserRepository.logger.ErrorFunction(result.Error, businessPortfolioId)
+		return nil, result.Error
+	}
+	return users, nil
+}
+
 func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context.Context, countryCode string, phoneNumber string) (*dao_account.User, error) {
 	var item *dao_account.User
 	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number = ?", countryCode, phoneNumber).First(&item)
