@@ -8,7 +8,7 @@ set -e
 set -o pipefail
 
 # Configuration
-FUNC_NAME="wawa-api-go"
+FUNC_NAME="wawa-api-function"
 FC_REGION="ap-southeast-1"
 # Colors
 RED='\033[0;31m'

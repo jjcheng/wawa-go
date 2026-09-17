@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -20,7 +21,7 @@ import (
 
 // will call CreateMessage for each recipient, whether it's successful or failed, the campaign will be marked completed
 func Process(ctx context.Context, campaignId int32, dependencies *service.Dependencies) (processErr error) {
-	dependencies.Logger.Infof("processing campaign ID: %d", campaignId)
+	log.Printf("processing campaign ID: %d", campaignId)
 	var campaign *dao_customer.Campaign
 	err := retry(ctx, 3, 1000*time.Millisecond, func() error {
 		var e error
@@ -37,7 +38,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 	}
 	// only process if the status is PENIDNG or SENDING
 	if campaign.Status != types.CampaignStatusPending && campaign.Status != types.CampaignStatusSending {
-		dependencies.Logger.Infof("campaign %d is %s, skip", campaignId, campaign.Status)
+		log.Printf("campaign %d is %s, skip", campaignId, campaign.Status)
 		return nil
 	}
 	errorMessage := strings.TrimSpace(campaign.ErrorMessage)
@@ -58,7 +59,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 				"error_message": strings.TrimSpace(errorMessage),
 			})
 		}); err != nil {
-			dependencies.Logger.Warnf("failed to update campaign %d error message: %v", campaign.Id, err)
+			log.Printf("failed to update campaign %d error message: %v", campaign.Id, err)
 		}
 	}()
 
@@ -98,7 +99,6 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 		BusinessPortfolio:            &businessPortfolioDTO,
 		BusinessPortfolioAccessToken: businessPortfolio.AccessToken,
 	}
-	dependencies.Logger.Infof("starting campaign %d", campaignId)
 	page := 1
 	// set campaign status to SENDING
 	campaign.Status = types.CampaignStatusSending
@@ -126,10 +126,10 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 			return fmt.Errorf("failed to list recipients for campaign %d page %d: %w", campaign.Id, page, err)
 		}
 		if len(recipients) == 0 {
-			dependencies.Logger.Infoln("no more recipient to send")
+			log.Printf("no more recipient to send")
 			break
 		}
-		dependencies.Logger.Infof("sending to %d recipients", len(recipients))
+		log.Printf("sending to %d recipients", len(recipients))
 		for _, recipient := range recipients {
 			if recipient.Message != nil {
 				continue
@@ -144,7 +144,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 			response := createMessage.Handle(ctx, &userDTO, dependencies)
 			// it's ok if sending failed, as long as a message is created
 			if response.Data == nil {
-				dependencies.Logger.Warnf("failed to create message for campaign %d recipient %d: %s", campaign.Id, recipient.Id, response.Message)
+				log.Printf("failed to create message for campaign %d recipient %d: %s", campaign.Id, recipient.Id, response.Message)
 				failedRecipients = append(failedRecipients, fmt.Sprintf("recipient %d: %s", recipient.Id, response.Message))
 				continue
 			}
@@ -167,7 +167,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 		return fmt.Errorf("campaign %d has %d recipient message creation/link failures: %s", campaign.Id, len(failedRecipients), strings.Join(failedRecipients, "; "))
 	}
 	// complete campaign
-	dependencies.Logger.Infoln("all recipient messages created (may not be sent successfully), campaign is completed")
+	log.Print("all recipient messages created (may not be sent successfully), campaign is completed")
 	campaign.Status = types.CampaignStatusCompleted
 	campaign.ErrorMessage = ""
 	err = retry(ctx, 3, 1000*time.Millisecond, func() error {

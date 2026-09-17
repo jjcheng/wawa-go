@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"errors"
 	"log"
 	"os"
 	"sync"
@@ -16,54 +15,48 @@ import (
 )
 
 func main() {
-	// set timezone to utc so no need to call .UTC() everytime
-	time.Local = time.UTC
-	// set log to stdout as error will be handled by loggerService
-	log.SetOutput(os.Stdout)
-	log.Println("starting dispatcher")
-	log.Printf("environment: %s\n", cfg.Default().Site.Environment)
-	logger := service.NewLogger()
 	var dependencies *service.Dependencies
 
 	// initialize
-	fc.RegisterInitializerFunction(func(ctx context.Context) error {
+	fc.RegisterInitializerFunction(func(ctx context.Context) {
+		// set timezone to utc so no need to call .UTC() everytime
+		time.Local = time.UTC
+		// set log to stdout as error will be handled by loggerService
+		log.SetOutput(os.Stdout)
+		log.Printf("======== dispatcher function invoked (%s) ========", cfg.Default().Site.Environment)
+		logger := service.NewLogger()
 		unitOfWork, err := setup.SetupDatabase(cfg.Default().Database.DSN(), logger)
 		if err != nil {
-			return fmt.Errorf("setup database: %w", err)
+			return
 		}
 		dependencies = setup.SetupServices(unitOfWork, logger)
+	})
+
+	// Standard Function Compute runtime handler, dispatcher function can only be triggered by time-trigger every x min
+	fc.Start(func(ctx context.Context, raw []byte) error {
+		if dependencies == nil {
+			return errors.New("dispatcher dependencies are not initialized; configure the Function Compute initializer")
+		}
+		var waitGroup sync.WaitGroup
+		waitGroup.Go(func() {
+			dispatchCampaigns(ctx, dependencies)
+		})
+		waitGroup.Go(func() {
+			dispatchRetryMessages(ctx, dependencies)
+		})
+		waitGroup.Wait()
 		return nil
 	})
 
-	// Standard Function Compute runtime handler.
-	handleEvent := func(ctx context.Context, raw []byte) error {
-		rawStr := string(raw)
-		logger.Infof("======== NEW TASK ========\n%s", rawStr)
-		var envelope map[string]any
-		if err := json.Unmarshal(raw, &envelope); err != nil {
-			return err
-		}
-		// triggered by time
-		if _, ok := envelope["triggerName"].(string); ok {
-			var waitGroup sync.WaitGroup
-			waitGroup.Go(func() {
-				dispatchCampaigns(ctx, dependencies)
-			})
-			waitGroup.Go(func() {
-				dispatchRetryMessages(ctx, dependencies)
-			})
-			waitGroup.Wait()
-			return nil
-		}
-		return fmt.Errorf("unidentified type: %s", rawStr)
-	}
-	fc.Start(handleEvent)
+	fc.RegisterPreStopFunction(func(ctx context.Context) {
+		log.Print("======== dispatcher function ended ========")
+	})
 }
 
 func dispatchCampaigns(ctx context.Context, dependencies *service.Dependencies) {
 	// find pending campaigns, skip if have error, will run again in next cycle
 	pendingCampaigns, _ := dependencies.UnitOfWork.CampaignRepository().ListPendingCampaigns(ctx)
-	dependencies.Logger.Infof("%d pending campaings", len(pendingCampaigns))
+	log.Printf("%d pending campaings", len(pendingCampaigns))
 	if len(pendingCampaigns) == 0 {
 		return
 	}
@@ -76,7 +69,7 @@ func dispatchCampaigns(ctx context.Context, dependencies *service.Dependencies) 
 			continue
 		}
 		userCampaigns[pendingCampaign.UserId] = 1
-		dependencies.Logger.Infof("dispatching campaign id: %d", pendingCampaign.Id)
+		log.Printf("dispatching campaign id: %d", pendingCampaign.Id)
 		// send a message to SMQ which will trigger worker function
 		// ignore any error, the next cycle will do it again
 		_, _ = dependencies.MessageQueue.PublishJob("start_campaign", pendingCampaign.Id, 0, service.MessageQueuePriorityHigh)
@@ -86,7 +79,7 @@ func dispatchCampaigns(ctx context.Context, dependencies *service.Dependencies) 
 func dispatchRetryMessages(ctx context.Context, dependencies *service.Dependencies) {
 	// find messages to resend
 	pendingMessages, _ := dependencies.UnitOfWork.WAMessageRepository().ListNeedResend(ctx)
-	dependencies.Logger.Infof("%d pending retry messages", len(pendingMessages))
+	log.Printf("%d pending retry messages", len(pendingMessages))
 	if len(pendingMessages) == 0 {
 		return
 	}

@@ -31,16 +31,16 @@ const (
 )
 
 type MessageQueueMessage struct {
-	MessageID     string `json:"messageId"`
-	ReceiptHandle string `json:"receiptHandle"`
-	Body          string `json:"messageBody"`
-	BodyMD5       string `json:"messageBodyMD5"`
-	EnqueueTime   int64  `json:"enqueueTime"`
-	DequeueCount  int64  `json:"dequeueCount"`
-	Priority      int64  `json:"priority"`
+	MessageID      string `json:"messageId"`
+	ReceiptHandle  string `json:"receiptHandle"`
+	MessageBody    string `json:"messageBody"`
+	MessageBodyMD5 string `json:"messageBodyMD5"`
+	EnqueueTime    int64  `json:"enqueueTime"`
+	DequeueCount   int64  `json:"dequeueCount"`
+	Priority       int64  `json:"priority"`
 }
 
-type QueueJob struct {
+type MessageQueueJob struct {
 	Type string          `json:"type"`
 	Data json.RawMessage `json:"data"`
 }
@@ -106,7 +106,7 @@ func (mq *MessageQueue) PublishJob(jobType string, data any, delaySeconds int64,
 		mq.logger.ErrorFunction(err, jobType, data, delaySeconds, priority)
 		return "", fmt.Errorf("failed to marshal queue job data: %w", err)
 	}
-	return mq.publishJSON(QueueJob{Type: jobType, Data: payload}, delaySeconds, priority)
+	return mq.publishJSON(MessageQueueJob{Type: jobType, Data: payload}, delaySeconds, priority)
 }
 
 func (mq *MessageQueue) ReceiveMessage(ctx context.Context) (*MessageQueueMessage, error) {
@@ -144,13 +144,13 @@ func (mq *MessageQueue) ReceiveMessage(ctx context.Context) (*MessageQueueMessag
 			return nil, fmt.Errorf("failed to receive message from queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
 		case resp := <-respChan:
 			msg := &MessageQueueMessage{
-				MessageID:     resp.MessageId,
-				ReceiptHandle: resp.ReceiptHandle,
-				Body:          resp.MessageBody,
-				BodyMD5:       resp.MessageBodyMD5,
-				EnqueueTime:   resp.EnqueueTime,
-				DequeueCount:  resp.DequeueCount,
-				Priority:      resp.Priority,
+				MessageID:      resp.MessageId,
+				ReceiptHandle:  resp.ReceiptHandle,
+				MessageBody:    resp.MessageBody,
+				MessageBodyMD5: resp.MessageBodyMD5,
+				EnqueueTime:    resp.EnqueueTime,
+				DequeueCount:   resp.DequeueCount,
+				Priority:       resp.Priority,
 			}
 			return msg, nil
 		}

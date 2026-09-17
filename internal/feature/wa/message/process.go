@@ -21,14 +21,9 @@ import (
 )
 
 // do not parse rawBody to dto_wa.Incoming before here as we are receiving raw data from Meta
-func ProcessIncoming(ctx context.Context, rawBody string, message *service.MessageQueueMessage, dependencies *service.Dependencies) error {
+func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, message *service.MessageQueueMessage, dependencies *service.Dependencies) error {
 	messageCtx, messageCancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer messageCancel()
-	incoming, err := helper.DeserializeJSON[dto_wa.Incoming](rawBody)
-	if err != nil {
-		dependencies.Logger.ErrorFunction(err, message.MessageID)
-		return err
-	}
 	acknowledge := func() {
 		if message.ReceiptHandle == "" {
 			return
@@ -37,7 +32,7 @@ func ProcessIncoming(ctx context.Context, rawBody string, message *service.Messa
 			dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
 		}
 	}
-	err = processWAIncoming(messageCtx, dependencies, *incoming)
+	err := processWAIncoming(messageCtx, dependencies, incoming)
 	if err != nil {
 		// delete the queued message if already stored
 		if strings.Contains(err.Error(), "duplicate key value violates") {

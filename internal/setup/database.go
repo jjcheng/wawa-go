@@ -37,7 +37,7 @@ func SetupDatabase(dsn string, loggerService *service.Logger) (repository.UnitOf
 		SkipDefaultTransaction: true,
 	})
 	if err == nil {
-		log.Println("successfully connected to DB")
+		log.Println("connected to DB")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to DB with connection %v: %v", dsn, err)

@@ -20,8 +20,7 @@ func main() {
 	time.Local = time.UTC
 	// set log to stdout as error will be handled by loggerService
 	log.SetOutput(os.Stdout)
-	log.Println("starting server")
-	log.Printf("environment: %s\n", cfg.Default().Site.Environment)
+	log.Printf("======== api function invoked (%s) ========", cfg.Default().Site.Environment)
 	// setup database
 	loggerService := service.NewLogger()
 	unitOfWork, err := setup.SetupDatabase(cfg.Default().Database.DSN(), loggerService)
