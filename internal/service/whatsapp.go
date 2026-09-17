@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	cryptorand "crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -222,6 +223,11 @@ type WhatsAppProductCatalog struct {
 	ProductCount int    `json:"product_count,omitempty"`
 }
 
+type WhatsAppProductSet struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type WhatsAppProduct struct {
 	ID           string `json:"id"`
 	Name         string `json:"name"`
@@ -232,6 +238,8 @@ type WhatsAppProduct struct {
 	Availability string `json:"availability,omitempty"`
 	ImageURL     string `json:"image_url,omitempty"`
 	URL          string `json:"url,omitempty"`
+	SalePrice    string `json:"sale_price,omitempty"`
+	Condition    string `json:"condition,omitempty"`
 }
 
 type WhatsAppWABAResponse struct {
@@ -712,7 +720,7 @@ func normalizeContentType(contentType string) string {
 	return mediaType
 }
 
-func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, nameOrContent string, category types.WATemplateCategory, language string, status types.WATemplateStatus, qualityScore types.WATemplateQualityScore, before string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *dto_wa.TemplatePaging, error) {
+func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, nameOrContent string, category types.WATemplateCategory, language string, status types.WATemplateStatus, qualityScore types.WATemplateQualityScore, before string, after string, limit int, businessAccessToken string) ([]dto_wa.Template, *WhatsAppPaging, error) {
 	wabaId = strings.TrimSpace(wabaId)
 	if wabaId == "" {
 		return nil, nil, fmt.Errorf("wabaId is required")
@@ -743,7 +751,10 @@ func (whatsapp *Whatsapp) ListTemplates(ctx context.Context, wabaId string, name
 		query.Set("limit", strconv.Itoa(limit))
 	}
 	endpoint := fmt.Sprintf("%s/%s/%s/message_templates?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(wabaId), query.Encode())
-	var response dto_wa.TemplateListResponse
+	var response struct {
+		Data   []dto_wa.Template `json:"data"`
+		Paging *WhatsAppPaging   `json:"paging,omitempty"`
+	}
 	if err := whatsapp.doJSONRequest(ctx, "list_templates_page", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
 		return nil, nil, err
@@ -970,34 +981,105 @@ func (whatsapp *Whatsapp) ListCatalogs(ctx context.Context, businessPortfolioId 
 	return catalogs, nil
 }
 
-// ListProductsByCatalogId lists products belonging to a Meta product catalog.
-func (whatsapp *Whatsapp) ListProductsByCatalogId(ctx context.Context, catalogId string, businessAccessToken string) ([]WhatsAppProduct, error) {
-	catalogId = strings.TrimSpace(catalogId)
-	if catalogId == "" {
-		return nil, fmt.Errorf("catalogId is required")
+// GetCatalog gets a Meta product catalog by ID.
+func (whatsapp *Whatsapp) GetCatalog(ctx context.Context, catalogID string, businessAccessToken string) (*WhatsAppProductCatalog, error) {
+	catalogID = strings.TrimSpace(catalogID)
+	if catalogID == "" {
+		return nil, fmt.Errorf("catalogID is required")
 	}
 	query := url.Values{}
-	query.Set("fields", "id,name,description,retailer_id,price,currency,availability,image_url,url")
-	endpoint := fmt.Sprintf("%s/%s/%s/products?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(catalogId), query.Encode())
-	products := make([]WhatsAppProduct, 0)
-	for endpoint != "" {
-		var response struct {
-			Data   []WhatsAppProduct `json:"data"`
-			Paging *struct {
-				Next string `json:"next,omitempty"`
-			} `json:"paging,omitempty"`
-		}
-		if err := whatsapp.doJSONRequest(ctx, "list_catalog_products", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
-			whatsapp.logger.ErrorFunction(err, catalogId)
-			return nil, err
-		}
-		products = append(products, response.Data...)
-		if response.Paging == nil {
-			break
-		}
-		endpoint = strings.TrimSpace(response.Paging.Next)
+	query.Set("fields", "id,name,vertical,product_count")
+	endpoint := fmt.Sprintf("%s/%s/%s?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(catalogID), query.Encode())
+	var catalog WhatsAppProductCatalog
+	if err := whatsapp.doJSONRequest(ctx, "get_catalog", http.MethodGet, endpoint, nil, &catalog, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, catalogID)
+		return nil, err
 	}
-	return products, nil
+	return &catalog, nil
+}
+
+// ListProductSets lists one page of product sets belonging to a Meta product catalog.
+func (whatsapp *Whatsapp) ListProductSets(ctx context.Context, catalogID string, before string, after string, limit int, businessAccessToken string) ([]WhatsAppProductSet, *WhatsAppPaging, error) {
+	catalogID = strings.TrimSpace(catalogID)
+	if catalogID == "" {
+		return nil, nil, fmt.Errorf("catalogID is required")
+	}
+	query := url.Values{}
+	query.Set("fields", "id,name")
+	if before = strings.TrimSpace(before); before != "" {
+		query.Set("before", before)
+	} else if after = strings.TrimSpace(after); after != "" {
+		query.Set("after", after)
+	}
+	if limit > 0 {
+		query.Set("limit", strconv.Itoa(limit))
+	}
+	endpoint := fmt.Sprintf("%s/%s/%s/product_sets?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(catalogID), query.Encode())
+	var response struct {
+		Data   []WhatsAppProductSet `json:"data"`
+		Paging *WhatsAppPaging      `json:"paging,omitempty"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, "list_product_sets", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, catalogID)
+		return nil, nil, err
+	}
+	return response.Data, response.Paging, nil
+}
+
+// ListProductsByCatalogId lists one page of products belonging to a Meta product catalog.
+func (whatsapp *Whatsapp) ListProductsByCatalogId(ctx context.Context, catalogId string, before string, after string, limit int, businessAccessToken string) ([]WhatsAppProduct, *WhatsAppPaging, error) {
+	catalogId = strings.TrimSpace(catalogId)
+	if catalogId == "" {
+		return nil, nil, fmt.Errorf("catalogId is required")
+	}
+	query := url.Values{}
+	query.Set("fields", "id,name,description,retailer_id,price,currency,availability,image_url,url,brand,condition,sale_price,product_type,google_product_category,fb_product_category,item_group_id,color,size,gender,material,pattern,additional_image_urls,custom_label_0,custom_label_1,custom_label_2,custom_label_3,custom_label_4")
+	if before = strings.TrimSpace(before); before != "" {
+		query.Set("before", before)
+	} else if after = strings.TrimSpace(after); after != "" {
+		query.Set("after", after)
+	}
+	if limit > 0 {
+		query.Set("limit", strconv.Itoa(limit))
+	}
+	endpoint := fmt.Sprintf("%s/%s/%s/products?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(catalogId), query.Encode())
+	var response struct {
+		Data   []WhatsAppProduct `json:"data"`
+		Paging *WhatsAppPaging   `json:"paging,omitempty"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, "list_catalog_products", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, catalogId)
+		return nil, nil, err
+	}
+	return response.Data, response.Paging, nil
+}
+
+// ListProductsBySetID lists one page of products belonging to a Meta product set.
+func (whatsapp *Whatsapp) ListProductsBySetID(ctx context.Context, productSetID string, before string, after string, limit int, businessAccessToken string) ([]WhatsAppProduct, *WhatsAppPaging, error) {
+	productSetID = strings.TrimSpace(productSetID)
+	if productSetID == "" {
+		return nil, nil, fmt.Errorf("productSetID is required")
+	}
+	query := url.Values{}
+	query.Set("fields", "id,name,description,retailer_id,price,currency,availability,image_url,url,brand,condition,sale_price,product_type,google_product_category,fb_product_category,item_group_id,color,size,gender,material,pattern,additional_image_urls,custom_label_0,custom_label_1,custom_label_2,custom_label_3,custom_label_4")
+	if before = strings.TrimSpace(before); before != "" {
+		query.Set("before", before)
+	} else if after = strings.TrimSpace(after); after != "" {
+		query.Set("after", after)
+	}
+	if limit > 0 {
+		query.Set("limit", strconv.Itoa(limit))
+	}
+	endpoint := fmt.Sprintf("%s/%s/%s/products?%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(productSetID), query.Encode())
+	var response struct {
+		Data   []WhatsAppProduct `json:"data"`
+		Paging *WhatsAppPaging   `json:"paging,omitempty"`
+	}
+	if err := whatsapp.doJSONRequest(ctx, "list_product_set_products", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, productSetID)
+		return nil, nil, err
+	}
+	return response.Data, response.Paging, nil
 }
 
 // #endregion
@@ -1086,6 +1168,10 @@ func saveWhatsAppRawResponse(requestType string, endpoint string, method string,
 		return fmt.Errorf("failed to create raw response directory: %w", err)
 	}
 	filename := fmt.Sprintf("%s.json", requestType)
+	if after := requestURLAfterCursor(endpoint); after != "" {
+		cursorHash := sha256.Sum256([]byte(after))
+		filename = fmt.Sprintf("%s-after-%x.json", requestType, cursorHash[:8])
+	}
 	var responseObject any
 	if err := json.Unmarshal([]byte(responseBody), &responseObject); err != nil {
 		return fmt.Errorf("failed to parse raw response: %w", err)
@@ -1107,6 +1193,14 @@ func saveWhatsAppRawResponse(requestType string, endpoint string, method string,
 		return fmt.Errorf("failed to marshal raw exchange: %w", err)
 	}
 	return helper.WriteToFile(string(data), filepath.Join("files/wa", filename))
+}
+
+func requestURLAfterCursor(endpoint string) string {
+	parsedURL, err := url.Parse(endpoint)
+	if err != nil {
+		return ""
+	}
+	return parsedURL.Query().Get("after")
 }
 
 func parseWhatsAppAPIError(statusCode int, responseBody *string) error {

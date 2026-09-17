@@ -1,4 +1,4 @@
-package feature_wa_product
+package feature_wa_catalog
 
 import (
 	"context"
@@ -13,22 +13,22 @@ import (
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
-type List struct {
-	CatalogId string `uri:"id" val:"required" description:"id of the Meta commerce catalog"`
+type ListSets struct {
+	CatalogID string `uri:"id" val:"required" description:"id of the Meta commerce catalog"`
 	Before    string `form:"before" description:"optional Meta pagination cursor for the previous page"`
 	After     string `form:"after" description:"optional Meta pagination cursor for the next page"`
-	Limit     int    `form:"limit" description:"optional number of products per page"`
+	Limit     int    `form:"limit" description:"optional number of product sets per page"`
 }
 
-func (list *List) Validate() []exception.InputException {
-	list.CatalogId = strings.TrimSpace(list.CatalogId)
+func (list *ListSets) Validate() []exception.InputException {
+	list.CatalogID = strings.TrimSpace(list.CatalogID)
 	list.Before = strings.TrimSpace(list.Before)
 	list.After = strings.TrimSpace(list.After)
 	if list.Limit == 0 {
-		list.Limit = 25
+		list.Limit = 100
 	}
 	inputErrors := []exception.InputException{}
-	if list.CatalogId == "" {
+	if list.CatalogID == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("id", "missing catalog ID"))
 	}
 	if list.Before != "" && list.After != "" {
@@ -40,22 +40,22 @@ func (list *List) Validate() []exception.InputException {
 	return inputErrors
 }
 
-func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[service.WhatsAppProduct]] {
+func (list ListSets) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[service.WhatsAppProductSet]] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProductSet]](http.StatusForbidden, "you are not authenticated")
 	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProductSet]](http.StatusUnauthorized, "you are not authorized")
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[*dto.ListResponse[service.WhatsAppProduct]](inputErrors)
+		return dto.NewInvalidInputResponse[*dto.ListResponse[service.WhatsAppProductSet]](inputErrors)
 	}
 	if user.WA == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProductSet]](http.StatusUnauthorized, "you are not authorized")
 	}
-	products, paging, err := dependencies.Whatsapp.ListProductsByCatalogId(ctx, list.CatalogId, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
+	sets, paging, err := dependencies.Whatsapp.ListProductSets(ctx, list.CatalogID, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProductSet]](http.StatusBadGateway, err.Error())
 	}
 	additionalData := map[string]any{}
 	if paging != nil {
@@ -64,21 +64,21 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 			additionalData["after"] = paging.Cursors.After
 		}
 		additionalData["previous"] = paging.Previous
-		if len(products) == list.Limit {
+		if len(sets) == list.Limit {
 			additionalData["next"] = paging.Next
 		}
 	}
-	response := dto.NewOffsetListResponse(products, nil, &additionalData)
+	response := dto.NewOffsetListResponse(sets, nil, &additionalData)
 	return dto.NewSuccessResponse(&response)
 }
 
-func (List) APISettings() feature.APISettings {
+func (ListSets) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List WhatsApp catalog products",
-		"Lists products in a Meta commerce catalog.",
+		"List WhatsApp catalog product sets",
+		"Lists product sets in a Meta commerce catalog.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/catalogs/:id/products",
+		"/v1/wa/catalogs/:id/sets",
 		true,
 		true,
 		types.APITagWA,

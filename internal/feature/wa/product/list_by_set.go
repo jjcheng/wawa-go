@@ -13,23 +13,23 @@ import (
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
-type List struct {
-	CatalogId string `uri:"id" val:"required" description:"id of the Meta commerce catalog"`
-	Before    string `form:"before" description:"optional Meta pagination cursor for the previous page"`
-	After     string `form:"after" description:"optional Meta pagination cursor for the next page"`
-	Limit     int    `form:"limit" description:"optional number of products per page"`
+type ListBySet struct {
+	SetID  string `uri:"id" val:"required" description:"id of the Meta product set"`
+	Before string `form:"before" description:"optional Meta pagination cursor for the previous page"`
+	After  string `form:"after" description:"optional Meta pagination cursor for the next page"`
+	Limit  int    `form:"limit" description:"optional number of products per page"`
 }
 
-func (list *List) Validate() []exception.InputException {
-	list.CatalogId = strings.TrimSpace(list.CatalogId)
+func (list *ListBySet) Validate() []exception.InputException {
+	list.SetID = strings.TrimSpace(list.SetID)
 	list.Before = strings.TrimSpace(list.Before)
 	list.After = strings.TrimSpace(list.After)
 	if list.Limit == 0 {
 		list.Limit = 25
 	}
 	inputErrors := []exception.InputException{}
-	if list.CatalogId == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("id", "missing catalog ID"))
+	if list.SetID == "" {
+		inputErrors = append(inputErrors, exception.NewInputException("id", "missing product set ID"))
 	}
 	if list.Before != "" && list.After != "" {
 		inputErrors = append(inputErrors, exception.NewInputException("before", "before and after cannot both be provided"))
@@ -40,7 +40,7 @@ func (list *List) Validate() []exception.InputException {
 	return inputErrors
 }
 
-func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[service.WhatsAppProduct]] {
+func (list ListBySet) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[service.WhatsAppProduct]] {
 	if user == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusForbidden, "you are not authenticated")
 	}
@@ -53,7 +53,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if user.WA == nil || user.WA.BusinessPortfolio == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusUnauthorized, "you are not authorized")
 	}
-	products, paging, err := dependencies.Whatsapp.ListProductsByCatalogId(ctx, list.CatalogId, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
+	products, paging, err := dependencies.Whatsapp.ListProductsBySetID(ctx, list.SetID, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusBadGateway, err.Error())
 	}
@@ -72,13 +72,13 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	return dto.NewSuccessResponse(&response)
 }
 
-func (List) APISettings() feature.APISettings {
+func (ListBySet) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List WhatsApp catalog products",
-		"Lists products in a Meta commerce catalog.",
+		"List WhatsApp product-set products",
+		"Lists products in a Meta commerce product set.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/catalogs/:id/products",
+		"/v1/wa/product-sets/:id/products",
 		true,
 		true,
 		types.APITagWA,
