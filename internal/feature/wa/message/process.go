@@ -2,6 +2,7 @@ package feature_wa_message
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -47,18 +48,27 @@ func processIncoming(ctx context.Context, dependencies *service.Dependencies, in
 	for _, entry := range incoming.Entry {
 		for _, change := range entry.Changes {
 			if change.Field == "messages" {
-				for _, incomingMessage := range change.Value.Messages {
-					if err := storeIncomingMessage(ctx, dependencies, incomingMessage, change.Value.Contacts, change.Value.Metadata); err != nil {
+				var incomingValue dto_wa.IncomingValue
+				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
+					return fmt.Errorf("invalid messages change value: %w", err)
+				}
+				for _, incomingMessage := range incomingValue.Messages {
+					if err := storeIncomingMessage(ctx, dependencies, incomingMessage, incomingValue.Contacts, incomingValue.Metadata); err != nil {
 						if strings.Contains(err.Error(), "duplicate") {
 							continue
 						}
 						return err
 					}
 				}
-				for _, status := range change.Value.Statuses {
+				for _, status := range incomingValue.Statuses {
 					if err := storeIncomingStatus(ctx, dependencies, status); err != nil {
 						return err
 					}
+				}
+			} else if change.Field == "message_template_status_update" {
+				var templateStatus dto_wa.IncomingTemplateStatusChange
+				if err := json.Unmarshal(change.Value, &templateStatus); err != nil {
+					return fmt.Errorf("invalid message template status change value: %w", err)
 				}
 			}
 		}

@@ -234,17 +234,18 @@ type WhatsAppProductSet struct {
 }
 
 type WhatsAppProduct struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Description  string `json:"description,omitempty"`
-	RetailerID   string `json:"retailer_id,omitempty"`
-	Price        string `json:"price,omitempty"`
-	Currency     string `json:"currency,omitempty"`
-	Availability string `json:"availability,omitempty"`
-	ImageURL     string `json:"image_url,omitempty"`
-	URL          string `json:"url,omitempty"`
-	SalePrice    string `json:"sale_price,omitempty"`
-	Condition    string `json:"condition,omitempty"`
+	ID                  string   `json:"id"`
+	Name                string   `json:"name"`
+	Description         string   `json:"description,omitempty"`
+	RetailerID          string   `json:"retailer_id,omitempty"`
+	Price               string   `json:"price,omitempty"`
+	Currency            string   `json:"currency,omitempty"`
+	Availability        string   `json:"availability,omitempty"`
+	ImageURL            string   `json:"image_url,omitempty"`
+	URL                 string   `json:"url,omitempty"`
+	SalePrice           string   `json:"sale_price,omitempty"`
+	Condition           string   `json:"condition,omitempty"`
+	AdditionalImageUrls []string `json:"additional_image_urls,omitempty"`
 }
 
 type WhatsAppWABAResponse struct {

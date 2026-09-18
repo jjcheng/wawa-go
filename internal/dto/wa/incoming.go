@@ -17,8 +17,8 @@ type IncomingEntry struct {
 }
 
 type IncomingChange struct {
-	Field string        `json:"field"`
-	Value IncomingValue `json:"value"`
+	Field string          `json:"field"`
+	Value json.RawMessage `json:"value"`
 }
 
 type IncomingValue struct {
@@ -55,6 +55,15 @@ type IncomingMessage struct {
 	Type       string         `json:"type"`
 	Errors     []StatusError  `json:"errors,omitempty"`
 	Payload    map[string]any `json:"-"`
+}
+
+type IncomingTemplateStatusChange struct {
+	Event                   string `json:"event"` // APPROVED
+	MessageTemplateId       int32  `json:"message_template_id"`
+	MessageTemplateName     string `json:"message_template_name"`
+	MessageTemplateLanguage string `json:"message_template_language"`
+	Reason                  string `json:"name"`
+	MessageTemplateCategory string `json:"message_template_category"`
 }
 
 func (message *IncomingMessage) UnmarshalJSON(data []byte) error {

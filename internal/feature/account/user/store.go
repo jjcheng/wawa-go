@@ -21,15 +21,14 @@ import (
 
 // for now only used in embedded signup
 type Store struct {
-	Name            string           `json:"name" val:"required" description:"name of the new user" example:"John Doe"`
-	CountryCode     string           `json:"country_code" val:"required" description:"country code number"`
-	PhoneNumber     string           `json:"phone_number" val:"required" description:"phone number of the user, without country code"`
-	Email           string           `json:"email" description:"email address of the user"`
-	Type            types.UserType   `json:"type" val:"required" description:"type of the user" example:"PUBLIC"`
-	Description     string           `json:"description" description:"for your reference" example:"created by account department"`
-	Password        string           `json:"password" val:"required" description:"password of the user"`
-	ConfirmPassword string           `json:"confirm_password" val:"required" description:"confirm password of the user"`
-	Status          types.UserStatus `json:"status" val:"required" description:"status of the user"`
+	Name            string         `json:"name" val:"required" description:"name of the new user" example:"John Doe"`
+	CountryCode     string         `json:"country_code" val:"required" description:"country code number"`
+	PhoneNumber     string         `json:"phone_number" val:"required" description:"phone number of the user, without country code"`
+	Email           string         `json:"email" description:"email address of the user"`
+	Type            types.UserType `json:"type" val:"required" description:"type of the user" example:"PUBLIC"`
+	Description     string         `json:"description" description:"for your reference" example:"created by account department"`
+	Password        string         `json:"password" val:"required" description:"password of the user"`
+	ConfirmPassword string         `json:"confirm_password" val:"required" description:"confirm password of the user"`
 	// set only by embedded signup, where Meta has already proven the caller owns the phone number, not a public member
 	ResumePendingPassword bool `json:"-"`
 }
@@ -64,11 +63,11 @@ func (store *Store) Validate() []exception.InputException {
 	} else if !helper.Any(types.UserTypes, func(t types.UserType) bool { return t == store.Type }) {
 		errors = append(errors, exception.NewInputException("type", "invalid type"))
 	}
-	if store.Status == "" {
-		errors = append(errors, exception.NewInputException("status", "missing status"))
-	} else if store.Status != types.UserStatusActive && store.Status != types.UserStatusPendingPassword && store.Status != types.UserStatusInactive {
-		errors = append(errors, exception.NewInputException("status", "invalid status"))
-	}
+	// if store.Status == "" {
+	// 	errors = append(errors, exception.NewInputException("status", "missing status"))
+	// } else if store.Status != types.UserStatusActive && store.Status != types.UserStatusPendingPassword && store.Status != types.UserStatusInactive {
+	// 	errors = append(errors, exception.NewInputException("status", "invalid status"))
+	// }
 	return errors
 }
 
@@ -96,10 +95,14 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	var u dto_account.User
 	if existing != nil {
 		// a user who never set a password has no credential to bypass, so signup may hand back a session to finish onboarding
-		if !store.ResumePendingPassword || existing.Status != types.UserStatusPendingPassword {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "user with this phone number already exists, please login instead")
-		}
+		// if !store.ResumePendingPassword || existing.Status != types.UserStatusPendingPassword {
+		// 	return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "user with this phone number already exists, please login instead")
+		// }
 		u = dto_account.NewUser(*existing)
+		// if store allows resume pending password and the existing user is pending password, treat it as new user
+		if store.ResumePendingPassword && existing.Status == types.UserStatusPendingPassword {
+			u.New = true
+		}
 	} else {
 		// generate password hash
 		passwordHash, err := helper.HashPassword(store.Password)
@@ -115,32 +118,35 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 			Description:  store.Description,
 			Type:         store.Type,
 			PasswordHash: passwordHash,
-			Status:       store.Status,
+			Status:       types.UserStatusPendingPassword, // new user always need to set a password
 		}
 		if err := dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser); err != nil {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}
 		u = dto_account.NewUser(newUser)
+		u.New = true
 	}
-	// create user session
-	session := dao_account.Session{
-		UserId:            u.Id,
-		AccessTokenHashed: helper.HashSHA256Hex(accessToken),
-		ExpiresAt:         accessTokenExpiry,
-		LastUsedAt:        time.Now(),
+	// create user session only for new user, so no need to login after setting password
+	if u.New {
+		session := dao_account.Session{
+			UserId:            u.Id,
+			AccessTokenHashed: helper.HashSHA256Hex(accessToken),
+			ExpiresAt:         accessTokenExpiry,
+			LastUsedAt:        time.Now(),
+		}
+		if ip := helper.GetClientIP(ctx); ip != nil {
+			session.IP = *ip
+		}
+		if userAgent := helper.GetUserAgent(ctx); userAgent != nil {
+			session.UserAgent = *userAgent
+		}
+		if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session); err != nil {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		}
+		// after embedded signup completed, return access token to auto login
+		u.AccessToken = accessToken
+		u.AccessTokenExpiry = &accessTokenExpiry
 	}
-	if ip := helper.GetClientIP(ctx); ip != nil {
-		session.IP = *ip
-	}
-	if userAgent := helper.GetUserAgent(ctx); userAgent != nil {
-		session.UserAgent = *userAgent
-	}
-	if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session); err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	// after embedded signup completed, return access token to auto login
-	u.AccessToken = accessToken
-	u.AccessTokenExpiry = &accessTokenExpiry
 	return dto.NewSuccessResponse(&u)
 }
 

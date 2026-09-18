@@ -16,7 +16,6 @@ DROP INDEX "wa"."idx_wa_messages_wa_message_id_unique";
 DROP INDEX "wa"."token_1789435127328_index";
 DROP TABLE "customer"."campaign_recipients";
 DROP INDEX "customer"."campaign_recipient_customer_idx";
-DROP INDEX "customer"."campaign_recipient_pending_idx";
 DROP TABLE "wa"."message_status_events";
 DROP INDEX "wa"."message_id_1789182934156_index";
 DROP INDEX "wa"."message_status_events_wa_message_id_timestamp_idx";

@@ -12,15 +12,15 @@ import (
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
-type GetTags struct {
+type ListTags struct {
 }
 
-func (getTags *GetTags) Validate() []exception.InputException {
-	return []exception.InputException{}
+func (listTags *ListTags) Validate() []exception.InputException {
+	return nil
 }
 
-func (getTags GetTags) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]string] {
-	if inputErrors := getTags.Validate(); len(inputErrors) > 0 {
+func (listTags ListTags) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]string] {
+	if inputErrors := listTags.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]string](inputErrors)
 	}
 	tags, err := dependencies.UnitOfWork.CustomerRepository().GetDistinctTags(ctx, user.Id)
@@ -30,9 +30,9 @@ func (getTags GetTags) Handle(ctx context.Context, user *dto_account.User, depen
 	return dto.NewSuccessResponse(tags)
 }
 
-func (GetTags) APISettings() feature.APISettings {
+func (ListTags) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get customer tags",
+		"List customer tags",
 		"Lists distinct customer tags for the authenticated user.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,

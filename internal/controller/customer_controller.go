@@ -15,7 +15,7 @@ func registerCustomerController(routerGroup *gin.RouterGroup, dependencies *serv
 	registerRoute[*dto_customer.Customer, feature_customer.Create](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_customer.Customer, feature_customer.Update](routerGroup, dependencies, apiGenerator)
 	registerRoute[*feature_customer.ImportResult, feature_customer.Import](routerGroup, dependencies, apiGenerator)
-	registerRoute[[]string, feature_customer.GetTags](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]string, feature_customer.ListTags](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_customer.SetStatus](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_customer.Delete](routerGroup, dependencies, apiGenerator)
 }

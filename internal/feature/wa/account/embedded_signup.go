@@ -127,16 +127,15 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		Description:     "created by WhatsApp embedded signup",
 		Password:        tmpPassword,
 		ConfirmPassword: tmpPassword,
-		Status:          types.UserStatusPendingPassword, // ask user to update password after embedded signup
 		// Meta verified ownership above, so a signup that was abandoned before the password was set can be resumed
 		ResumePendingPassword: true,
 	}
 	if !hasMasterUser {
 		storeUser.Type = types.UserTypeMaster
 	}
-	createUserResponse := storeUser.Handle(ctx, nil, &transactionDependencies)
-	if !createUserResponse.Success {
-		return createUserResponse
+	storeUserResponse := storeUser.Handle(ctx, nil, &transactionDependencies)
+	if !storeUserResponse.Success {
+		return storeUserResponse
 	}
 	// phone number — using the display number and verified name Meta reported
 	storePhoneNumberResponse := (feature_wa_phone_number.Store{
@@ -144,7 +143,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		MetaPhoneNumberId:  embeddedSignup.Data.PhoneNumberId,
 		DisplayPhoneNumber: phoneNumberDetails.DisplayPhoneNumber,
 		Name:               phoneNumberDetails.VerifiedName,
-		UserId:             createUserResponse.Data.Id,
+		UserId:             storeUserResponse.Data.Id,
 	}).Handle(ctx, nil, &transactionDependencies)
 	if !storePhoneNumberResponse.Success {
 		return dto.NewFailedResponse[*dto_account.User](storePhoneNumberResponse.StatusCode, storePhoneNumberResponse.Message)
@@ -157,13 +156,13 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	// Step 4 — Commit, then subscribe the app and activate the phone number
 	// The transaction commits. Only now does activateOnMeta run, because these two calls change things on Meta's side and a database rollback can't undo them:
 	if err := embeddedSignup.activateOnMeta(ctx, accessToken, storePhoneNumberResponse.Data.Id, phoneNumberDetails.Status, dependencies); err != nil {
-		createUserResponse.Data.WAActivationError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta at the moment. Please try again later. Error from Meta: %v", err)
-		return createUserResponse
+		storeUserResponse.Data.WAActivationError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta at the moment. Please try again later. Error from Meta: %v", err)
+		return storeUserResponse
 	}
-	createUserResponse.Data.WAActivated = true
+	storeUserResponse.Data.WAActivated = true
 	// Step 5 — Respond
 	// The new user is returned along with a session token, so the customer lands logged in
-	return createUserResponse
+	return storeUserResponse
 }
 
 // verifyOwnership confirms the browser supplied WABA and phone number are actually granted by the exchanged token.
