@@ -1,6 +1,10 @@
 package dto_wa
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
 
 type Incoming struct {
 	Object string          `json:"object"`
@@ -85,6 +89,16 @@ type Status struct {
 	Payload               map[string]any      `json:"-"`
 }
 
+// this is the value itself
+type TemplateStatus struct {
+	Event                   string  `json:"event"` // status
+	MessageTemplateId       string  `json:"message_template_id"`
+	MessageTemplateName     string  `json:"message_template_name"`
+	MessageTemplateLanguage string  `json:"message_template_language"`
+	Reason                  *string `json:"reason"`
+	MessageTemplateCategory string  `json:"message_template_category"`
+}
+
 func (status *Status) UnmarshalJSON(data []byte) error {
 	type statusAlias Status
 	var decoded statusAlias
@@ -122,8 +136,26 @@ type StatusError struct {
 	Title     string           `json:"title"`
 	Message   string           `json:"message"`
 	ErrorData *StatusErrorData `json:"error_data,omitempty"`
+	Href      string           `json:"href,omitempty"`
 }
 
 type StatusErrorData struct {
 	Details string `json:"details"`
+}
+
+func (statusError *StatusError) Error() string {
+	var errors []string
+	if statusError.ErrorData != nil {
+		errors = append(errors, statusError.ErrorData.Details)
+	}
+	if len(errors) == 0 {
+		errors = append(errors, statusError.Title)
+		if statusError.Message != "" && statusError.Message != statusError.Title {
+			errors = append(errors, statusError.Message)
+		}
+	}
+	if statusError.Href != "" {
+		errors = append(errors, statusError.Href)
+	}
+	return fmt.Sprintf("WhatsApp API error:\n%s", strings.Join(errors, "\n"))
 }

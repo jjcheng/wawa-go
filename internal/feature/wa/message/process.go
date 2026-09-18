@@ -23,8 +23,6 @@ import (
 // do not parse rawBody to dto_wa.Incoming before here as we are receiving raw data from Meta
 func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, message *service.MessageQueueMessage, dependencies *service.Dependencies) error {
 	dependencies.Logger.Infof("processing WA incoming: %s", message.MessageID)
-	messageCtx, messageCancel := context.WithTimeout(ctx, 10*time.Minute)
-	defer messageCancel()
 	acknowledge := func() {
 		if message.ReceiptHandle == "" {
 			return
@@ -33,7 +31,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, message *ser
 			dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
 		}
 	}
-	err := processWAIncoming(messageCtx, dependencies, incoming)
+	err := processIncoming(ctx, dependencies, incoming)
 	if err != nil {
 		// delete the queued message if already stored
 		if strings.Contains(err.Error(), "duplicate key value violates") {
@@ -45,20 +43,22 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, message *ser
 	return nil
 }
 
-func processWAIncoming(ctx context.Context, dependencies *service.Dependencies, incoming dto_wa.Incoming) error {
+func processIncoming(ctx context.Context, dependencies *service.Dependencies, incoming dto_wa.Incoming) error {
 	for _, entry := range incoming.Entry {
 		for _, change := range entry.Changes {
-			for _, incomingMessage := range change.Value.Messages {
-				if err := storeWAIncomingMessage(ctx, dependencies, incomingMessage, change.Value.Contacts, change.Value.Metadata); err != nil {
-					if strings.Contains(err.Error(), "duplicate") {
-						continue
+			if change.Field == "messages" {
+				for _, incomingMessage := range change.Value.Messages {
+					if err := storeIncomingMessage(ctx, dependencies, incomingMessage, change.Value.Contacts, change.Value.Metadata); err != nil {
+						if strings.Contains(err.Error(), "duplicate") {
+							continue
+						}
+						return err
 					}
-					return err
 				}
-			}
-			for _, status := range change.Value.Statuses {
-				if err := storeWAMessageStatus(ctx, dependencies, status); err != nil {
-					return err
+				for _, status := range change.Value.Statuses {
+					if err := storeIncomingStatus(ctx, dependencies, status); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -66,7 +66,7 @@ func processWAIncoming(ctx context.Context, dependencies *service.Dependencies, 
 	return nil
 }
 
-func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status) error {
+func storeIncomingStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status) error {
 	timestamp, err := strconv.ParseInt(status.Timestamp, 10, 64)
 	if err != nil {
 		return err
@@ -97,15 +97,11 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 		Payload:     status.Payload,
 	}
 	if len(status.Errors) > 0 {
-		var errorMessages []string
+		var errors []string
 		for _, err := range status.Errors {
-			if err.ErrorData != nil && err.ErrorData.Details != "" {
-				errorMessages = append(errorMessages, err.ErrorData.Details)
-			}
+			errors = append(errors, err.Error())
 		}
-		if len(errorMessages) > 0 {
-			event.ErrorMessage = strings.Join(errorMessages, "\n")
-		}
+		event.ErrorMessage = strings.Join(errors, "\n\n")
 	}
 	if err := transaction.WAMessageStatusEventRepository().Insert(ctx, &event); err != nil {
 		return err
@@ -116,6 +112,7 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 	if helper.CanTransitionWAMessageStatus(message.Status, messageStatus) {
 		message.Status = messageStatus
 		message.WAMessageId = status.ID // ensure waMessageId is there
+		message.ErrorMessage = event.ErrorMessage
 		if status.Pricing != nil {
 			message.Billable = status.Pricing.Billable
 			message.BillingType = status.Pricing.Type
@@ -158,7 +155,7 @@ func storeWAMessageStatus(ctx context.Context, dependencies *service.Dependencie
 	return nil
 }
 
-func storeWAIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
+func storeIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
 	timestamp, err := strconv.ParseInt(incomingMessage.Timestamp, 10, 64)
 	if err != nil {
 		return err
