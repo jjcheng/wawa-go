@@ -26,6 +26,7 @@ DROP TABLE "wa"."message_status";
 DROP INDEX "wa"."message_id_1789182934156_index";
 DROP INDEX "wa"."message_status_events_wa_message_id_timestamp_idx";
 DROP TABLE "account"."sessions";
+DROP INDEX "account"."sessions_active_lookup_idx";
 DROP TABLE "account"."settings";
 DROP TRIGGER sessions_set_last_update ON account.sessions;
 DROP TRIGGER settings_set_last_update ON account.settings;

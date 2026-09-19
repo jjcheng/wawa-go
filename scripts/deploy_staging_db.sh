@@ -19,6 +19,7 @@ print_warning() { echo -e "${YELLOW}$1${NC}"; }
 
 check_prerequisites() {
     if ! command -v migrate >/dev/null 2>&1; then print_error "migrate tool not found"; exit 1; fi
+    if ! command -v psql >/dev/null 2>&1; then print_error "psql tool not found"; exit 1; fi
     
     if [ -f .env.staging ]; then
         print_step "Using .env.staging..."
@@ -42,8 +43,8 @@ run() {
     MIGRATION_DB_PORT="${DB_PORT:-5432}"
     MIGRATION_DB_SSLMODE="${DB_SSLMODE:-disable}"
 
-    if [ -z "$MIGRATION_DB_USER" ] || [ -z "$MIGRATION_DB_PASSWORD" ] || [ -z "$MIGRATION_DB_HOST" ] || [ -z "$MIGRATION_DB_NAME" ]; then
-        print_error "Missing migration database settings. Expected DB_HOST_EXTERNAL, DB_USER_EXTERNAL, DB_PASSWORD_EXTERNAL, DB_NAME, and DB_PORT."
+    if [ -z "$MIGRATION_DB_USER" ] || [ -z "$MIGRATION_DB_PASSWORD" ] || [ -z "$MIGRATION_DB_HOST" ] || [ -z "$MIGRATION_DB_NAME" ] || [ -z "${DB_USER:-}" ]; then
+        print_error "Missing migration database settings. Expected DB_HOST_EXTERNAL, DB_USER_EXTERNAL, DB_PASSWORD_EXTERNAL, DB_NAME, DB_PORT, and DB_USER."
         exit 1
     fi
 
@@ -57,6 +58,43 @@ run() {
     
     # Run migration
     migrate -source file://migration -database "$DSN" up
+
+    print_step "Granting application role access to all application schemas..."
+    PGPASSWORD="$MIGRATION_DB_PASSWORD" psql \
+        "host=$MIGRATION_DB_HOST port=$MIGRATION_DB_PORT user=$MIGRATION_DB_USER dbname=$MIGRATION_DB_NAME sslmode=$MIGRATION_DB_SSLMODE" \
+        -v ON_ERROR_STOP=1 \
+        -v app_role="$DB_USER" <<'SQL'
+SELECT format('GRANT USAGE ON SCHEMA %I TO %I', nspname, :'app_role')
+FROM pg_namespace
+WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+    AND nspname NOT LIKE 'pg_%'
+ORDER BY nspname;
+\gexec
+SELECT format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO %I', nspname, :'app_role')
+FROM pg_namespace
+WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+    AND nspname NOT LIKE 'pg_%'
+ORDER BY nspname;
+\gexec
+SELECT format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I TO %I', nspname, :'app_role')
+FROM pg_namespace
+WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+    AND nspname NOT LIKE 'pg_%'
+ORDER BY nspname;
+\gexec
+SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL PRIVILEGES ON TABLES TO %I', nspname, :'app_role')
+FROM pg_namespace
+WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+    AND nspname NOT LIKE 'pg_%'
+ORDER BY nspname;
+\gexec
+SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL PRIVILEGES ON SEQUENCES TO %I', nspname, :'app_role')
+FROM pg_namespace
+WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+    AND nspname NOT LIKE 'pg_%'
+ORDER BY nspname;
+\gexec
+SQL
     
     print_success "Cloud Database Successfully Migrated!"
 }
