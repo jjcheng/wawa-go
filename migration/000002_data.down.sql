@@ -23,6 +23,7 @@ DELETE FROM "account"."sessions" WHERE "sessions"."id" = 66;
 DELETE FROM "account"."sessions" WHERE "sessions"."id" = 67;
 DELETE FROM "account"."sessions" WHERE "sessions"."id" = 68;
 DELETE FROM "account"."sessions" WHERE "sessions"."id" = 69;
+DELETE FROM "account"."sessions" WHERE "sessions"."id" = 70;
 ALTER TABLE account.sessions ENABLE TRIGGER USER;
 ALTER TABLE customer.customers DISABLE TRIGGER USER;
 DELETE FROM "customer"."customers" WHERE "customers"."id" = 3143;
