@@ -12,9 +12,10 @@ env:
 	sed -i '' "s|\$${DB_NAME}|$${DB_NAME//&/\\&}|g" .env; \
 	sed -i '' "s|\$${DB_SSLMODE}|$${DB_SSLMODE//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ENVIRONMENT}|$${ENVIRONMENT//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ENCRYPTION_MASTER_KEY}|$${ENCRYPTION_MASTER_KEY//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ENCRYPTION_SALT}|$${ENCRYPTION_SALT//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ENCRYPTION_VERSION}|$${ENCRYPTION_VERSION//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ENCRYPTION_CURRENT_VERSION}|$${ENCRYPTION_CURRENT_VERSION//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ENCRYPTION_KEY_VERSIONS}|$${ENCRYPTION_KEY_VERSIONS//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ENCRYPTION_MASTER_KEY_V1}|$${ENCRYPTION_MASTER_KEY_V1//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ENCRYPTION_SALT_V1}|$${ENCRYPTION_SALT_V1//&/\\&}|g" .env; \
 	sed -i '' "s|\$${GOOGLE_MAP_APIKEY}|$${GOOGLE_MAP_APIKEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_ID}|$${ALIYUN_OSS_ACCESS_KEY_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_SECRET}|$${ALIYUN_OSS_ACCESS_KEY_SECRET//&/\\&}|g" .env; \

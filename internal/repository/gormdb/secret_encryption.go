@@ -40,7 +40,15 @@ func decryptStoredSecret(serialized string, aadContext string) (string, error) {
 	if err := json.Unmarshal([]byte(serialized), &encrypted); err != nil {
 		return "", fmt.Errorf("parse encrypted secret: %w", err)
 	}
-	plaintext, err := helper.DecryptSecret(&encrypted, keys, aadContext)
+	keyRing := cfg.Default().Site.GlobalKeyRing
+	if keyRing == nil {
+		var err error
+		keyRing, err = helper.NewCryptoKeyRing(keys)
+		if err != nil {
+			return "", fmt.Errorf("initialize encryption key ring: %w", err)
+		}
+	}
+	plaintext, err := helper.DecryptSecretWithKeyRing(&encrypted, keyRing, aadContext)
 	if err != nil {
 		return "", fmt.Errorf("decrypt secret: %w", err)
 	}

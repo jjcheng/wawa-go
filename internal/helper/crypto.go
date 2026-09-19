@@ -51,6 +51,29 @@ type CryptoKeys struct {
 	KeyID         string // External key identifier (e.g., KMS key ARN or UUID). the version is the same as Version
 }
 
+type CryptoKeyRing struct {
+	Current   *CryptoKeys
+	ByVersion map[int32]*CryptoKeys
+}
+
+func NewCryptoKeyRing(current *CryptoKeys, keys ...*CryptoKeys) (*CryptoKeyRing, error) {
+	if current == nil || current.Version < 1 || len(current.EncryptionKey) != 32 || len(current.HMACKey) != 32 {
+		return nil, errors.New("current encryption key is invalid")
+	}
+	ring := &CryptoKeyRing{
+		Current:   current,
+		ByVersion: make(map[int32]*CryptoKeys, len(keys)+1),
+	}
+	ring.ByVersion[current.Version] = current
+	for _, key := range keys {
+		if key == nil || key.Version < 1 || len(key.EncryptionKey) != 32 || len(key.HMACKey) != 32 {
+			return nil, errors.New("historical encryption key is invalid")
+		}
+		ring.ByVersion[key.Version] = key
+	}
+	return ring, nil
+}
+
 // DeriveKeys derives encryption and HMAC keys from a master key using HKDF with salt.
 // This should be called ONCE at application startup, not per-request.
 //
@@ -274,6 +297,24 @@ func DecryptSecret(encrytedData *EncryptedData, keys *CryptoKeys, aadContext str
 	if encrytedData.Version != keys.Version {
 		return nil, fmt.Errorf("key version mismatch: data version %d, key version %d", encrytedData.Version, keys.Version)
 	}
+	return decryptSecretWithKey(encrytedData, keys, aadContext)
+}
+
+func DecryptSecretWithKeyRing(encryptedData *EncryptedData, keyRing *CryptoKeyRing, aadContext string) ([]byte, error) {
+	if encryptedData == nil {
+		return nil, errors.New("encrypted data is nil")
+	}
+	if keyRing == nil || keyRing.Current == nil {
+		return nil, errors.New("encryption key ring is nil")
+	}
+	keys, ok := keyRing.ByVersion[encryptedData.Version]
+	if !ok {
+		return nil, fmt.Errorf("unsupported key version: %d", encryptedData.Version)
+	}
+	return decryptSecretWithKey(encryptedData, keys, aadContext)
+}
+
+func decryptSecretWithKey(encrytedData *EncryptedData, keys *CryptoKeys, aadContext string) ([]byte, error) {
 	// Decode base64 ciphertext
 	ciphertext, err := base64.StdEncoding.DecodeString(encrytedData.Ciphertext)
 	if err != nil {

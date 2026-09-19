@@ -77,6 +77,32 @@ func TestDecryptSecretRejectsWrongVersion(t *testing.T) {
 	}
 }
 
+func TestDecryptSecretWithKeyRingUsesStoredVersion(t *testing.T) {
+	oldKeys, err := DeriveKeys(bytes.Repeat([]byte{0x11}, 32), bytes.Repeat([]byte{0x22}, 32), 1, types.Environment("test"))
+	if err != nil {
+		t.Fatalf("DeriveKeys(old) error = %v", err)
+	}
+	currentKeys, err := DeriveKeys(bytes.Repeat([]byte{0x33}, 32), bytes.Repeat([]byte{0x44}, 32), 2, types.Environment("test"))
+	if err != nil {
+		t.Fatalf("DeriveKeys(current) error = %v", err)
+	}
+	encrypted, err := EncryptSecret([]byte("secret"), oldKeys, "purpose")
+	if err != nil {
+		t.Fatalf("EncryptSecret() error = %v", err)
+	}
+	keyRing, err := NewCryptoKeyRing(currentKeys, oldKeys)
+	if err != nil {
+		t.Fatalf("NewCryptoKeyRing() error = %v", err)
+	}
+	decrypted, err := DecryptSecretWithKeyRing(encrypted, keyRing, "purpose")
+	if err != nil {
+		t.Fatalf("DecryptSecretWithKeyRing() error = %v", err)
+	}
+	if string(decrypted) != "secret" {
+		t.Fatalf("decrypted value = %q, want %q", decrypted, "secret")
+	}
+}
+
 func TestDecryptSecretRejectsMalformedCiphertext(t *testing.T) {
 	keys := testCryptoKeys(t)
 	encrypted := &EncryptedData{Version: keys.Version, Ciphertext: base64.StdEncoding.EncodeToString([]byte("too-short"))}

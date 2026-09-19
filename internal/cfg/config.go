@@ -46,6 +46,7 @@ type SiteConfig struct {
 	SessionExpirySeconds         int
 	GoogleMapAPIKey              string
 	GlobalKeys                   *helper.CryptoKeys
+	GlobalKeyRing                *helper.CryptoKeyRing
 }
 
 type AliyunOSSConfig struct {
@@ -115,6 +116,7 @@ func Default() *Config {
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
 				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days
 				GlobalKeys:                   loadGlobalKeys(environment),
+				GlobalKeyRing:                loadGlobalKeyRing(environment),
 			},
 			AliyunOSS: AliyunOSSConfig{
 				Endpoint:        os.Getenv("ALIYUN_OSS_ENDPOINT"),
@@ -146,10 +148,18 @@ func Default() *Config {
 }
 
 func loadGlobalKeys(environment types.Environment) *helper.CryptoKeys {
-	masterKeyValue := strings.TrimSpace(os.Getenv("ENCRYPTION_MASTER_KEY"))
-	saltValue := strings.TrimSpace(os.Getenv("ENCRYPTION_SALT"))
+	version := int32(1)
+	if versionValue := strings.TrimSpace(os.Getenv("ENCRYPTION_CURRENT_VERSION")); versionValue != "" {
+		parsedVersion, parseErr := strconv.ParseInt(versionValue, 10, 32)
+		if parseErr != nil || parsedVersion < 1 {
+			panic("ENCRYPTION_CURRENT_VERSION must be a positive integer")
+		}
+		version = int32(parsedVersion)
+	}
+	masterKeyValue := versionedEnvValue("ENCRYPTION_MASTER_KEY", version)
+	saltValue := versionedEnvValue("ENCRYPTION_SALT", version)
 	if masterKeyValue == "" || saltValue == "" {
-		panic("ENCRYPTION_MASTER_KEY or ENCRYPTION_SALT is missing")
+		panic(fmt.Sprintf("encryption key material for version %d is missing", version))
 	}
 	masterKey, err := base64.StdEncoding.DecodeString(masterKeyValue)
 	if err != nil {
@@ -159,19 +169,59 @@ func loadGlobalKeys(environment types.Environment) *helper.CryptoKeys {
 	if err != nil {
 		panic(fmt.Sprintf("invalid ENCRYPTION_SALT: %v", err))
 	}
-	version := int32(1)
-	if versionValue := strings.TrimSpace(os.Getenv("ENCRYPTION_VERSION")); versionValue != "" {
-		parsedVersion, parseErr := strconv.ParseInt(versionValue, 10, 32)
-		if parseErr != nil || parsedVersion < 1 {
-			panic("ENCRYPTION_VERSION must be a positive integer")
-		}
-		version = int32(parsedVersion)
-	}
 	keys, err := helper.DeriveKeys(masterKey, salt, version, environment)
 	if err != nil {
 		panic(fmt.Sprintf("invalid encryption configuration: %v", err))
 	}
 	return keys
+}
+
+func versionedEnvValue(prefix string, version int32) string {
+	if value := strings.TrimSpace(os.Getenv(fmt.Sprintf("%s_V%d", prefix, version))); value != "" {
+		return value
+	}
+	return strings.TrimSpace(os.Getenv(prefix))
+}
+
+func loadGlobalKeyRing(environment types.Environment) *helper.CryptoKeyRing {
+	current := loadGlobalKeys(environment)
+	keys := []*helper.CryptoKeys{}
+	versions := strings.TrimSpace(os.Getenv("ENCRYPTION_KEY_VERSIONS"))
+	if versions != "" {
+		for _, value := range strings.Split(versions, ",") {
+			version, err := strconv.ParseInt(strings.TrimSpace(value), 10, 32)
+			if err != nil || version < 1 || int32(version) == current.Version {
+				continue
+			}
+			masterKey, masterErr := decodeKeyEnv(fmt.Sprintf("ENCRYPTION_MASTER_KEY_V%d", version), 32)
+			salt, saltErr := decodeKeyEnv(fmt.Sprintf("ENCRYPTION_SALT_V%d", version), 32)
+			if masterErr != nil || saltErr != nil {
+				panic(fmt.Sprintf("invalid encryption key version %d", version))
+			}
+			key, deriveErr := helper.DeriveKeys(masterKey, salt, int32(version), environment)
+			if deriveErr != nil {
+				panic(fmt.Sprintf("invalid encryption key version %d: %v", version, deriveErr))
+			}
+			keys = append(keys, key)
+		}
+	}
+	keyRing, err := helper.NewCryptoKeyRing(current, keys...)
+	if err != nil {
+		panic(fmt.Sprintf("invalid encryption key ring: %v", err))
+	}
+	return keyRing
+}
+
+func decodeKeyEnv(name string, minimumBytes int) ([]byte, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return nil, fmt.Errorf("%s is missing", name)
+	}
+	decoded, err := base64.StdEncoding.DecodeString(value)
+	if err != nil || len(decoded) < minimumBytes {
+		return nil, fmt.Errorf("%s is invalid", name)
+	}
+	return decoded, nil
 }
 
 func (config *DatabaseConfig) DSN() string {

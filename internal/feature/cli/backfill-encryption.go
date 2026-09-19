@@ -16,8 +16,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// BackfillEncryption fills missing encrypted and keyed-hash columns without
-// clearing legacy plaintext columns. It is safe to run repeatedly.
+// BackfillEncryption fills missing encrypted and keyed-hash columns, then
+// clears the corresponding legacy plaintext columns in one transaction.
 func BackfillEncryption(ctx context.Context) error {
 	keys := cfg.Default().Site.GlobalKeys
 	if keys == nil {
@@ -39,12 +39,17 @@ func BackfillEncryption(ctx context.Context) error {
 		backfillCampaignRecipients,
 	}
 	total := 0
-	for _, backfill := range backfillers {
-		updated, err := backfill(db)
-		if err != nil {
-			return err
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		for _, backfill := range backfillers {
+			updated, err := backfill(tx)
+			if err != nil {
+				return err
+			}
+			total += updated
 		}
-		total += updated
+		return nil
+	}); err != nil {
+		return err
 	}
 	log.Printf("encryption backfill completed: %d rows updated", total)
 	return nil
@@ -59,11 +64,19 @@ func BackfillMessages(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	updated, err := backfillMessages(uow.DB().WithContext(ctx))
+	total := 0
+	err = uow.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		updated, err := backfillMessages(tx)
+		if err != nil {
+			return err
+		}
+		total = updated
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-	log.Printf("message encryption backfill completed: %d rows updated", updated)
+	log.Printf("message encryption backfill completed: %d rows updated", total)
 	return nil
 }
 
@@ -132,12 +145,15 @@ func backfillUsers(db *gorm.DB) (int, error) {
 			}
 			values["phone_number_hash"] = phoneHash
 		}
-		if row.PhoneNumber != "" {
+		if row.PhoneNumber != "" && row.PhoneNumberEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.PhoneNumber, "account.users:phone_number:"+row.EncryptionID)
 			if err != nil {
 				return updated, err
 			}
 			values["phone_number_encrypted"] = encrypted
+		}
+		if row.PhoneNumber != "" && row.PhoneNumberEncrypted != "" {
+			values["phone_number"] = nil
 		}
 		emailHash := row.EmailHash
 		if row.Email != "" {
@@ -148,12 +164,15 @@ func backfillUsers(db *gorm.DB) (int, error) {
 			}
 			values["email_hash"] = emailHash
 		}
-		if row.Email != "" {
+		if row.Email != "" && row.EmailEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.Email, "account.users:email:"+row.EncryptionID)
 			if err != nil {
 				return updated, err
 			}
 			values["email_encrypted"] = encrypted
+		}
+		if row.Email != "" && row.EmailEncrypted != "" {
+			values["email"] = nil
 		}
 		if err := applyBackfillUpdate(db, "account.users", row.Id, values); err != nil {
 			return updated, err
@@ -200,12 +219,15 @@ func backfillCustomers(db *gorm.DB) (int, error) {
 			}
 			values["phone_number_hash"] = hash
 		}
-		if row.PhoneNumber != "" {
+		if row.PhoneNumber != "" && row.PhoneNumberEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.PhoneNumber, "customer.customers:phone_number:"+row.Token)
 			if err != nil {
 				return updated, err
 			}
 			values["phone_number_encrypted"] = encrypted
+		}
+		if row.PhoneNumber != "" && row.PhoneNumberEncrypted != "" {
+			values["phone_number"] = nil
 		}
 		if row.WAId != "" {
 			hash, err := hashBackfillValue(row.WAId)
@@ -214,12 +236,15 @@ func backfillCustomers(db *gorm.DB) (int, error) {
 			}
 			values["wa_id_hash"] = hash
 		}
-		if row.WAId != "" {
+		if row.WAId != "" && row.WAIdEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.WAId, "customer.customers:wa_id:"+row.Token)
 			if err != nil {
 				return updated, err
 			}
 			values["wa_id_encrypted"] = encrypted
+		}
+		if row.WAId != "" && row.WAIdEncrypted != "" {
+			values["wa_id"] = nil
 		}
 		if row.ImportedPhoneNumber != "" {
 			hash, err := hashBackfillValue(row.ImportedPhoneNumber)
@@ -228,19 +253,25 @@ func backfillCustomers(db *gorm.DB) (int, error) {
 			}
 			values["imported_phone_number_hash"] = hash
 		}
-		if row.ImportedPhoneNumber != "" {
+		if row.ImportedPhoneNumber != "" && row.ImportedPhoneNumberEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.ImportedPhoneNumber, "customer.customers:imported_phone_number:"+row.Token)
 			if err != nil {
 				return updated, err
 			}
 			values["imported_phone_number_encrypted"] = encrypted
 		}
-		if len(row.AdditionalData) > 0 && string(row.AdditionalData) != "null" {
+		if row.ImportedPhoneNumber != "" && row.ImportedPhoneNumberEncrypted != "" {
+			values["imported_phone_number"] = nil
+		}
+		if len(row.AdditionalData) > 0 && string(row.AdditionalData) != "null" && row.AdditionalDataEncrypted == "" {
 			encrypted, err := encryptBackfillValue(string(row.AdditionalData), "customer.customers:additional_data:"+row.Token)
 			if err != nil {
 				return updated, err
 			}
 			values["additional_data_encrypted"] = encrypted
+		}
+		if len(row.AdditionalData) > 0 && string(row.AdditionalData) != "null" && row.AdditionalDataEncrypted != "" {
+			values["additional_data"] = nil
 		}
 		if err := applyBackfillUpdate(db, "customer.customers", row.Id, values); err != nil {
 			return updated, err
@@ -265,14 +296,17 @@ func backfillPhoneNumbers(db *gorm.DB) (int, error) {
 	updated := 0
 	for _, row := range rows {
 		values := map[string]any{}
-		if row.DisplayPhoneNumber != "" {
+		if row.DisplayPhoneNumber != "" && row.DisplayPhoneNumberEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.DisplayPhoneNumber, "wa.phone_numbers:display_phone_number:"+row.MetaPhoneNumberId)
 			if err != nil {
 				return updated, err
 			}
 			values["display_phone_number_encrypted"] = encrypted
 		}
-		if row.WAId != "" {
+		if row.DisplayPhoneNumber != "" && row.DisplayPhoneNumberEncrypted != "" {
+			values["display_phone_number"] = nil
+		}
+		if row.WAId != "" && row.WAIdEncrypted == "" {
 			hash, err := hashBackfillValue(row.WAId)
 			if err != nil {
 				return updated, err
@@ -286,12 +320,18 @@ func backfillPhoneNumbers(db *gorm.DB) (int, error) {
 			}
 			values["wa_id_encrypted"] = encrypted
 		}
-		if row.RegistrationPin != "" {
+		if row.WAId != "" && row.WAIdEncrypted != "" {
+			values["wa_id"] = nil
+		}
+		if row.RegistrationPin != "" && row.RegistrationPinEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.RegistrationPin, "wa.phone_numbers:registration_pin:"+row.MetaPhoneNumberId)
 			if err != nil {
 				return updated, err
 			}
 			values["registration_pin_encrypted"] = encrypted
+		}
+		if row.RegistrationPin != "" && row.RegistrationPinEncrypted != "" {
+			values["registration_pin"] = nil
 		}
 		if err := applyBackfillUpdate(db, "wa.phone_numbers", row.Id, values); err != nil {
 			return updated, err
@@ -315,12 +355,17 @@ func backfillBusinessPortfolios(db *gorm.DB) (int, error) {
 	}
 	updated := 0
 	for _, row := range rows {
-		if row.AccessToken != "" {
+		if row.AccessToken != "" && row.AccessTokenEncrypted == "" {
 			encrypted, err := encryptBackfillValue(row.AccessToken, "wa.business_portfolios:access_token:"+row.MetaBusinessPortfolioId)
 			if err != nil {
 				return updated, err
 			}
 			if err := applyBackfillUpdate(db, "wa.business_portfolios", row.Id, map[string]any{"access_token_encrypted": encrypted}); err != nil {
+				return updated, err
+			}
+			updated++
+		} else if row.AccessToken != "" && row.AccessTokenEncrypted != "" {
+			if err := applyBackfillUpdate(db, "wa.business_portfolios", row.Id, map[string]any{"access_token": nil}); err != nil {
 				return updated, err
 			}
 			updated++
@@ -348,12 +393,15 @@ func backfillMessages(db *gorm.DB) (int, error) {
 			row.Token = uuid.NewString()
 			values["token"] = row.Token
 		}
-		if len(row.Payload) > 0 && string(row.Payload) != "null" {
+		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted == "" {
 			encrypted, err := encryptBackfillValue(string(row.Payload), "wa.messages:payload:"+row.Token)
 			if err != nil {
 				return updated, err
 			}
 			values["payload_encrypted"] = encrypted
+		}
+		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted != "" {
+			values["payload"] = nil
 		}
 		if err := applyBackfillUpdate(db, "wa.messages", row.Id, values); err != nil {
 			return updated, err
@@ -386,12 +434,15 @@ func backfillMessageStatuses(db *gorm.DB) (int, error) {
 			row.EncryptionID = uuid.NewString()
 			values["encryption_id"] = row.EncryptionID
 		}
-		if len(row.Payload) > 0 && string(row.Payload) != "null" {
+		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted == "" {
 			encrypted, err := encryptBackfillValue(string(row.Payload), "wa.message_status:payload:"+row.EncryptionID)
 			if err != nil {
 				return updated, err
 			}
 			values["payload_encrypted"] = encrypted
+		}
+		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted != "" {
+			values["payload"] = nil
 		}
 		if err := applyBackfillUpdate(db, "wa.message_status", row.Id, values); err != nil {
 			return updated, err
@@ -422,12 +473,15 @@ func backfillCampaignRecipients(db *gorm.DB) (int, error) {
 			row.EncryptionID = uuid.NewString()
 			values["encryption_id"] = row.EncryptionID
 		}
-		if len(row.Payload) > 0 && string(row.Payload) != "null" {
+		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted == "" {
 			encrypted, err := encryptBackfillValue(string(row.Payload), "customer.campaign_recipients:payload:"+row.EncryptionID)
 			if err != nil {
 				return updated, err
 			}
 			values["payload_encrypted"] = encrypted
+		}
+		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted != "" {
+			values["payload"] = nil
 		}
 		if err := applyBackfillUpdate(db, "customer.campaign_recipients", row.Id, values); err != nil {
 			return updated, err
