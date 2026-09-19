@@ -10,7 +10,7 @@ type CampaignRecipient struct {
 	CampaignId int32          `gorm:"column:campaign_id"`
 	CustomerId int32          `gorm:"column:customer_id"`
 	MessageId  *int32         `gorm:"column:message_id"`
-	Payload    map[string]any `gorm:"column:payload;type:jsonb;serializer:json"`
+	Payload    map[string]any `gorm:"-"` // not a db column
 	// from customers table
 	CustomerName        string `gorm:"column:customer_name;->"`
 	CustomerCountryCode string `gorm:"column:customer_country_code;->"`
@@ -18,6 +18,7 @@ type CampaignRecipient struct {
 	// from messages table
 	Message *dao_wa.Message `gorm:"column:message;->"`
 	// encryption
+	EncryptionID     string `gorm:"column:encryption_id"`
 	PayloadEncrypted string `gorm:"column:payload_encrypted"`
 }
 

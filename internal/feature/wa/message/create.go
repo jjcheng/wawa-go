@@ -251,7 +251,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		payload["to"] = customer.MetaUserId
 	}
 	delete(payload, "customer_id")
-	token := strings.ReplaceAll(uuid.NewString(), "-", "")
+	token := uuid.NewString()
 	payload["biz_opaque_callback_data"] = token
 	response, err := dependencies.Whatsapp.SendMessage(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, payload, user.WA.BusinessPortfolioAccessToken)
 	// always insert message to db

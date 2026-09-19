@@ -35,7 +35,7 @@ func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User,
 	if inputErrors := deregister.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, deregister.Id)
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, deregister.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")

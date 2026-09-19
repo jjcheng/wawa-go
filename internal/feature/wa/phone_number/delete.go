@@ -34,7 +34,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, delete.Id)
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, delete.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")

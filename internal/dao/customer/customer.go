@@ -12,15 +12,15 @@ type Customer struct {
 	DisplayName         string               `gorm:"column:display_name"`    // name tracked by user
 	WADisplayName       string               `gorm:"column:wa_display_name"` // name given by WhatsApp
 	CountryCode         string               `gorm:"column:country_code"`
-	PhoneNumber         string               `gorm:"column:phone_number"`
+	PhoneNumber         string               `gorm:"-"` // not a db column
 	MetaUserId          string               `gorm:"column:meta_user_id"`
-	WAId                string               `gorm:"column:wa_id"`
+	WAId                string               `gorm:"-"` // not a db column
 	Tags                pq.StringArray       `gorm:"column:tags;type:text[]"`
 	Status              types.CustomerStatus `gorm:"column:status"`
 	Remarks             string               `gorm:"column:remarks"`
-	AdditionalData      map[string]any       `gorm:"column:additional_data;type:jsonb;serializer:json"`
-	ImportedPhoneNumber string               `gorm:"column:imported_phone_number"` // to prevent duplicate when importing
-	Token               string               `gorm:"column:token"`                 // uuid to identify customer
+	AdditionalData      map[string]any       `gorm:"-"`            // not a db column
+	ImportedPhoneNumber string               `gorm:"-"`            // to prevent duplicate when importing, not a db column
+	Token               string               `gorm:"column:token"` // uuid to identify customer
 	// encryption
 	PhoneNumberEncrypted         string `gorm:"column:phone_number_encrypted"`
 	PhoneNumberHash              string `gorm:"column:phone_number_hash"`

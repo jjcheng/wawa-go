@@ -99,7 +99,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Status:              types.CustomerStatusActive,
 		Remarks:             create.Remarks,
 		ImportedPhoneNumber: waId,
-		Token:               strings.ReplaceAll(uuid.NewString(), "-", ""),
+		Token:               uuid.NewString(),
 	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

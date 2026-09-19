@@ -32,7 +32,7 @@ func (reconnect Reconnect) Handle(ctx context.Context, user *dto_account.User, d
 	if inputErrors := reconnect.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, reconnect.Id)
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, reconnect.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")

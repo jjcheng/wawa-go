@@ -215,7 +215,7 @@ func (embeddedSignup EmbeddedSignup) activateOnMeta(ctx context.Context, accessT
 	if err != nil {
 		return err
 	}
-	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, phoneNumberId)
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, phoneNumberId)
 	if err != nil {
 		return err
 	}

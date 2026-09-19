@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -32,8 +33,15 @@ func NewCustomerRepository(db *gorm.DB, logger *service.Logger) repository.Custo
 
 func (customerRepository *CustomerRepository) GetById(ctx context.Context, id int32) (*dao_customer.Customer, error) {
 	var customer dao_customer.Customer
-	if err := customerRepository.db.WithContext(ctx).First(&customer, "id = ?", id).Error; err != nil {
-		return nil, err
+	result := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("id = ?", id).
+		First(&customer)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			customerRepository.logger.ErrorFunction(result.Error, id)
+		}
+		return nil, result.Error
 	}
 	if err := customerRepository.decryptSensitiveFields(&customer); err != nil {
 		return nil, err
@@ -42,36 +50,42 @@ func (customerRepository *CustomerRepository) GetById(ctx context.Context, id in
 }
 
 func (customerRepository *CustomerRepository) Insert(ctx context.Context, customer *dao_customer.Customer) error {
-	original := customerSensitiveSnapshotOf(customer)
+	if customer.Token == "" {
+		customer.Token = uuid.NewString()
+	}
+	original := customerRepository.customerSensitiveSnapshotOf(customer)
 	if err := customerRepository.encryptSensitiveFields(customer); err != nil {
 		return err
 	}
-	defer restoreCustomerSensitiveValues(customer, original)
+	defer customerRepository.restoreCustomerSensitiveValues(customer, original)
 	return customerRepository.Repository.Insert(ctx, customer)
 }
 
 func (customerRepository *CustomerRepository) InsertBulk(ctx context.Context, customers []dao_customer.Customer) error {
 	originals := make([]customerSensitiveSnapshot, len(customers))
 	for i := range customers {
-		originals[i] = customerSensitiveSnapshotOf(&customers[i])
+		if customers[i].Token == "" {
+			customers[i].Token = uuid.NewString()
+		}
+		originals[i] = customerRepository.customerSensitiveSnapshotOf(&customers[i])
 		if err := customerRepository.encryptSensitiveFields(&customers[i]); err != nil {
 			return err
 		}
 	}
 	defer func() {
 		for i := range customers {
-			restoreCustomerSensitiveValues(&customers[i], originals[i])
+			customerRepository.restoreCustomerSensitiveValues(&customers[i], originals[i])
 		}
 	}()
 	return customerRepository.Repository.InsertBulk(ctx, customers)
 }
 
 func (customerRepository *CustomerRepository) Update(ctx context.Context, customer *dao_customer.Customer) error {
-	original := customerSensitiveSnapshotOf(customer)
+	original := customerRepository.customerSensitiveSnapshotOf(customer)
 	if err := customerRepository.encryptSensitiveFields(customer); err != nil {
 		return err
 	}
-	defer restoreCustomerSensitiveValues(customer, original)
+	defer customerRepository.restoreCustomerSensitiveValues(customer, original)
 	return customerRepository.Repository.Update(ctx, customer)
 }
 
@@ -126,9 +140,6 @@ func (customerRepository *CustomerRepository) GetByCountryCodePhoneNumber(ctx co
 		return nil, err
 	}
 	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND country_code = ? AND phone_number_hash = ?", userId, countryCode, phoneNumberHash).First(&customer)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		result = customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND country_code = ? AND phone_number = ?", userId, countryCode, phoneNumber).First(&customer)
-	}
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			customerRepository.logger.ErrorFunction(result.Error, userId, countryCode, phoneNumber)
@@ -151,9 +162,6 @@ func (customerRepository *CustomerRepository) GetByWAId(ctx context.Context, use
 		Model(&dao_customer.Customer{}).
 		Where("user_id = ? AND wa_id_hash = ?", userId, waIdHash).
 		First(&customer)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		result = customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND wa_id = ?", userId, waId).First(&customer)
-	}
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			customerRepository.logger.ErrorFunction(result.Error, userId, waId)
@@ -200,17 +208,6 @@ func (customerRepository *CustomerRepository) GetByWAIdOrMetaUserId(ctx context.
 		query = query.Where("meta_user_id = ?", metaUserId)
 	}
 	result := query.First(&customer)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		legacyQuery := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ?", userId)
-		if waId != "" && metaUserId != "" {
-			legacyQuery = legacyQuery.Where("wa_id = ? OR meta_user_id = ?", waId, metaUserId)
-		} else if waId != "" {
-			legacyQuery = legacyQuery.Where("wa_id = ?", waId)
-		} else {
-			legacyQuery = legacyQuery.Where("meta_user_id = ?", metaUserId)
-		}
-		result = legacyQuery.First(&customer)
-	}
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			customerRepository.logger.ErrorFunction(result.Error, userId, waId, metaUserId)
@@ -271,9 +268,6 @@ func (customerRepository *CustomerRepository) GetByImportedPhoneNumber(ctx conte
 		Model(&dao_customer.Customer{}).
 		Where("user_id = ? AND imported_phone_number_hash = ?", userId, importedPhoneNumberHash).
 		First(&customer)
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		result = customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("user_id = ? AND imported_phone_number = ?", userId, importedPhoneNumber).First(&customer)
-	}
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			customerRepository.logger.ErrorFunction(result.Error, userId, importedPhoneNumber)
@@ -374,11 +368,11 @@ type customerSensitiveSnapshot struct {
 	importedPhoneNumber string
 }
 
-func customerSensitiveSnapshotOf(customer *dao_customer.Customer) customerSensitiveSnapshot {
+func (customerRepository *CustomerRepository) customerSensitiveSnapshotOf(customer *dao_customer.Customer) customerSensitiveSnapshot {
 	return customerSensitiveSnapshot{customer.PhoneNumber, customer.WAId, customer.AdditionalData, customer.ImportedPhoneNumber}
 }
 
-func restoreCustomerSensitiveValues(customer *dao_customer.Customer, values customerSensitiveSnapshot) {
+func (customerRepository *CustomerRepository) restoreCustomerSensitiveValues(customer *dao_customer.Customer, values customerSensitiveSnapshot) {
 	customer.PhoneNumber = values.phoneNumber
 	customer.WAId = values.waId
 	customer.AdditionalData = values.additionalData
@@ -392,7 +386,7 @@ func (customerRepository *CustomerRepository) encryptSensitiveFields(customer *d
 			return err
 		}
 		customer.PhoneNumberHash = hash
-		encrypted, err := encryptStoredSecret(customer.PhoneNumber, customerSecretAAD(customer, "phone_number"))
+		encrypted, err := encryptStoredSecret(customer.PhoneNumber, customerRepository.customerSecretAAD(customer, "phone_number"))
 		if err != nil {
 			return err
 		}
@@ -405,7 +399,7 @@ func (customerRepository *CustomerRepository) encryptSensitiveFields(customer *d
 			return err
 		}
 		customer.WAIdHash = hash
-		encrypted, err := encryptStoredSecret(customer.WAId, customerSecretAAD(customer, "wa_id"))
+		encrypted, err := encryptStoredSecret(customer.WAId, customerRepository.customerSecretAAD(customer, "wa_id"))
 		if err != nil {
 			return err
 		}
@@ -418,7 +412,7 @@ func (customerRepository *CustomerRepository) encryptSensitiveFields(customer *d
 			return err
 		}
 		customer.ImportedPhoneNumberHash = hash
-		encrypted, err := encryptStoredSecret(customer.ImportedPhoneNumber, customerSecretAAD(customer, "imported_phone_number"))
+		encrypted, err := encryptStoredSecret(customer.ImportedPhoneNumber, customerRepository.customerSecretAAD(customer, "imported_phone_number"))
 		if err != nil {
 			return err
 		}
@@ -430,7 +424,7 @@ func (customerRepository *CustomerRepository) encryptSensitiveFields(customer *d
 		if err != nil {
 			return err
 		}
-		encrypted, err := encryptStoredSecret(string(payload), customerSecretAAD(customer, "additional_data"))
+		encrypted, err := encryptStoredSecret(string(payload), customerRepository.customerSecretAAD(customer, "additional_data"))
 		if err != nil {
 			return err
 		}
@@ -442,28 +436,28 @@ func (customerRepository *CustomerRepository) encryptSensitiveFields(customer *d
 
 func (customerRepository *CustomerRepository) decryptSensitiveFields(customer *dao_customer.Customer) error {
 	if customer.PhoneNumberEncrypted != "" {
-		value, err := decryptStoredSecret(customer.PhoneNumberEncrypted, customerSecretAAD(customer, "phone_number"))
+		value, err := decryptStoredSecret(customer.PhoneNumberEncrypted, customerRepository.customerSecretAAD(customer, "phone_number"))
 		if err != nil {
 			return err
 		}
 		customer.PhoneNumber = value
 	}
 	if customer.WAIdEncrypted != "" {
-		value, err := decryptStoredSecret(customer.WAIdEncrypted, customerSecretAAD(customer, "wa_id"))
+		value, err := decryptStoredSecret(customer.WAIdEncrypted, customerRepository.customerSecretAAD(customer, "wa_id"))
 		if err != nil {
 			return err
 		}
 		customer.WAId = value
 	}
 	if customer.ImportedPhoneNumberEncrypted != "" {
-		value, err := decryptStoredSecret(customer.ImportedPhoneNumberEncrypted, customerSecretAAD(customer, "imported_phone_number"))
+		value, err := decryptStoredSecret(customer.ImportedPhoneNumberEncrypted, customerRepository.customerSecretAAD(customer, "imported_phone_number"))
 		if err != nil {
 			return err
 		}
 		customer.ImportedPhoneNumber = value
 	}
 	if customer.AdditionalDataEncrypted != "" {
-		value, err := decryptStoredSecret(customer.AdditionalDataEncrypted, customerSecretAAD(customer, "additional_data"))
+		value, err := decryptStoredSecret(customer.AdditionalDataEncrypted, customerRepository.customerSecretAAD(customer, "additional_data"))
 		if err != nil {
 			return err
 		}
@@ -474,10 +468,6 @@ func (customerRepository *CustomerRepository) decryptSensitiveFields(customer *d
 	return nil
 }
 
-func customerSecretAAD(customer *dao_customer.Customer, purpose string) string {
-	identity := customer.Token
-	if identity == "" {
-		identity = fmt.Sprintf("id:%d", customer.Id)
-	}
-	return "customer.customers:" + purpose + ":" + identity
+func (customerRepository *CustomerRepository) customerSecretAAD(customer *dao_customer.Customer, purpose string) string {
+	return fmt.Sprintf("customer.customers:%s:%s", purpose, customer.Token)
 }

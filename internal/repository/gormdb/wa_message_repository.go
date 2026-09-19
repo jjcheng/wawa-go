@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -28,19 +30,11 @@ func NewWAMessageRepository(db *gorm.DB, logger *service.Logger) repository.WAMe
 	}
 }
 
-func (messageRepository *WAMessageRepository) GetById(ctx context.Context, id int32) (*dao_wa.Message, error) {
-	var message dao_wa.Message
-	if err := messageRepository.db.WithContext(ctx).First(&message, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-	if err := messageRepository.decryptPayload(&message); err != nil {
-		return nil, err
-	}
-	return &message, nil
-}
-
 func (messageRepository *WAMessageRepository) Insert(ctx context.Context, message *dao_wa.Message) error {
 	payload := message.Payload
+	if message.Token == "" {
+		message.Token = uuid.NewString()
+	}
 	if err := messageRepository.encryptPayload(message); err != nil {
 		return err
 	}
@@ -96,6 +90,19 @@ func (messageRepository *WAMessageRepository) GetByWAMessageId(ctx context.Conte
 	return &message, nil
 }
 
+func (messageRepository *WAMessageRepository) GetById(ctx context.Context, id int32) (*dao_wa.Message, error) {
+	var message dao_wa.Message
+	if err := messageRepository.db.WithContext(ctx).
+		Where("id = ?", id).
+		First(&message).Error; err != nil {
+		return nil, err
+	}
+	if err := messageRepository.decryptPayload(&message); err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
 func (messageRepository *WAMessageRepository) GetByToken(ctx context.Context, token string) (*dao_wa.Message, error) {
 	var message dao_wa.Message
 	if err := messageRepository.db.WithContext(ctx).
@@ -128,38 +135,6 @@ func (messageRepository *WAMessageRepository) ListNeedResend(ctx context.Context
 	return messages, nil
 }
 
-func (messageRepository *WAMessageRepository) encryptPayload(message *dao_wa.Message) error {
-	if message.Payload == nil {
-		return nil
-	}
-	payload, err := json.Marshal(message.Payload)
-	if err != nil {
-		return err
-	}
-	encrypted, err := encryptStoredSecret(string(payload), "wa.messages:payload:"+message.WAMessageId)
-	if err != nil {
-		return err
-	}
-	message.PayloadEncrypted = encrypted
-	message.Payload = nil
-	return nil
-}
-
-func (messageRepository *WAMessageRepository) decryptPayload(message *dao_wa.Message) error {
-	if message.PayloadEncrypted == "" {
-		return nil
-	}
-	payload, err := decryptStoredSecret(message.PayloadEncrypted, "wa.messages:payload:"+message.WAMessageId)
-	if err != nil {
-		messageRepository.logger.ErrorFunction(err, "message", message.Id)
-		return err
-	}
-	if err := json.Unmarshal([]byte(payload), &message.Payload); err != nil {
-		return errors.New("decode decrypted message payload")
-	}
-	return nil
-}
-
 func (messageRepository *WAMessageRepository) UpdateNextAttemptAt(ctx context.Context, id int32, nextAttemptAt time.Time) (bool, error) {
 	result := messageRepository.db.WithContext(ctx).
 		Model(&dao_wa.Message{}).
@@ -172,4 +147,40 @@ func (messageRepository *WAMessageRepository) UpdateNextAttemptAt(ctx context.Co
 		return false, result.Error
 	}
 	return result.RowsAffected == 1, nil
+}
+
+func (messageRepository *WAMessageRepository) encryptPayload(message *dao_wa.Message) error {
+	if message.Payload == nil {
+		return nil
+	}
+	payload, err := json.Marshal(message.Payload)
+	if err != nil {
+		return err
+	}
+	encrypted, err := encryptStoredSecret(string(payload), messageRepository.messageAAD(message, "payload"))
+	if err != nil {
+		return err
+	}
+	message.PayloadEncrypted = encrypted
+	message.Payload = nil
+	return nil
+}
+
+func (messageRepository *WAMessageRepository) decryptPayload(message *dao_wa.Message) error {
+	if message.PayloadEncrypted == "" {
+		return nil
+	}
+	payload, err := decryptStoredSecret(message.PayloadEncrypted, messageRepository.messageAAD(message, "payload"))
+	if err != nil {
+		messageRepository.logger.ErrorFunction(err, "message", message.Id)
+		return err
+	}
+	if err := json.Unmarshal([]byte(payload), &message.Payload); err != nil {
+		return errors.New("decode decrypted message payload")
+	}
+	return nil
+}
+
+func (messageRepository *WAMessageRepository) messageAAD(message *dao_wa.Message, purpose string) string {
+	return fmt.Sprintf("wa.messages:%s:%s", purpose, message.Token)
 }

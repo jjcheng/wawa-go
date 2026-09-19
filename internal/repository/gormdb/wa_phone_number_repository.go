@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -25,7 +26,7 @@ func NewWAPhoneNumberRepository(db *gorm.DB, logger *service.Logger) repository.
 	}
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) Get(ctx context.Context, id int32) (*dao_wa.PhoneNumber, error) {
+func (phoneNumberRepository *WAPhoneNumberRepository) GetById(ctx context.Context, id int32) (*dao_wa.PhoneNumber, error) {
 	var phoneNumber *dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("id = ?", id).First(&phoneNumber)
 	if result.Error != nil {
@@ -68,28 +69,6 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Update(ctx context.Context
 		phoneNumber.RegistrationPin = registrationPin
 	}()
 	return phoneNumberRepository.Repository.Update(ctx, phoneNumber)
-}
-
-func (phoneNumberRepository *WAPhoneNumberRepository) GetByWAIds(ctx context.Context, ids []int32) ([]dao_wa.PhoneNumber, error) {
-	if len(ids) == 0 {
-		return []dao_wa.PhoneNumber{}, nil
-	}
-	var phoneNumbers []dao_wa.PhoneNumber
-	result := phoneNumberRepository.db.WithContext(ctx).
-		Model(&dao_wa.PhoneNumber{}).
-		Where("id IN ?", ids).
-		Order("id").
-		Find(&phoneNumbers)
-	if result.Error != nil {
-		phoneNumberRepository.logger.ErrorFunction(result.Error, ids)
-		return nil, result.Error
-	}
-	for i := range phoneNumbers {
-		if err := phoneNumberRepository.decryptSecrets(&phoneNumbers[i]); err != nil {
-			return nil, err
-		}
-	}
-	return phoneNumbers, nil
 }
 
 func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx context.Context, metaPhoneNumberId string) (*dao_wa.PhoneNumber, error) {
@@ -168,67 +147,6 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Co
 	return &phoneNumber, businessAccount, businessPortfolio, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber *dao_wa.PhoneNumber) error {
-	if phoneNumber.DisplayPhoneNumberEncrypted != "" {
-		displayPhoneNumber, err := decryptStoredSecret(phoneNumber.DisplayPhoneNumberEncrypted, "wa.phone_numbers:display_phone_number:"+phoneNumber.MetaPhoneNumberId)
-		if err != nil {
-			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
-			return err
-		}
-		phoneNumber.DisplayPhoneNumber = displayPhoneNumber
-	}
-	if phoneNumber.WAIdEncrypted != "" {
-		waId, err := decryptStoredSecret(phoneNumber.WAIdEncrypted, "wa.phone_numbers:wa_id:"+phoneNumber.MetaPhoneNumberId)
-		if err != nil {
-			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
-			return err
-		}
-		phoneNumber.WAId = waId
-	}
-	if phoneNumber.RegistrationPinEncrypted != "" {
-		registrationPin, err := decryptStoredSecret(phoneNumber.RegistrationPinEncrypted, "wa.phone_numbers:registration_pin:"+phoneNumber.MetaPhoneNumberId)
-		if err != nil {
-			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
-			return err
-		}
-		phoneNumber.RegistrationPin = registrationPin
-	}
-	return nil
-}
-
-func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber *dao_wa.PhoneNumber) error {
-	if phoneNumber.DisplayPhoneNumber != "" {
-		encrypted, err := encryptStoredSecret(phoneNumber.DisplayPhoneNumber, "wa.phone_numbers:display_phone_number:"+phoneNumber.MetaPhoneNumberId)
-		if err != nil {
-			return err
-		}
-		phoneNumber.DisplayPhoneNumberEncrypted = encrypted
-		phoneNumber.DisplayPhoneNumber = ""
-	}
-	if phoneNumber.WAId != "" {
-		hashed, err := hashStoredSecret(phoneNumber.WAId)
-		if err != nil {
-			return err
-		}
-		phoneNumber.WAIdHash = hashed
-		encrypted, err := encryptStoredSecret(phoneNumber.WAId, "wa.phone_numbers:wa_id:"+phoneNumber.MetaPhoneNumberId)
-		if err != nil {
-			return err
-		}
-		phoneNumber.WAIdEncrypted = encrypted
-		phoneNumber.WAId = ""
-	}
-	if phoneNumber.RegistrationPin != "" {
-		encrypted, err := encryptStoredSecret(phoneNumber.RegistrationPin, "wa.phone_numbers:registration_pin:"+phoneNumber.MetaPhoneNumberId)
-		if err != nil {
-			return err
-		}
-		phoneNumber.RegistrationPinEncrypted = encrypted
-		phoneNumber.RegistrationPin = ""
-	}
-	return nil
-}
-
 // used in update user
 func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAccountByUserId(ctx context.Context, userId int32) (*dao_wa.BusinessPortfolio, *dao_wa.BusinessAccount, error) {
 	var businessAccount dao_wa.BusinessAccount
@@ -256,20 +174,86 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 		}
 		return nil, nil, result.Error
 	}
-	if err := decryptBusinessPortfolioAccessToken(&businessPortfolio); err != nil {
+	if err := (phoneNumberRepository).decryptBusinessPortfolioAccessToken(&businessPortfolio); err != nil {
 		return nil, nil, err
 	}
 	return &businessPortfolio, &businessAccount, nil
 }
 
-func decryptBusinessPortfolioAccessToken(businessPortfolio *dao_wa.BusinessPortfolio) error {
+func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber *dao_wa.PhoneNumber) error {
+	if phoneNumber.DisplayPhoneNumberEncrypted != "" {
+		displayPhoneNumber, err := decryptStoredSecret(phoneNumber.DisplayPhoneNumberEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
+		if err != nil {
+			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
+			return err
+		}
+		phoneNumber.DisplayPhoneNumber = displayPhoneNumber
+	}
+	if phoneNumber.WAIdEncrypted != "" {
+		waId, err := decryptStoredSecret(phoneNumber.WAIdEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
+		if err != nil {
+			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
+			return err
+		}
+		phoneNumber.WAId = waId
+	}
+	if phoneNumber.RegistrationPinEncrypted != "" {
+		registrationPin, err := decryptStoredSecret(phoneNumber.RegistrationPinEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
+		if err != nil {
+			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
+			return err
+		}
+		phoneNumber.RegistrationPin = registrationPin
+	}
+	return nil
+}
+
+func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber *dao_wa.PhoneNumber) error {
+	if phoneNumber.DisplayPhoneNumber != "" {
+		encrypted, err := encryptStoredSecret(phoneNumber.DisplayPhoneNumber, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
+		if err != nil {
+			return err
+		}
+		phoneNumber.DisplayPhoneNumberEncrypted = encrypted
+		phoneNumber.DisplayPhoneNumber = ""
+	}
+	if phoneNumber.WAId != "" {
+		hashed, err := hashStoredSecret(phoneNumber.WAId)
+		if err != nil {
+			return err
+		}
+		phoneNumber.WAIdHash = hashed
+		encrypted, err := encryptStoredSecret(phoneNumber.WAId, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
+		if err != nil {
+			return err
+		}
+		phoneNumber.WAIdEncrypted = encrypted
+		phoneNumber.WAId = ""
+	}
+	if phoneNumber.RegistrationPin != "" {
+		encrypted, err := encryptStoredSecret(phoneNumber.RegistrationPin, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
+		if err != nil {
+			return err
+		}
+		phoneNumber.RegistrationPinEncrypted = encrypted
+		phoneNumber.RegistrationPin = ""
+	}
+	return nil
+}
+
+func (phoneNumberRepository *WAPhoneNumberRepository) decryptBusinessPortfolioAccessToken(businessPortfolio *dao_wa.BusinessPortfolio) error {
 	if businessPortfolio.AccessTokenEncrypted == "" {
 		return nil
 	}
+	// make sure the aad is correct here
 	accessToken, err := decryptStoredSecret(businessPortfolio.AccessTokenEncrypted, "wa.business_portfolios:access_token:"+businessPortfolio.MetaBusinessPortfolioId)
 	if err != nil {
 		return err
 	}
 	businessPortfolio.AccessToken = accessToken
 	return nil
+}
+
+func (phoneNumberRepository *WAPhoneNumberRepository) phoneNumberAAD(phoneNumber *dao_wa.PhoneNumber, purpose string) string {
+	return fmt.Sprintf("wa.phone_numbers:%s:%s", purpose, phoneNumber.MetaPhoneNumberId)
 }

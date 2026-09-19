@@ -9,13 +9,13 @@ type PhoneNumber struct {
 	dao.DAOBase
 	BusinessAccountId  int32                     `gorm:"column:business_account_id"`
 	MetaPhoneNumberId  string                    `gorm:"column:meta_phone_number_id"`
-	DisplayPhoneNumber string                    `gorm:"column:display_phone_number"`
-	WAId               string                    `gorm:"column:wa_id"`
+	DisplayPhoneNumber string                    `gorm:"-"` // not a db column
+	WAId               string                    `gorm:"-"` // not a db column
 	Name               string                    `gorm:"column:name"`
 	UserId             int32                     `gorm:"column:user_id"`
 	Status             types.WAPhoneNumberStatus `gorm:"column:status"`
 	// two-step verification PIN set at registration, required to re-register the number later
-	RegistrationPin string `gorm:"column:registration_pin"`
+	RegistrationPin string `gorm:"-"` // not a db column
 	// from account.users table
 	UserName string `gorm:"column:user_name;->"`
 	// encryption

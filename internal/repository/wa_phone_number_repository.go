@@ -9,7 +9,6 @@ import (
 
 type WAPhoneNumberRepository interface {
 	Repository[dao_wa.PhoneNumber]
-	Get(ctx context.Context, id int32) (*dao_wa.PhoneNumber, error)
 	CountByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error)
 	// only used in embedded signup or incoming message, no user object
 	GetByMetaPhoneNumberId(ctx context.Context, metaPhoneNumberId string) (*dao_wa.PhoneNumber, error)

@@ -48,6 +48,14 @@ func main() {
 			feature_cli.GenerateMigrationFiles(ctx)
 		case "restore-db":
 			feature_cli.RestoreLocalDBFromMigrationFiles()
+		case "backfill-encryption":
+			if err := feature_cli.BackfillEncryption(ctx); err != nil {
+				log.Fatalf("encryption backfill failed: %v", err)
+			}
+		case "backfill-messages":
+			if err := feature_cli.BackfillMessages(ctx); err != nil {
+				log.Fatalf("message encryption backfill failed: %v", err)
+			}
 		default:
 			showHelp()
 		}

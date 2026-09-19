@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -100,11 +101,12 @@ func storeIncomingStatus(ctx context.Context, dependencies *service.Dependencies
 		}
 	}
 	event := dao_wa.MessageStatus{
-		WAMessageId: status.ID,
-		MessageId:   message.Id,
-		Status:      messageStatus,
-		Timestamp:   timestamp,
-		Payload:     status.Payload,
+		WAMessageId:  status.ID,
+		MessageId:    message.Id,
+		Status:       messageStatus,
+		Timestamp:    timestamp,
+		Payload:      status.Payload,
+		EncryptionID: uuid.NewString(),
 	}
 	if len(status.Errors) > 0 {
 		var errors []string
@@ -262,6 +264,7 @@ func storeIncomingMessage(ctx context.Context, dependencies *service.Dependencie
 		Timestamp:     timestamp,
 		Type:          incomingMessage.Type,
 		Payload:       incomingMessage.Payload,
+		Token:         uuid.NewString(),
 	}
 	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {

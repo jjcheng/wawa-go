@@ -35,7 +35,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if user.Type != types.UserTypeMaster {
 		get.Id = user.WA.PhoneNumber_.Id
 	}
-	storedPhoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().Get(ctx, get.Id)
+	storedPhoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, get.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusNotFound, "phone number not found")

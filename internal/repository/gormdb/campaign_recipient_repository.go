@@ -3,8 +3,10 @@ package gormdb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -29,6 +31,9 @@ func NewCampaignRecipientRepository(db *gorm.DB, logger *service.Logger) reposit
 
 func (campaignRecipientRepository *CampaignRecipientRepository) Insert(ctx context.Context, recipient *dao_customer.CampaignRecipient) error {
 	payload := recipient.Payload
+	if recipient.EncryptionID == "" {
+		recipient.EncryptionID = uuid.NewString()
+	}
 	if err := campaignRecipientRepository.encryptPayload(recipient); err != nil {
 		return err
 	}
@@ -40,6 +45,9 @@ func (campaignRecipientRepository *CampaignRecipientRepository) InsertBulk(ctx c
 	payloads := make([]map[string]any, len(recipients))
 	for i := range recipients {
 		payloads[i] = recipients[i].Payload
+		if recipients[i].EncryptionID == "" {
+			recipients[i].EncryptionID = uuid.NewString()
+		}
 		if err := campaignRecipientRepository.encryptPayload(&recipients[i]); err != nil {
 			return err
 		}
@@ -59,6 +67,24 @@ func (campaignRecipientRepository *CampaignRecipientRepository) Update(ctx conte
 	}
 	defer func() { recipient.Payload = payload }()
 	return campaignRecipientRepository.Repository.Update(ctx, recipient)
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) GetById(ctx context.Context, id int32) (*dao_customer.CampaignRecipient, error) {
+	var recipient dao_customer.CampaignRecipient
+	result := campaignRecipientRepository.db.WithContext(ctx).
+		Model(&dao_customer.CampaignRecipient{}).
+		Where("id = ?", id).
+		First(&recipient)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			campaignRecipientRepository.logger.ErrorFunction(result.Error, id)
+		}
+		return nil, result.Error
+	}
+	if err := campaignRecipientRepository.decryptPayload(&recipient); err != nil {
+		return nil, err
+	}
+	return &recipient, nil
 }
 
 func (campaignRecipientRepository *CampaignRecipientRepository) ListByCampaignId(ctx context.Context, campaignID int32, name string, status types.WAMessageStatus, onlyMessageCreated bool, page int, pageSize int) (campaignRecipients []dao_customer.CampaignRecipient, totalCount int, totalPages int, err error) {
@@ -121,39 +147,6 @@ func (campaignRecipientRepository *CampaignRecipientRepository) ListByCampaignId
 	return campaignRecipients, totalCount, totalPages, nil
 }
 
-func (campaignRecipientRepository *CampaignRecipientRepository) encryptPayload(recipient *dao_customer.CampaignRecipient) error {
-	if recipient.Payload == nil {
-		return nil
-	}
-	payload, err := json.Marshal(recipient.Payload)
-	if err != nil {
-		return err
-	}
-	encrypted, err := encryptStoredSecret(string(payload), campaignRecipientAAD(recipient))
-	if err != nil {
-		return err
-	}
-	recipient.PayloadEncrypted = encrypted
-	recipient.Payload = nil
-	return nil
-}
-
-func (campaignRecipientRepository *CampaignRecipientRepository) decryptPayload(recipient *dao_customer.CampaignRecipient) error {
-	if recipient.PayloadEncrypted == "" {
-		return nil
-	}
-	payload, err := decryptStoredSecret(recipient.PayloadEncrypted, campaignRecipientAAD(recipient))
-	if err != nil {
-		campaignRecipientRepository.logger.ErrorFunction(err, "campaign_recipient", recipient.Id)
-		return err
-	}
-	return json.Unmarshal([]byte(payload), &recipient.Payload)
-}
-
-func campaignRecipientAAD(recipient *dao_customer.CampaignRecipient) string {
-	return fmt.Sprintf("customer.campaign_recipients:payload:%d:%d", recipient.CampaignId, recipient.CustomerId)
-}
-
 func (campaignRecipientRepository *CampaignRecipientRepository) CountMessageStatusesByCampaignId(ctx context.Context, campaignID int32) (map[types.WAMessageStatus]int, error) {
 	type row struct {
 		Status types.WAMessageStatus `gorm:"column:status"`
@@ -182,4 +175,37 @@ func (campaignRecipientRepository *CampaignRecipientRepository) CountMessageStat
 		counts[row.Status] = row.Count
 	}
 	return counts, nil
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) campaignRecipientAAD(recipient *dao_customer.CampaignRecipient, purpose string) string {
+	return fmt.Sprintf("customer.campaign_recipients:%s:%s", purpose, recipient.EncryptionID)
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) encryptPayload(recipient *dao_customer.CampaignRecipient) error {
+	if recipient.Payload == nil {
+		return nil
+	}
+	payload, err := json.Marshal(recipient.Payload)
+	if err != nil {
+		return err
+	}
+	encrypted, err := encryptStoredSecret(string(payload), campaignRecipientRepository.campaignRecipientAAD(recipient, "payload"))
+	if err != nil {
+		return err
+	}
+	recipient.PayloadEncrypted = encrypted
+	recipient.Payload = nil
+	return nil
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) decryptPayload(recipient *dao_customer.CampaignRecipient) error {
+	if recipient.PayloadEncrypted == "" {
+		return nil
+	}
+	payload, err := decryptStoredSecret(recipient.PayloadEncrypted, campaignRecipientRepository.campaignRecipientAAD(recipient, "payload"))
+	if err != nil {
+		campaignRecipientRepository.logger.ErrorFunction(err, "campaign_recipient", recipient.Id)
+		return err
+	}
+	return json.Unmarshal([]byte(payload), &recipient.Payload)
 }

@@ -417,7 +417,7 @@
                           "type": "string"
                         },
                         "new": {
-                          "description": "indicate this is a new user, if not, after embedded signup need to re login",
+                          "description": "indicate this is a new user, if not, after embedded signup need to re-login",
                           "type": "boolean"
                         },
                         "phone_number": {
@@ -807,7 +807,7 @@
                           "type": "string"
                         },
                         "new": {
-                          "description": "indicate this is a new user, if not, after embedded signup need to re login",
+                          "description": "indicate this is a new user, if not, after embedded signup need to re-login",
                           "type": "boolean"
                         },
                         "phone_number": {
@@ -1149,7 +1149,7 @@
                           "type": "string"
                         },
                         "new": {
-                          "description": "indicate this is a new user, if not, after embedded signup need to re login",
+                          "description": "indicate this is a new user, if not, after embedded signup need to re-login",
                           "type": "boolean"
                         },
                         "phone_number": {
@@ -1468,7 +1468,7 @@
                             "type": "string"
                           },
                           "new": {
-                            "description": "indicate this is a new user, if not, after embedded signup need to re login",
+                            "description": "indicate this is a new user, if not, after embedded signup need to re-login",
                             "type": "boolean"
                           },
                           "phone_number": {
@@ -1819,7 +1819,7 @@
                           "type": "string"
                         },
                         "new": {
-                          "description": "indicate this is a new user, if not, after embedded signup need to re login",
+                          "description": "indicate this is a new user, if not, after embedded signup need to re-login",
                           "type": "boolean"
                         },
                         "phone_number": {
@@ -8388,7 +8388,7 @@
                           "type": "string"
                         },
                         "new": {
-                          "description": "indicate this is a new user, if not, after embedded signup need to re login",
+                          "description": "indicate this is a new user, if not, after embedded signup need to re-login",
                           "type": "boolean"
                         },
                         "phone_number": {

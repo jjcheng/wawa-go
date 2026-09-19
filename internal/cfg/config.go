@@ -93,7 +93,6 @@ func Default() *Config {
 			port = "9000" // Default for FC custom runtime
 		}
 		environment := types.Environment(os.Getenv("ENVIRONMENT"))
-		globalKeys := loadGlobalKeys(environment)
 		// load configs
 		configInstance = &Config{
 			Database: DatabaseConfig{
@@ -115,7 +114,7 @@ func Default() *Config {
 				HTTPHeaderUserAccessTokenKey: "x-user-access-token",
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
 				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days
-				GlobalKeys:                   globalKeys,
+				GlobalKeys:                   loadGlobalKeys(environment),
 			},
 			AliyunOSS: AliyunOSSConfig{
 				Endpoint:        os.Getenv("ALIYUN_OSS_ENDPOINT"),
@@ -149,16 +148,9 @@ func Default() *Config {
 func loadGlobalKeys(environment types.Environment) *helper.CryptoKeys {
 	masterKeyValue := strings.TrimSpace(os.Getenv("ENCRYPTION_MASTER_KEY"))
 	saltValue := strings.TrimSpace(os.Getenv("ENCRYPTION_SALT"))
-	if masterKeyValue == "" && saltValue == "" {
-		if environment == types.EnvironmentStaging || environment == types.EnvironmentProduction {
-			panic("encryption keys must be configured outside development")
-		}
-		return nil
-	}
 	if masterKeyValue == "" || saltValue == "" {
-		panic("ENCRYPTION_MASTER_KEY and ENCRYPTION_SALT must be configured together")
+		panic("ENCRYPTION_MASTER_KEY or ENCRYPTION_SALT is missing")
 	}
-
 	masterKey, err := base64.StdEncoding.DecodeString(masterKeyValue)
 	if err != nil {
 		panic(fmt.Sprintf("invalid ENCRYPTION_MASTER_KEY: %v", err))
@@ -167,7 +159,6 @@ func loadGlobalKeys(environment types.Environment) *helper.CryptoKeys {
 	if err != nil {
 		panic(fmt.Sprintf("invalid ENCRYPTION_SALT: %v", err))
 	}
-
 	version := int32(1)
 	if versionValue := strings.TrimSpace(os.Getenv("ENCRYPTION_VERSION")); versionValue != "" {
 		parsedVersion, parseErr := strconv.ParseInt(versionValue, 10, 32)
@@ -176,7 +167,6 @@ func loadGlobalKeys(environment types.Environment) *helper.CryptoKeys {
 		}
 		version = int32(parsedVersion)
 	}
-
 	keys, err := helper.DeriveKeys(masterKey, salt, version, environment)
 	if err != nil {
 		panic(fmt.Sprintf("invalid encryption configuration: %v", err))

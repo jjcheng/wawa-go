@@ -67,7 +67,7 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 	var user *dao_account.User
 	err = retry(ctx, 3, 1000*time.Millisecond, func() error {
 		var e error
-		user, e = dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, campaign.UserId)
+		user, e = dependencies.UnitOfWork.AccountUserRepository().Get(ctx, campaign.UserId)
 		return e
 	})
 	if err != nil {

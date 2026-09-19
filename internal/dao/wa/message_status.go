@@ -13,8 +13,9 @@ type MessageStatus struct {
 	Status       types.WAMessageStatus `gorm:"column:status"`
 	Timestamp    int64                 `gorm:"column:timestamp"`
 	ErrorMessage string                `gorm:"column:error_message"`
-	Payload      map[string]any        `gorm:"column:payload;type:jsonb;serializer:json"`
+	Payload      map[string]any        `gorm:"-"` // not a column in db
 	// encryption
+	EncryptionID     string `gorm:"column:encryption_id"`
 	PayloadEncrypted string `gorm:"column:payload_encrypted"`
 }
 

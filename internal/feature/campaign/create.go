@@ -175,9 +175,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	recipients := make([]dao_customer.CampaignRecipient, 0, len(customers))
 	for index, customer := range customers {
 		recipients = append(recipients, dao_customer.CampaignRecipient{
-			CampaignId: campaign.Id,
-			CustomerId: customer.Id,
-			Payload:    payloads[index],
+			CampaignId:   campaign.Id,
+			CustomerId:   customer.Id,
+			Payload:      payloads[index],
+			EncryptionID: uuid.NewString(),
 		})
 	}
 	if err := transaction.CampaignRecipientRepository().InsertBulk(ctx, recipients); err != nil {

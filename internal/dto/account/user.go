@@ -11,19 +11,20 @@ import (
 
 type User struct {
 	dto.DTOBase
-	Name              string           `json:"name"`
-	CountryCode       string           `json:"country_code"`
-	PhoneNumber       string           `json:"phone_number"`
-	Email             string           `json:"email"`
-	Description       string           `json:"description"`
-	Type              types.UserType   `json:"type"`
-	Status            types.UserStatus `json:"status"`
-	AccessToken       string           `json:"access_token,omitempty" description:"only returned during login"`
-	AccessTokenExpiry *time.Time       `json:"access_token_expiry,omitempty" description:"access token expiry time"`
+	Name        string           `json:"name"`
+	CountryCode string           `json:"country_code"`
+	PhoneNumber string           `json:"phone_number"`
+	Email       string           `json:"email"`
+	Description string           `json:"description"`
+	Type        types.UserType   `json:"type"`
+	Status      types.UserStatus `json:"status"`
+	// got from session
+	AccessToken       string     `json:"access_token,omitempty" description:"only returned during login"`
+	AccessTokenExpiry *time.Time `json:"access_token_expiry,omitempty" description:"access token expiry time"`
 	// only used in embedded signup if the activate meta function failed
 	WAActivated       bool   `json:"wa_activated,omitempty"`
 	WAActivationError string `json:"wa_activation_error,omitempty"`
-	New               bool   `json:"new" description:"indicate this is a new user, if not, after embedded signup need to re login"`
+	New               bool   `json:"new" description:"indicate this is a new user, if not, after embedded signup need to re-login"`
 	// to retrieve all WA related objects
 	WA *UserWA `json:"-"`
 	// login info

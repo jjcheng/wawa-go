@@ -16,7 +16,7 @@ type Message struct {
 	Timestamp     int64                 `gorm:"column:timestamp"`
 	Type          string                `gorm:"column:type"`
 	Status        types.WAMessageStatus `gorm:"column:status"`
-	Payload       map[string]any        `gorm:"column:payload;type:jsonb;serializer:json"`
+	Payload       map[string]any        `gorm:"-"` // not a db column
 	AttachmentURL string                `gorm:"column:attachment_url"`
 	Token         string                `gorm:"column:token"`
 	// for billing

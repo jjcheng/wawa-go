@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -63,11 +64,6 @@ func (store *Store) Validate() []exception.InputException {
 	} else if !helper.Any(types.UserTypes, func(t types.UserType) bool { return t == store.Type }) {
 		errors = append(errors, exception.NewInputException("type", "invalid type"))
 	}
-	// if store.Status == "" {
-	// 	errors = append(errors, exception.NewInputException("status", "missing status"))
-	// } else if store.Status != types.UserStatusActive && store.Status != types.UserStatusPendingPassword && store.Status != types.UserStatusInactive {
-	// 	errors = append(errors, exception.NewInputException("status", "invalid status"))
-	// }
 	return errors
 }
 
@@ -94,10 +90,6 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
 	var u dto_account.User
 	if existing != nil {
-		// a user who never set a password has no credential to bypass, so signup may hand back a session to finish onboarding
-		// if !store.ResumePendingPassword || existing.Status != types.UserStatusPendingPassword {
-		// 	return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "user with this phone number already exists, please login instead")
-		// }
 		u = dto_account.NewUser(*existing)
 		// if store allows resume pending password and the existing user is pending password, treat it as new user
 		if store.ResumePendingPassword && existing.Status == types.UserStatusPendingPassword {
@@ -119,7 +111,9 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 			Type:         store.Type,
 			PasswordHash: passwordHash,
 			Status:       types.UserStatusPendingPassword, // new user always need to set a password
+			EncryptionID: uuid.NewString(),
 		}
+		// Insert will do all the encryption/hashing
 		if err := dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser); err != nil {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 		}

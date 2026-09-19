@@ -123,7 +123,7 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 			Remarks:             contact.Note,
 			AdditionalData:      contact.AdditionalData(),
 			ImportedPhoneNumber: contact.ImportedPhoneNumber,
-			Token:               strings.ReplaceAll(uuid.NewString(), "-", ""),
+			Token:               uuid.NewString(),
 		}
 		// if countrycode and phone number both are numbers, set WAId = countryCode+phoneNumber
 		if helper.IsDigitsOnly(countryCode) && helper.IsDigitsOnly(phoneNumber) {

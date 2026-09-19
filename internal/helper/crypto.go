@@ -51,29 +51,6 @@ type CryptoKeys struct {
 	KeyID         string // External key identifier (e.g., KMS key ARN or UUID). the version is the same as Version
 }
 
-// Zeroize overwrites sensitive key material with zeros for secure cleanup.
-// Call this when keys are no longer needed (e.g., during application shutdown or key rotation).
-//
-// SECURITY NOTE: This is defense-in-depth. Go's garbage collector may have already
-// copied the key material, so this is not a complete solution. For maximum security,
-// use hardware-backed keys (HSM/KMS) that never expose key material to application memory.
-func (k *CryptoKeys) Zeroize() {
-	if k == nil {
-		return
-	}
-	// Overwrite encryption key
-	for i := range k.EncryptionKey {
-		k.EncryptionKey[i] = 0
-	}
-	// Overwrite HMAC key
-	for i := range k.HMACKey {
-		k.HMACKey[i] = 0
-	}
-	// Clear version and KeyID
-	k.Version = 0
-	k.KeyID = ""
-}
-
 // DeriveKeys derives encryption and HMAC keys from a master key using HKDF with salt.
 // This should be called ONCE at application startup, not per-request.
 //
@@ -226,8 +203,8 @@ func VerifySecret(providedSecret, storedHmacHex string, hmacKey []byte) (bool, e
 
 // EncryptedData represents encrypted data with metadata for key rotation support.
 type EncryptedData struct {
-	Version    int32  // Key version used for encryption
-	Ciphertext string // Base64-encoded ciphertext (nonce + encrypted data)
+	Version    int32  `json:"version"`    // Key version used for encryption
+	Ciphertext string `json:"ciphertext"` // Base64-encoded ciphertext (nonce + encrypted data)
 }
 
 // EncryptSecret encrypts a secret using AES-256-GCM with pre-derived keys,
