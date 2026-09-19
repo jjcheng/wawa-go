@@ -19,8 +19,16 @@ type Customer struct {
 	Status              types.CustomerStatus `gorm:"column:status"`
 	Remarks             string               `gorm:"column:remarks"`
 	AdditionalData      map[string]any       `gorm:"column:additional_data;type:jsonb;serializer:json"`
-	ImportedPhoneNumber string               `gorm:"column:imported_phone_number"` // to prevent duplicate when importing from vcf
-	Token               string               `gorm:"token"`                        // uuid to identify customer
+	ImportedPhoneNumber string               `gorm:"column:imported_phone_number"` // to prevent duplicate when importing
+	Token               string               `gorm:"column:token"`                 // uuid to identify customer
+	// encryption
+	PhoneNumberEncrypted         string `gorm:"column:phone_number_encrypted"`
+	PhoneNumberHash              string `gorm:"column:phone_number_hash"`
+	WAIdEncrypted                string `gorm:"column:wa_id_encrypted"`
+	WAIdHash                     string `gorm:"column:wa_id_hash"`
+	ImportedPhoneNumberEncrypted string `gorm:"column:imported_phone_number_encrypted"`
+	ImportedPhoneNumberHash      string `gorm:"column:imported_phone_number_hash"`
+	AdditionalDataEncrypted      string `gorm:"column:additional_data_encrypted"`
 }
 
 func (Customer) TableName() string {

@@ -123,7 +123,7 @@ func migrateData(ctx context.Context, targetUnitOfWork repository.UnitOfWork, so
 			return migrateTableData[dao_wa.Message](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
 		},
 		func() error {
-			return migrateTableData[dao_wa.MessageStatusEvent](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+			return migrateTableData[dao_wa.MessageStatus](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
 		},
 		func() error {
 			return migrateTableData[dao_wa.SampleTemplate](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)

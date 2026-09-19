@@ -26,7 +26,9 @@ type Message struct {
 	// retry if error
 	Attempts      int32      `gorm:"column:attempts"`
 	NextAttemptAt *time.Time `gorm:"column:next_attempt_at"`
-	ErrorMessage  string     `gorm:"error_message"`
+	ErrorMessage  string     `gorm:"column:error_message"`
+	// encryption
+	PayloadEncrypted string `gorm:"column:payload_encrypted"`
 }
 
 func (Message) TableName() string {

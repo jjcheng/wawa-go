@@ -6,7 +6,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
-type MessageStatusEvent struct {
+type MessageStatus struct {
 	dto.DTOBase
 	WAMessageId  string                `json:"wa_message_id"`
 	Status       types.WAMessageStatus `json:"status"`
@@ -15,8 +15,8 @@ type MessageStatusEvent struct {
 	Payload      map[string]any        `json:"-"`
 }
 
-func NewMessageStatusEvent(messageStatusEvent dao_wa.MessageStatusEvent) MessageStatusEvent {
-	return MessageStatusEvent{
+func NewMessageStatus(messageStatusEvent dao_wa.MessageStatus) MessageStatus {
+	return MessageStatus{
 		DTOBase: dto.DTOBase{
 			Id:         messageStatusEvent.Id,
 			EntryDate:  messageStatusEvent.EntryDate,

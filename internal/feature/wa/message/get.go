@@ -52,13 +52,13 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	}
 	result := dto_wa.NewMessage(*message)
 	// get statuses
-	statuses, err := dependencies.UnitOfWork.WAMessageStatusEventRepository().ListByMessageId(ctx, message.Id)
+	statuses, err := dependencies.UnitOfWork.WAMessageStatusRepository().ListByMessageId(ctx, message.Id)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	var statusList []dto_wa.MessageStatusEvent
+	var statusList []dto_wa.MessageStatus
 	for _, status := range statuses {
-		statusList = append(statusList, dto_wa.NewMessageStatusEvent(status))
+		statusList = append(statusList, dto_wa.NewMessageStatus(status))
 	}
 	result.Statuses = statusList
 	return dto.NewSuccessResponse(&result)

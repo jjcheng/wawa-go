@@ -27,9 +27,9 @@ type Message struct {
 	ErrorMessage  string                `json:"error_message"`
 	Token         string                `json:"token"`
 	// lazy loaded
-	Statuses        []MessageStatusEvent `json:"statuses,omitempty"`
-	PreviewHTML     string               `json:"preview_html,omitempty"`
-	PreviewDarkHTML string               `json:"preview_dark_html,omitempty"`
+	Statuses        []MessageStatus `json:"statuses,omitempty"`
+	PreviewHTML     string          `json:"preview_html,omitempty"`
+	PreviewDarkHTML string          `json:"preview_dark_html,omitempty"`
 }
 
 func NewMessage(message dao_wa.Message) Message {

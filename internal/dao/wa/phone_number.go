@@ -18,6 +18,11 @@ type PhoneNumber struct {
 	RegistrationPin string `gorm:"column:registration_pin"`
 	// from account.users table
 	UserName string `gorm:"column:user_name;->"`
+	// encryption
+	DisplayPhoneNumberEncrypted string `gorm:"column:display_phone_number_encrypted"`
+	WAIdEncrypted               string `gorm:"column:wa_id_encrypted"`
+	WAIdHash                    string `gorm:"column:wa_id_hash"`
+	RegistrationPinEncrypted    string `gorm:"column:registration_pin_encrypted"`
 }
 
 func (PhoneNumber) TableName() string {

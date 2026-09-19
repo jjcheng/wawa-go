@@ -1,10 +1,13 @@
 package cfg
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -89,6 +92,8 @@ func Default() *Config {
 		if port == "" {
 			port = "9000" // Default for FC custom runtime
 		}
+		environment := types.Environment(os.Getenv("ENVIRONMENT"))
+		globalKeys := loadGlobalKeys(environment)
 		// load configs
 		configInstance = &Config{
 			Database: DatabaseConfig{
@@ -103,13 +108,14 @@ func Default() *Config {
 			Site: SiteConfig{
 				Port:                         port,
 				Version:                      os.Getenv("VERSION"),
-				Environment:                  types.Environment(os.Getenv("ENVIRONMENT")),
+				Environment:                  environment,
 				HTTPRequestUserKey:           "HTTP_REQUEST_USER",
 				HTTPRequestItemKey:           "HTTP_REQUEST_ITEM",
 				HTTPRequestIdKey:             "HTTP_REQUEST_ID",
 				HTTPHeaderUserAccessTokenKey: "x-user-access-token",
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
 				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days
+				GlobalKeys:                   globalKeys,
 			},
 			AliyunOSS: AliyunOSSConfig{
 				Endpoint:        os.Getenv("ALIYUN_OSS_ENDPOINT"),
@@ -138,6 +144,44 @@ func Default() *Config {
 		}
 	})
 	return configInstance
+}
+
+func loadGlobalKeys(environment types.Environment) *helper.CryptoKeys {
+	masterKeyValue := strings.TrimSpace(os.Getenv("ENCRYPTION_MASTER_KEY"))
+	saltValue := strings.TrimSpace(os.Getenv("ENCRYPTION_SALT"))
+	if masterKeyValue == "" && saltValue == "" {
+		if environment == types.EnvironmentStaging || environment == types.EnvironmentProduction {
+			panic("encryption keys must be configured outside development")
+		}
+		return nil
+	}
+	if masterKeyValue == "" || saltValue == "" {
+		panic("ENCRYPTION_MASTER_KEY and ENCRYPTION_SALT must be configured together")
+	}
+
+	masterKey, err := base64.StdEncoding.DecodeString(masterKeyValue)
+	if err != nil {
+		panic(fmt.Sprintf("invalid ENCRYPTION_MASTER_KEY: %v", err))
+	}
+	salt, err := base64.StdEncoding.DecodeString(saltValue)
+	if err != nil {
+		panic(fmt.Sprintf("invalid ENCRYPTION_SALT: %v", err))
+	}
+
+	version := int32(1)
+	if versionValue := strings.TrimSpace(os.Getenv("ENCRYPTION_VERSION")); versionValue != "" {
+		parsedVersion, parseErr := strconv.ParseInt(versionValue, 10, 32)
+		if parseErr != nil || parsedVersion < 1 {
+			panic("ENCRYPTION_VERSION must be a positive integer")
+		}
+		version = int32(parsedVersion)
+	}
+
+	keys, err := helper.DeriveKeys(masterKey, salt, version, environment)
+	if err != nil {
+		panic(fmt.Sprintf("invalid encryption configuration: %v", err))
+	}
+	return keys
 }
 
 func (config *DatabaseConfig) DSN() string {

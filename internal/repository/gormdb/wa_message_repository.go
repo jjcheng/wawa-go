@@ -2,6 +2,8 @@ package gormdb
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -26,6 +28,35 @@ func NewWAMessageRepository(db *gorm.DB, logger *service.Logger) repository.WAMe
 	}
 }
 
+func (messageRepository *WAMessageRepository) GetById(ctx context.Context, id int32) (*dao_wa.Message, error) {
+	var message dao_wa.Message
+	if err := messageRepository.db.WithContext(ctx).First(&message, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	if err := messageRepository.decryptPayload(&message); err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+func (messageRepository *WAMessageRepository) Insert(ctx context.Context, message *dao_wa.Message) error {
+	payload := message.Payload
+	if err := messageRepository.encryptPayload(message); err != nil {
+		return err
+	}
+	defer func() { message.Payload = payload }()
+	return messageRepository.Repository.Insert(ctx, message)
+}
+
+func (messageRepository *WAMessageRepository) Update(ctx context.Context, message *dao_wa.Message) error {
+	payload := message.Payload
+	if err := messageRepository.encryptPayload(message); err != nil {
+		return err
+	}
+	defer func() { message.Payload = payload }()
+	return messageRepository.Repository.Update(ctx, message)
+}
+
 func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNumberId int32, customerId int32, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error) {
 	query := messageRepository.db.WithContext(ctx).Model(&dao_wa.Message{})
 	query = query.Where("phone_number_id = ? AND customer_id = ?", phoneNumberId, customerId)
@@ -44,6 +75,11 @@ func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNum
 		messageRepository.logger.ErrorFunction(err, phoneNumberId, customerId, page, pageSize)
 		return nil, 0, 0, err
 	}
+	for i := range messages {
+		if err = messageRepository.decryptPayload(&messages[i]); err != nil {
+			return nil, 0, 0, err
+		}
+	}
 	return messages, totalPages, totalCount, nil
 }
 
@@ -54,6 +90,9 @@ func (messageRepository *WAMessageRepository) GetByWAMessageId(ctx context.Conte
 		First(&message).Error; err != nil {
 		return nil, err
 	}
+	if err := messageRepository.decryptPayload(&message); err != nil {
+		return nil, err
+	}
 	return &message, nil
 }
 
@@ -62,6 +101,9 @@ func (messageRepository *WAMessageRepository) GetByToken(ctx context.Context, to
 	if err := messageRepository.db.WithContext(ctx).
 		Where("token = ?", strings.TrimSpace(token)).
 		First(&message).Error; err != nil {
+		return nil, err
+	}
+	if err := messageRepository.decryptPayload(&message); err != nil {
 		return nil, err
 	}
 	return &message, nil
@@ -78,7 +120,44 @@ func (messageRepository *WAMessageRepository) ListNeedResend(ctx context.Context
 		messageRepository.logger.ErrorFunction(result.Error)
 		return nil, result.Error
 	}
+	for i := range messages {
+		if err := messageRepository.decryptPayload(&messages[i]); err != nil {
+			return nil, err
+		}
+	}
 	return messages, nil
+}
+
+func (messageRepository *WAMessageRepository) encryptPayload(message *dao_wa.Message) error {
+	if message.Payload == nil {
+		return nil
+	}
+	payload, err := json.Marshal(message.Payload)
+	if err != nil {
+		return err
+	}
+	encrypted, err := encryptStoredSecret(string(payload), "wa.messages:payload:"+message.WAMessageId)
+	if err != nil {
+		return err
+	}
+	message.PayloadEncrypted = encrypted
+	message.Payload = nil
+	return nil
+}
+
+func (messageRepository *WAMessageRepository) decryptPayload(message *dao_wa.Message) error {
+	if message.PayloadEncrypted == "" {
+		return nil
+	}
+	payload, err := decryptStoredSecret(message.PayloadEncrypted, "wa.messages:payload:"+message.WAMessageId)
+	if err != nil {
+		messageRepository.logger.ErrorFunction(err, "message", message.Id)
+		return err
+	}
+	if err := json.Unmarshal([]byte(payload), &message.Payload); err != nil {
+		return errors.New("decode decrypted message payload")
+	}
+	return nil
 }
 
 func (messageRepository *WAMessageRepository) UpdateNextAttemptAt(ctx context.Context, id int32, nextAttemptAt time.Time) (bool, error) {

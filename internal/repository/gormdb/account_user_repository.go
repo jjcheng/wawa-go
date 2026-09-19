@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -27,6 +28,35 @@ func NewAccountUserRepository(db *gorm.DB, logger *service.Logger) repository.Ac
 	return &accountUserRepository
 }
 
+func (accountUserRepository *AccountUserRepository) GetById(ctx context.Context, id int32) (*dao_account.User, error) {
+	var user dao_account.User
+	if err := accountUserRepository.db.WithContext(ctx).First(&user, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	if err := accountUserRepository.decryptSensitiveFields(&user); err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (accountUserRepository *AccountUserRepository) Insert(ctx context.Context, user *dao_account.User) error {
+	original := userSensitiveSnapshotOf(user)
+	if err := accountUserRepository.encryptSensitiveFields(user); err != nil {
+		return err
+	}
+	defer restoreUserSensitiveFields(user, original)
+	return accountUserRepository.Repository.Insert(ctx, user)
+}
+
+func (accountUserRepository *AccountUserRepository) Update(ctx context.Context, user *dao_account.User) error {
+	original := userSensitiveSnapshotOf(user)
+	if err := accountUserRepository.encryptSensitiveFields(user); err != nil {
+		return err
+	}
+	defer restoreUserSensitiveFields(user, original)
+	return accountUserRepository.Repository.Update(ctx, user)
+}
+
 func (accountUserRepository *AccountUserRepository) Get(ctx context.Context, id int32) (*dao_account.User, error) {
 	var item *dao_account.User
 	result := accountUserRepository.db.Model(&dao_account.User{}).Where("id = ?", id).First(&item)
@@ -35,6 +65,9 @@ func (accountUserRepository *AccountUserRepository) Get(ctx context.Context, id 
 			accountUserRepository.logger.ErrorFunction(result.Error, id)
 		}
 		return nil, result.Error
+	}
+	if err := accountUserRepository.decryptSensitiveFields(item); err != nil {
+		return nil, err
 	}
 	return item, nil
 }
@@ -67,19 +100,107 @@ func (accountUserRepository *AccountUserRepository) ListByBusinessPortfolioId(ct
 		accountUserRepository.logger.ErrorFunction(result.Error, businessPortfolioId)
 		return nil, result.Error
 	}
+	for i := range users {
+		if err := accountUserRepository.decryptSensitiveFields(&users[i]); err != nil {
+			return nil, err
+		}
+	}
 	return users, nil
 }
 
 func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context.Context, countryCode string, phoneNumber string) (*dao_account.User, error) {
 	var item *dao_account.User
-	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number = ?", countryCode, phoneNumber).First(&item)
+	phoneNumberHash, err := hashStoredSecret(phoneNumber)
+	if err != nil {
+		return nil, err
+	}
+	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number_hash = ?", countryCode, phoneNumberHash).First(&item)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		result = accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number = ?", countryCode, phoneNumber).First(&item)
+	}
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			accountUserRepository.logger.ErrorFunction(result.Error, phoneNumber)
 		}
 		return nil, result.Error
 	}
+	if err := accountUserRepository.decryptSensitiveFields(item); err != nil {
+		return nil, err
+	}
 	return item, nil
+}
+
+type userSensitiveSnapshot struct {
+	phoneNumber string
+	email       string
+}
+
+func userSensitiveSnapshotOf(user *dao_account.User) userSensitiveSnapshot {
+	return userSensitiveSnapshot{phoneNumber: user.PhoneNumber, email: user.Email}
+}
+
+func restoreUserSensitiveFields(user *dao_account.User, snapshot userSensitiveSnapshot) {
+	user.PhoneNumber = snapshot.phoneNumber
+	user.Email = snapshot.email
+}
+
+func userSecretAAD(user *dao_account.User, purpose string) string {
+	identity := user.PhoneNumberHash
+	if identity == "" {
+		identity = user.EmailHash
+	}
+	if identity == "" {
+		identity = fmt.Sprintf("id:%d", user.Id)
+	}
+	return "account.users:" + purpose + ":" + identity
+}
+
+func (accountUserRepository *AccountUserRepository) encryptSensitiveFields(user *dao_account.User) error {
+	if user.PhoneNumber != "" {
+		hash, err := hashStoredSecret(user.PhoneNumber)
+		if err != nil {
+			return err
+		}
+		user.PhoneNumberHash = hash
+		encrypted, err := encryptStoredSecret(user.PhoneNumber, userSecretAAD(user, "phone_number"))
+		if err != nil {
+			return err
+		}
+		user.PhoneNumberEncrypted = encrypted
+		user.PhoneNumber = ""
+	}
+	if user.Email != "" {
+		hash, err := hashStoredSecret(user.Email)
+		if err != nil {
+			return err
+		}
+		user.EmailHash = hash
+		encrypted, err := encryptStoredSecret(user.Email, userSecretAAD(user, "email"))
+		if err != nil {
+			return err
+		}
+		user.EmailEncrypted = encrypted
+		user.Email = ""
+	}
+	return nil
+}
+
+func (accountUserRepository *AccountUserRepository) decryptSensitiveFields(user *dao_account.User) error {
+	if user.PhoneNumberEncrypted != "" {
+		phoneNumber, err := decryptStoredSecret(user.PhoneNumberEncrypted, userSecretAAD(user, "phone_number"))
+		if err != nil {
+			return err
+		}
+		user.PhoneNumber = phoneNumber
+	}
+	if user.EmailEncrypted != "" {
+		email, err := decryptStoredSecret(user.EmailEncrypted, userSecretAAD(user, "email"))
+		if err != nil {
+			return err
+		}
+		user.Email = email
+	}
+	return nil
 }
 
 func (accountUserRepository *AccountUserRepository) GetByAccessTokenHash(ctx context.Context, accessTokenHash string) (*dao_account.User, error) {

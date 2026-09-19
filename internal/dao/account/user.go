@@ -7,14 +7,19 @@ import (
 
 type User struct {
 	dao.DAOBase
-	Name         string           `gorm:"column:name"`
-	CountryCode  string           `gorm:"country_code"`
-	PhoneNumber  string           `gorm:"column:phone_number"`
-	PasswordHash string           `gorm:"column:password_hash"`
-	Email        string           `gorm:"column:email"`
-	Description  string           `gorm:"column:description"`
-	Type         types.UserType   `gorm:"column:type"`
-	Status       types.UserStatus `gorm:"column:status"`
+	Name        string           `gorm:"column:name"`
+	CountryCode string           `gorm:"column:country_code"`
+	PhoneNumber string           `gorm:"column:phone_number"`
+	Email       string           `gorm:"column:email"`
+	Description string           `gorm:"column:description"`
+	Type        types.UserType   `gorm:"column:type"`
+	Status      types.UserStatus `gorm:"column:status"`
+	// encryption
+	PhoneNumberEncrypted string `gorm:"column:phone_number_encrypted"`
+	PhoneNumberHash      string `gorm:"column:phone_number_hash"`
+	PasswordHash         string `gorm:"column:password_hash"`
+	EmailEncrypted       string `gorm:"column:email_encrypted"`
+	EmailHash            string `gorm:"column:email_hash"`
 }
 
 func (User) TableName() string {

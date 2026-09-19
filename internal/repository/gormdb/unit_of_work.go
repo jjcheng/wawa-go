@@ -19,13 +19,13 @@ type UnitOfWork struct {
 	campaignRepository          repository.CampaignRepository
 	campaignRecipientRepository repository.CampaignRecipientRepository
 	// wa
-	waBusinessPortfolioRepository  repository.WABusinessPortfolioRepository
-	waBusinessAccountRepository    repository.WABusinessAccountRepository
-	waPhoneNumberRepository        repository.WAPhoneNumberRepository
-	waHistoryMessageRepository     repository.WAHistoryMessageRepository
-	waMessageRepository            repository.WAMessageRepository
-	waMessageStatusEventRepository repository.WAMessageStatusEventRepository
-	waSampleTemplateRepository     repository.WASampleTemplateRepository
+	waBusinessPortfolioRepository repository.WABusinessPortfolioRepository
+	waBusinessAccountRepository   repository.WABusinessAccountRepository
+	waPhoneNumberRepository       repository.WAPhoneNumberRepository
+	waHistoryMessageRepository    repository.WAHistoryMessageRepository
+	waMessageRepository           repository.WAMessageRepository
+	waMessageStatusRepository     repository.WAMessageStatusRepository
+	waSampleTemplateRepository    repository.WASampleTemplateRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -47,7 +47,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waPhoneNumberRepository = NewWAPhoneNumberRepository(db, logger)
 	unitOfWork.waHistoryMessageRepository = NewWAHistoryMessageRepository(db, logger)
 	unitOfWork.waMessageRepository = NewWAMessageRepository(db, logger)
-	unitOfWork.waMessageStatusEventRepository = NewWAMessageStatusEventRepository(db, logger)
+	unitOfWork.waMessageStatusRepository = NewWAMessageStatusRepository(db, logger)
 	unitOfWork.waSampleTemplateRepository = NewWASampleTemplateRepository(db, logger)
 	return &unitOfWork
 }
@@ -103,8 +103,8 @@ func (unitOfWork *UnitOfWork) WAMessageRepository() repository.WAMessageReposito
 	return unitOfWork.waMessageRepository
 }
 
-func (unitOfWork *UnitOfWork) WAMessageStatusEventRepository() repository.WAMessageStatusEventRepository {
-	return unitOfWork.waMessageStatusEventRepository
+func (unitOfWork *UnitOfWork) WAMessageStatusRepository() repository.WAMessageStatusRepository {
+	return unitOfWork.waMessageStatusRepository
 }
 
 func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTemplateRepository {

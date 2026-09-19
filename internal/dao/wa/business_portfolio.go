@@ -7,6 +7,8 @@ type BusinessPortfolio struct {
 	MetaBusinessPortfolioId string `gorm:"column:meta_business_portfolio_id"`
 	Name                    string `gorm:"column:name"`
 	AccessToken             string `gorm:"column:access_token"`
+	// encryption
+	AccessTokenEncrypted string `gorm:"column:access_token_encrypted"`
 }
 
 func (BusinessPortfolio) TableName() string {

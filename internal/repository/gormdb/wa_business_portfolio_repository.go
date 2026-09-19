@@ -33,5 +33,62 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) GetByMetaBusin
 		}
 		return nil, result.Error
 	}
+	if err := businessPortfolioRepository.decryptAccessToken(businessPortfolio); err != nil {
+		return nil, err
+	}
 	return businessPortfolio, nil
+}
+
+func (businessPortfolioRepository *WABusinessPortfolioRepository) GetById(ctx context.Context, id int32) (*dao_wa.BusinessPortfolio, error) {
+	var businessPortfolio dao_wa.BusinessPortfolio
+	result := businessPortfolioRepository.db.WithContext(ctx).First(&businessPortfolio, "id = ?", id)
+	if result.Error != nil {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			businessPortfolioRepository.logger.ErrorFunction(result.Error, id)
+		}
+		return nil, result.Error
+	}
+	if err := businessPortfolioRepository.decryptAccessToken(&businessPortfolio); err != nil {
+		return nil, err
+	}
+	return &businessPortfolio, nil
+}
+
+func (businessPortfolioRepository *WABusinessPortfolioRepository) Insert(ctx context.Context, businessPortfolio *dao_wa.BusinessPortfolio) error {
+	if err := businessPortfolioRepository.encryptAccessToken(businessPortfolio); err != nil {
+		return err
+	}
+	return businessPortfolioRepository.Repository.Insert(ctx, businessPortfolio)
+}
+
+func (businessPortfolioRepository *WABusinessPortfolioRepository) Update(ctx context.Context, businessPortfolio *dao_wa.BusinessPortfolio) error {
+	if err := businessPortfolioRepository.encryptAccessToken(businessPortfolio); err != nil {
+		return err
+	}
+	return businessPortfolioRepository.Repository.Update(ctx, businessPortfolio)
+}
+
+func (businessPortfolioRepository *WABusinessPortfolioRepository) encryptAccessToken(businessPortfolio *dao_wa.BusinessPortfolio) error {
+	if businessPortfolio.AccessToken != "" {
+		encrypted, err := encryptStoredSecret(businessPortfolio.AccessToken, "wa.business_portfolios:access_token:"+businessPortfolio.MetaBusinessPortfolioId)
+		if err != nil {
+			return err
+		}
+		businessPortfolio.AccessTokenEncrypted = encrypted
+		businessPortfolio.AccessToken = ""
+	}
+	return nil
+}
+
+func (businessPortfolioRepository *WABusinessPortfolioRepository) decryptAccessToken(businessPortfolio *dao_wa.BusinessPortfolio) error {
+	if businessPortfolio.AccessTokenEncrypted == "" {
+		return nil
+	}
+	accessToken, err := decryptStoredSecret(businessPortfolio.AccessTokenEncrypted, "wa.business_portfolios:access_token:"+businessPortfolio.MetaBusinessPortfolioId)
+	if err != nil {
+		businessPortfolioRepository.logger.ErrorFunction(err, "business_portfolio", businessPortfolio.Id)
+		return err
+	}
+	businessPortfolio.AccessToken = accessToken
+	return nil
 }

@@ -99,7 +99,7 @@ func storeIncomingStatus(ctx context.Context, dependencies *service.Dependencies
 			return err
 		}
 	}
-	event := dao_wa.MessageStatusEvent{
+	event := dao_wa.MessageStatus{
 		WAMessageId: status.ID,
 		MessageId:   message.Id,
 		Status:      messageStatus,
@@ -113,7 +113,7 @@ func storeIncomingStatus(ctx context.Context, dependencies *service.Dependencies
 		}
 		event.ErrorMessage = strings.Join(errors, "\n\n")
 	}
-	if err := transaction.WAMessageStatusEventRepository().Insert(ctx, &event); err != nil {
+	if err := transaction.WAMessageStatusRepository().Insert(ctx, &event); err != nil {
 		return err
 	}
 	// Persist every callback for audit, but only advance the current status. Meta may
@@ -161,7 +161,7 @@ func storeIncomingStatus(ctx context.Context, dependencies *service.Dependencies
 	}
 	committed = true
 	// Publish outside the transaction because Ably cannot participate in the database commit.
-	_ = dependencies.Ably.Publish("status", channelName, dto_wa.NewMessageStatusEvent(event))
+	_ = dependencies.Ably.Publish("status", channelName, dto_wa.NewMessageStatus(event))
 	return nil
 }
 

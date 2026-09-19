@@ -2,6 +2,8 @@ package gormdb
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
@@ -23,6 +25,40 @@ func NewCampaignRecipientRepository(db *gorm.DB, logger *service.Logger) reposit
 		logger:     logger,
 		Repository: NewRepository[dao_customer.CampaignRecipient](db, logger),
 	}
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) Insert(ctx context.Context, recipient *dao_customer.CampaignRecipient) error {
+	payload := recipient.Payload
+	if err := campaignRecipientRepository.encryptPayload(recipient); err != nil {
+		return err
+	}
+	defer func() { recipient.Payload = payload }()
+	return campaignRecipientRepository.Repository.Insert(ctx, recipient)
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) InsertBulk(ctx context.Context, recipients []dao_customer.CampaignRecipient) error {
+	payloads := make([]map[string]any, len(recipients))
+	for i := range recipients {
+		payloads[i] = recipients[i].Payload
+		if err := campaignRecipientRepository.encryptPayload(&recipients[i]); err != nil {
+			return err
+		}
+	}
+	defer func() {
+		for i := range recipients {
+			recipients[i].Payload = payloads[i]
+		}
+	}()
+	return campaignRecipientRepository.Repository.InsertBulk(ctx, recipients)
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) Update(ctx context.Context, recipient *dao_customer.CampaignRecipient) error {
+	payload := recipient.Payload
+	if err := campaignRecipientRepository.encryptPayload(recipient); err != nil {
+		return err
+	}
+	defer func() { recipient.Payload = payload }()
+	return campaignRecipientRepository.Repository.Update(ctx, recipient)
 }
 
 func (campaignRecipientRepository *CampaignRecipientRepository) ListByCampaignId(ctx context.Context, campaignID int32, name string, status types.WAMessageStatus, onlyMessageCreated bool, page int, pageSize int) (campaignRecipients []dao_customer.CampaignRecipient, totalCount int, totalPages int, err error) {
@@ -51,6 +87,11 @@ func (campaignRecipientRepository *CampaignRecipientRepository) ListByCampaignId
 		campaignRecipientRepository.logger.ErrorFunction(err, campaignID, status, page, pageSize)
 		return nil, 0, 0, err
 	}
+	for i := range campaignRecipients {
+		if err = campaignRecipientRepository.decryptPayload(&campaignRecipients[i]); err != nil {
+			return nil, 0, 0, err
+		}
+	}
 	messageIds := make([]int32, 0, len(campaignRecipients))
 	for _, recipient := range campaignRecipients {
 		if recipient.MessageId != nil {
@@ -78,6 +119,39 @@ func (campaignRecipientRepository *CampaignRecipientRepository) ListByCampaignId
 		}
 	}
 	return campaignRecipients, totalCount, totalPages, nil
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) encryptPayload(recipient *dao_customer.CampaignRecipient) error {
+	if recipient.Payload == nil {
+		return nil
+	}
+	payload, err := json.Marshal(recipient.Payload)
+	if err != nil {
+		return err
+	}
+	encrypted, err := encryptStoredSecret(string(payload), campaignRecipientAAD(recipient))
+	if err != nil {
+		return err
+	}
+	recipient.PayloadEncrypted = encrypted
+	recipient.Payload = nil
+	return nil
+}
+
+func (campaignRecipientRepository *CampaignRecipientRepository) decryptPayload(recipient *dao_customer.CampaignRecipient) error {
+	if recipient.PayloadEncrypted == "" {
+		return nil
+	}
+	payload, err := decryptStoredSecret(recipient.PayloadEncrypted, campaignRecipientAAD(recipient))
+	if err != nil {
+		campaignRecipientRepository.logger.ErrorFunction(err, "campaign_recipient", recipient.Id)
+		return err
+	}
+	return json.Unmarshal([]byte(payload), &recipient.Payload)
+}
+
+func campaignRecipientAAD(recipient *dao_customer.CampaignRecipient) string {
+	return fmt.Sprintf("customer.campaign_recipients:payload:%d:%d", recipient.CampaignId, recipient.CustomerId)
 }
 
 func (campaignRecipientRepository *CampaignRecipientRepository) CountMessageStatusesByCampaignId(ctx context.Context, campaignID int32) (map[types.WAMessageStatus]int, error) {

@@ -6,7 +6,7 @@ import (
 )
 
 // not linked to a phone number id
-type MessageStatusEvent struct {
+type MessageStatus struct {
 	dao.DAOBase
 	MessageId    int32                 `gorm:"column:message_id"`
 	WAMessageId  string                `gorm:"column:wa_message_id"`
@@ -14,12 +14,14 @@ type MessageStatusEvent struct {
 	Timestamp    int64                 `gorm:"column:timestamp"`
 	ErrorMessage string                `gorm:"column:error_message"`
 	Payload      map[string]any        `gorm:"column:payload;type:jsonb;serializer:json"`
+	// encryption
+	PayloadEncrypted string `gorm:"column:payload_encrypted"`
 }
 
-func (MessageStatusEvent) TableName() string {
-	return "wa.message_status_events"
+func (MessageStatus) TableName() string {
+	return "wa.message_status"
 }
 
-func (messageStatusEvent MessageStatusEvent) Base() dao.DAOBase {
-	return messageStatusEvent.DAOBase
+func (messageStatus MessageStatus) Base() dao.DAOBase {
+	return messageStatus.DAOBase
 }

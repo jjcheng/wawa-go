@@ -17,6 +17,8 @@ type CampaignRecipient struct {
 	CustomerPhoneNumber string `gorm:"column:customer_phone_number;->"`
 	// from messages table
 	Message *dao_wa.Message `gorm:"column:message;->"`
+	// encryption
+	PayloadEncrypted string `gorm:"column:payload_encrypted"`
 }
 
 func (CampaignRecipient) TableName() string {
