@@ -20,8 +20,17 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userAccessToken := ctx.GetHeader(cfg.Default().Site.HTTPHeaderUserAccessTokenKey)
 		if userAccessToken != "" {
+			tokenHash := helper.HashSHA256Hex(userAccessToken)
+			if dependencies.AuthCache != nil {
+				if cachedUser, ok := dependencies.AuthCache.Get(tokenHash, time.Now()); ok {
+					dependencies.UnitOfWork.AccountSessionRepository().UpdateLastUsed(ctx, cachedUser.Session.Id)
+					ctx.Set(cfg.Default().Site.HTTPRequestUserKey, cachedUser)
+					ctx.Next()
+					return
+				}
+			}
 			// get session
-			session, err := dependencies.UnitOfWork.AccountSessionRepository().GetByAccessTokenHash(ctx.Request.Context(), helper.HashSHA256Hex(userAccessToken))
+			session, err := dependencies.UnitOfWork.AccountSessionRepository().GetByAccessTokenHash(ctx.Request.Context(), tokenHash)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")
@@ -73,6 +82,9 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 					BusinessPortfolio:            &businessPortfolioDTO,
 					BusinessPortfolioAccessToken: businessPortfolio.AccessToken,
 				}
+			}
+			if dependencies.AuthCache != nil {
+				dependencies.AuthCache.Set(tokenHash, &userDTO, time.Now())
 			}
 			ctx.Set(cfg.Default().Site.HTTPRequestUserKey, &userDTO)
 		}

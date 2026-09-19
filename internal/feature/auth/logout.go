@@ -23,7 +23,9 @@ func (logout Logout) Handle(ctx context.Context, user *dto_account.User, depende
 	// get session from db, ignore error
 	session, _ := dependencies.UnitOfWork.AccountSessionRepository().GetById(ctx, user.Session.Id)
 	if session != nil {
-		dependencies.UnitOfWork.AccountSessionRepository().UpdateRevokedAt(ctx, session.Id)
+		if err := dependencies.UnitOfWork.AccountSessionRepository().UpdateRevokedAt(ctx, session.Id); err == nil && dependencies.AuthCache != nil {
+			dependencies.AuthCache.InvalidateSession(session.Id)
+		}
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }

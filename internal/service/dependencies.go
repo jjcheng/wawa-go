@@ -11,6 +11,7 @@ type Dependencies struct {
 	MessageQueue *MessageQueue
 	Ably         *Ably
 	Whatsapp     *Whatsapp
+	AuthCache    *AuthCache
 }
 
 func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *File, messageQueue *MessageQueue, ably *Ably, whatsapp *Whatsapp) *Dependencies {
@@ -21,5 +22,6 @@ func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *Fil
 		MessageQueue: messageQueue,
 		Ably:         ably,
 		Whatsapp:     whatsapp,
+		AuthCache:    NewAuthCache(),
 	}
 }
