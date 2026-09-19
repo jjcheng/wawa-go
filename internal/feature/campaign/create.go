@@ -39,8 +39,8 @@ func (create *Create) Validate() []exception.InputException {
 	if create.SendDate != nil {
 		if (*create.SendDate).IsZero() {
 			inputErrors = append(inputErrors, exception.NewInputException("send_date", "missing send date"))
-		} else if (*create.SendDate).Before(time.Now().Add(5 * time.Minute)) {
-			inputErrors = append(inputErrors, exception.NewInputException("send_date", "send date must be at least 5 minutes from now"))
+		} else if (*create.SendDate).Before(time.Now().Add(1 * time.Minute)) {
+			inputErrors = append(inputErrors, exception.NewInputException("send_date", "send date must be at least 1 minute from now"))
 		}
 	}
 	if create.WATemplateId == "" {

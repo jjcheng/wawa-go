@@ -10,6 +10,23 @@ type Catalog struct {
 	Vertical          string `gorm:"column:vertical"`
 }
 
+// adoptable_pets
+// apps_and_software
+// articles_and_publications
+// commerce
+// destinations
+// flights
+// generic
+// home_listings
+// hotels
+// local_service_businesses
+// media_titles
+// offer_items
+// services
+// offline_commerce
+// transactable_items
+// vehicles
+
 func (Catalog) TableName() string {
 	return "commerce.catalogs"
 }

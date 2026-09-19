@@ -6582,7 +6582,7 @@
             "apiKey": []
           }
         ],
-        "summary": "Get customer tags",
+        "summary": "List customer tags",
         "tags": [
           "Customer"
         ]
