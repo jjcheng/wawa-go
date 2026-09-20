@@ -27,13 +27,11 @@ func NewBroadcastRecipient(broadcastRecipient dao_customer.BroadcastRecipient) B
 			EntryDate:  broadcastRecipient.EntryDate,
 			LastUpdate: broadcastRecipient.LastUpdate,
 		},
-		BroadcastId:         broadcastRecipient.BroadcastId,
-		CustomerId:          broadcastRecipient.CustomerId,
-		MessageId:           broadcastRecipient.MessageId,
-		CustomerName:        broadcastRecipient.CustomerName,
-		CustomerCountryCode: broadcastRecipient.CustomerCountryCode,
-		CustomerPhoneNumber: broadcastRecipient.CustomerPhoneNumber,
-		Payload:             broadcastRecipient.Payload,
+		BroadcastId:  broadcastRecipient.BroadcastId,
+		CustomerId:   broadcastRecipient.CustomerId,
+		MessageId:    broadcastRecipient.MessageId,
+		CustomerName: broadcastRecipient.CustomerName,
+		Payload:      broadcastRecipient.Payload,
 	}
 	if broadcastRecipient.Message != nil {
 		message := dto_wa.NewMessage(*broadcastRecipient.Message)

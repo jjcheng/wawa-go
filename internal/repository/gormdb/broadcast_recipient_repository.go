@@ -109,7 +109,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) ListByBroadcas
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
-	if err = query.Select("cr.*, c.display_name AS customer_name, c.country_code AS customer_country_code, c.phone_number AS customer_phone_number").Order("cr.id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&broadcastRecipients).Error; err != nil {
+	if err = query.Select("cr.*, c.display_name AS customer_name").Order("cr.id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&broadcastRecipients).Error; err != nil {
 		broadcastRecipientRepository.logger.ErrorFunction(err, broadcastId, status, page, pageSize)
 		return nil, 0, 0, err
 	}

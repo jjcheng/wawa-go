@@ -12,9 +12,7 @@ type BroadcastRecipient struct {
 	MessageId   *int32         `gorm:"column:message_id"`
 	Payload     map[string]any `gorm:"-"` // not a db column
 	// from customers table
-	CustomerName        string `gorm:"column:customer_name;->"`
-	CustomerCountryCode string `gorm:"column:customer_country_code;->"`
-	CustomerPhoneNumber string `gorm:"column:customer_phone_number;->"`
+	CustomerName string `gorm:"column:customer_name;->"`
 	// from messages table
 	Message *dao_wa.Message `gorm:"column:message;->"`
 	// encryption

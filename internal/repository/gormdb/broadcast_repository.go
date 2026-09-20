@@ -88,7 +88,7 @@ func (broadcastRepository *BroadcastRepository) ListByMessageIds(ctx context.Con
 	}
 	var broadcasts []dao_customer.Broadcast
 	result := broadcastRepository.db.WithContext(ctx).
-		Table("customer.broadcast AS c").
+		Table("customer.broadcasts AS c").
 		Joins("JOIN customer.broadcast_recipients AS cr ON cr.broadcast_id = c.id").
 		Where("cr.message_id IN ?", messageIds).
 		Distinct("c.*").

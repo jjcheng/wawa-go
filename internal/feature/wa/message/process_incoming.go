@@ -414,14 +414,14 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 			message.Status = types.WAMessageStatusRejected
 			minutes := 5 * message.Attempts
 			message.NextAttemptAt = helper.ConvertToPointer(now.Add(time.Duration(minutes) * time.Minute))
-			createNotification.Title = fmt.Sprintf("Error occurred while sending your message %d", message.Id)
+			createNotification.Title = fmt.Sprintf("Error occurred while sending your message %d.", message.Id)
 			createNotification.Body = fmt.Sprintf("We have encountered an error while sending your message %d, will retry %d minutes later. Please check the errors below:\n\n%s", message.Id, minutes, strings.Join(errorMessages, "\n"))
 			createNotification.Type = types.NotificationTypeWarning
 		} else { // attemps exhausted
 			message.Status = types.WAMessageStatusFailed
 			message.NextAttemptAt = nil
 			createNotification.Type = types.NotificationTypeError
-			createNotification.Title = fmt.Sprintf("Failed to send your message %d", message.Id)
+			createNotification.Title = fmt.Sprintf("Failed to send your message %d.", message.Id)
 			createNotification.Body = fmt.Sprintf("We are sorry to inform you that we have failed to send your message %d despite %d attempts, please check the errors below:\n\n%s", message.Id, message.Attempts, strings.Join(errorMessages, "\n"))
 		}
 		err = retry(ctx, 3, func() error {

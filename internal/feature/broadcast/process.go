@@ -83,7 +83,7 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 		// if dequeueTime >= max dequeue time, this broadcast has failed
 		if dequeueCount >= cfg.Default().AliyunSMQ.MaxDequeueCount {
 			createNotification := feature_account_notification.Create{
-				Title: fmt.Sprintf("Error occurred when sending your broadcast %s", broadcast.Name),
+				Title: fmt.Sprintf("Error occurred when sending your broadcast %s.", broadcast.Name),
 				Body:  fmt.Sprintf("We are sorry to inform you that your broadcast %s has failed to send despite %d deliveries. Please try again later. The errors are below:\n\n%s", broadcast.Name, dequeueCount, strings.Join(errorMessages, "\n")),
 				Type:  types.NotificationTypeError,
 				URL:   "/broadcasts",
@@ -126,7 +126,7 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 	if wasPending {
 		createNotification := feature_account_notification.Create{
 			Type:  types.NotificationTypeInfo,
-			Title: fmt.Sprintf("Your broadcast %s has started", broadcast.Name),
+			Title: fmt.Sprintf("Your broadcast %s has started.", broadcast.Name),
 			Body:  fmt.Sprintf("We have started your broadcast %s, total %d recipients. Check the broadcast recipients page to see any individual messages that are failed to be sent.", broadcast.Name, broadcast.RecipientCount),
 			URL:   fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),
 		}
