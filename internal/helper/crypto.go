@@ -12,24 +12,74 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/types"
 
-	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/hkdf"
 )
 
+const (
+	passwordArgon2Memory  = 64 * 1024
+	passwordArgon2Time    = 3
+	passwordArgon2Threads = 1
+	passwordHashLength    = 32
+)
+
 func HashPassword(password string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		return "", fmt.Errorf("generate password salt: %w", err)
 	}
-	return string(hash), nil
+	hash := argon2.IDKey([]byte(password), salt, passwordArgon2Time, passwordArgon2Memory, passwordArgon2Threads, passwordHashLength)
+	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
+		passwordArgon2Memory,
+		passwordArgon2Time,
+		passwordArgon2Threads,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(hash),
+	), nil
 }
 
 func VerifyPassword(password string, passwordHash string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)) == nil
+	return verifyArgon2Password(password, passwordHash)
+}
+
+func verifyArgon2Password(password string, encoded string) bool {
+	parts := strings.Split(encoded, "$")
+	if len(parts) != 6 || parts[1] != "argon2id" || parts[2] != "v=19" {
+		return false
+	}
+	parameters := make(map[string]uint32, 3)
+	for _, parameter := range strings.Split(parts[3], ",") {
+		keyValue := strings.SplitN(parameter, "=", 2)
+		if len(keyValue) != 2 {
+			return false
+		}
+		value, err := strconv.ParseUint(keyValue[1], 10, 32)
+		if err != nil {
+			return false
+		}
+		parameters[keyValue[0]] = uint32(value)
+	}
+	memory, memoryOK := parameters["m"]
+	time, timeOK := parameters["t"]
+	threads, threadsOK := parameters["p"]
+	if !memoryOK || !timeOK || !threadsOK || memory == 0 || time == 0 || threads == 0 {
+		return false
+	}
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil || len(salt) == 0 {
+		return false
+	}
+	expected, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil || len(expected) == 0 {
+		return false
+	}
+	actual := argon2.IDKey([]byte(password), salt, time, memory, uint8(threads), uint32(len(expected)))
+	return subtle.ConstantTimeCompare(actual, expected) == 1
 }
 
 // CryptoKeys holds pre-derived cryptographic keys for encryption and HMAC operations.

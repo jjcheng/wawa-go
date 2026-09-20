@@ -107,7 +107,7 @@ func (accountUserRepository *AccountUserRepository) ListByBusinessPortfolioId(ct
 
 func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context.Context, countryCode string, phoneNumber string) (*dao_account.User, error) {
 	var item *dao_account.User
-	phoneNumberHash, err := hashStoredSecret(phoneNumber)
+	phoneNumberHash, err := hashSecret(phoneNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -144,12 +144,12 @@ func (accountUserRepository *AccountUserRepository) userSecretAAD(user *dao_acco
 
 func (accountUserRepository *AccountUserRepository) encryptSensitiveFields(user *dao_account.User) error {
 	if user.PhoneNumber != "" {
-		hash, err := hashStoredSecret(user.PhoneNumber)
+		hash, err := hashSecret(user.PhoneNumber)
 		if err != nil {
 			return err
 		}
 		user.PhoneNumberHash = hash
-		encrypted, err := encryptStoredSecret(user.PhoneNumber, accountUserRepository.userSecretAAD(user, "phone_number"))
+		encrypted, err := encryptSecret(user.PhoneNumber, accountUserRepository.userSecretAAD(user, "phone_number"))
 		if err != nil {
 			return err
 		}
@@ -157,12 +157,12 @@ func (accountUserRepository *AccountUserRepository) encryptSensitiveFields(user 
 		user.PhoneNumber = ""
 	}
 	if user.Email != "" {
-		hash, err := hashStoredSecret(user.Email)
+		hash, err := hashSecret(user.Email)
 		if err != nil {
 			return err
 		}
 		user.EmailHash = hash
-		encrypted, err := encryptStoredSecret(user.Email, accountUserRepository.userSecretAAD(user, "email"))
+		encrypted, err := encryptSecret(user.Email, accountUserRepository.userSecretAAD(user, "email"))
 		if err != nil {
 			return err
 		}
@@ -174,14 +174,14 @@ func (accountUserRepository *AccountUserRepository) encryptSensitiveFields(user 
 
 func (accountUserRepository *AccountUserRepository) decryptSensitiveFields(user *dao_account.User) error {
 	if user.PhoneNumberEncrypted != "" {
-		phoneNumber, err := decryptStoredSecret(user.PhoneNumberEncrypted, accountUserRepository.userSecretAAD(user, "phone_number"))
+		phoneNumber, err := decryptSecret(user.PhoneNumberEncrypted, accountUserRepository.userSecretAAD(user, "phone_number"))
 		if err != nil {
 			return err
 		}
 		user.PhoneNumber = phoneNumber
 	}
 	if user.EmailEncrypted != "" {
-		email, err := decryptStoredSecret(user.EmailEncrypted, accountUserRepository.userSecretAAD(user, "email"))
+		email, err := decryptSecret(user.EmailEncrypted, accountUserRepository.userSecretAAD(user, "email"))
 		if err != nil {
 			return err
 		}

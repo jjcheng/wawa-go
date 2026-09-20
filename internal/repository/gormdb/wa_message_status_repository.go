@@ -87,7 +87,7 @@ func (messageStatusRepository *WAMessageStatusRepository) encryptPayload(message
 	if err != nil {
 		return err
 	}
-	encrypted, err := encryptStoredSecret(string(payload), messageStatusRepository.messageStatusAAD(messageStatus, "payload"))
+	encrypted, err := encryptSecret(string(payload), messageStatusRepository.messageStatusAAD(messageStatus, "payload"))
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (messageStatusRepository *WAMessageStatusRepository) decryptPayload(message
 	if messageStatus.PayloadEncrypted == "" {
 		return nil
 	}
-	payload, err := decryptStoredSecret(messageStatus.PayloadEncrypted, messageStatusRepository.messageStatusAAD(messageStatus, "payload"))
+	payload, err := decryptSecret(messageStatus.PayloadEncrypted, messageStatusRepository.messageStatusAAD(messageStatus, "payload"))
 	if err != nil {
 		messageStatusRepository.logger.ErrorFunction(err, "message_status", messageStatus.Id)
 		return err

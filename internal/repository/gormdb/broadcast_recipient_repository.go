@@ -189,7 +189,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) encryptPayload
 	if err != nil {
 		return err
 	}
-	encrypted, err := encryptStoredSecret(string(payload), broadcastRecipientRepository.broadcastRecipientAAD(recipient, "payload"))
+	encrypted, err := encryptSecret(string(payload), broadcastRecipientRepository.broadcastRecipientAAD(recipient, "payload"))
 	if err != nil {
 		return err
 	}
@@ -202,7 +202,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) decryptPayload
 	if recipient.PayloadEncrypted == "" {
 		return nil
 	}
-	payload, err := decryptStoredSecret(recipient.PayloadEncrypted, broadcastRecipientRepository.broadcastRecipientAAD(recipient, "payload"))
+	payload, err := decryptSecret(recipient.PayloadEncrypted, broadcastRecipientRepository.broadcastRecipientAAD(recipient, "payload"))
 	if err != nil {
 		broadcastRecipientRepository.logger.ErrorFunction(err, "broadcast_recipient", recipient.Id)
 		return err

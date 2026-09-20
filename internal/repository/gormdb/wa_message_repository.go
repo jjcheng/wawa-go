@@ -157,7 +157,7 @@ func (messageRepository *WAMessageRepository) encryptPayload(message *dao_wa.Mes
 	if err != nil {
 		return err
 	}
-	encrypted, err := encryptStoredSecret(string(payload), messageRepository.messageAAD(message, "payload"))
+	encrypted, err := encryptSecret(string(payload), messageRepository.messageAAD(message, "payload"))
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (messageRepository *WAMessageRepository) decryptPayload(message *dao_wa.Mes
 	if message.PayloadEncrypted == "" {
 		return nil
 	}
-	payload, err := decryptStoredSecret(message.PayloadEncrypted, messageRepository.messageAAD(message, "payload"))
+	payload, err := decryptSecret(message.PayloadEncrypted, messageRepository.messageAAD(message, "payload"))
 	if err != nil {
 		messageRepository.logger.ErrorFunction(err, "message", message.Id)
 		return err

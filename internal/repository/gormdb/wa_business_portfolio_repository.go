@@ -78,7 +78,7 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) Update(ctx con
 
 func (businessPortfolioRepository *WABusinessPortfolioRepository) encryptAccessToken(businessPortfolio *dao_wa.BusinessPortfolio) error {
 	if businessPortfolio.AccessToken != "" {
-		encrypted, err := encryptStoredSecret(businessPortfolio.AccessToken, businessPortfolioRepository.businessPortfolioAAD(businessPortfolio, "access_token"))
+		encrypted, err := encryptSecret(businessPortfolio.AccessToken, businessPortfolioRepository.businessPortfolioAAD(businessPortfolio, "access_token"))
 		if err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func (businessPortfolioRepository *WABusinessPortfolioRepository) decryptAccessT
 	if businessPortfolio.AccessTokenEncrypted == "" {
 		return nil
 	}
-	accessToken, err := decryptStoredSecret(businessPortfolio.AccessTokenEncrypted, businessPortfolioRepository.businessPortfolioAAD(businessPortfolio, "access_token"))
+	accessToken, err := decryptSecret(businessPortfolio.AccessTokenEncrypted, businessPortfolioRepository.businessPortfolioAAD(businessPortfolio, "access_token"))
 	if err != nil {
 		businessPortfolioRepository.logger.ErrorFunction(err, "business_portfolio", businessPortfolio.Id)
 		return err

@@ -9,7 +9,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 )
 
-func encryptStoredSecret(secret string, aadContext string) (string, error) {
+func encryptSecret(secret string, aadContext string) (string, error) {
 	if secret == "" {
 		return "", nil
 	}
@@ -28,7 +28,7 @@ func encryptStoredSecret(secret string, aadContext string) (string, error) {
 	return string(serialized), nil
 }
 
-func decryptStoredSecret(serialized string, aadContext string) (string, error) {
+func decryptSecret(serialized string, aadContext string) (string, error) {
 	if serialized == "" {
 		return "", nil
 	}
@@ -40,6 +40,7 @@ func decryptStoredSecret(serialized string, aadContext string) (string, error) {
 	if err := json.Unmarshal([]byte(serialized), &encrypted); err != nil {
 		return "", fmt.Errorf("parse encrypted secret: %w", err)
 	}
+	// some data may be using a different key version, use key ring to find the correct version
 	keyRing := cfg.Default().Site.GlobalKeyRing
 	if keyRing == nil {
 		var err error
@@ -55,7 +56,7 @@ func decryptStoredSecret(serialized string, aadContext string) (string, error) {
 	return string(plaintext), nil
 }
 
-func hashStoredSecret(secret string) (string, error) {
+func hashSecret(secret string) (string, error) {
 	keys := cfg.Default().Site.GlobalKeys
 	if keys == nil {
 		return "", errors.New("encryption keys are not configured")

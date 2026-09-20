@@ -182,7 +182,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 
 func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber *dao_wa.PhoneNumber) error {
 	if phoneNumber.DisplayPhoneNumberEncrypted != "" {
-		displayPhoneNumber, err := decryptStoredSecret(phoneNumber.DisplayPhoneNumberEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
+		displayPhoneNumber, err := decryptSecret(phoneNumber.DisplayPhoneNumberEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
 		if err != nil {
 			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
 			return err
@@ -190,7 +190,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber
 		phoneNumber.DisplayPhoneNumber = displayPhoneNumber
 	}
 	if phoneNumber.WAIdEncrypted != "" {
-		waId, err := decryptStoredSecret(phoneNumber.WAIdEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
+		waId, err := decryptSecret(phoneNumber.WAIdEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
 		if err != nil {
 			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
 			return err
@@ -198,7 +198,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber
 		phoneNumber.WAId = waId
 	}
 	if phoneNumber.RegistrationPinEncrypted != "" {
-		registrationPin, err := decryptStoredSecret(phoneNumber.RegistrationPinEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
+		registrationPin, err := decryptSecret(phoneNumber.RegistrationPinEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
 		if err != nil {
 			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
 			return err
@@ -210,7 +210,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber
 
 func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber *dao_wa.PhoneNumber) error {
 	if phoneNumber.DisplayPhoneNumber != "" {
-		encrypted, err := encryptStoredSecret(phoneNumber.DisplayPhoneNumber, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
+		encrypted, err := encryptSecret(phoneNumber.DisplayPhoneNumber, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
 		if err != nil {
 			return err
 		}
@@ -218,12 +218,12 @@ func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber
 		phoneNumber.DisplayPhoneNumber = ""
 	}
 	if phoneNumber.WAId != "" {
-		hashed, err := hashStoredSecret(phoneNumber.WAId)
+		hashed, err := hashSecret(phoneNumber.WAId)
 		if err != nil {
 			return err
 		}
 		phoneNumber.WAIdHash = hashed
-		encrypted, err := encryptStoredSecret(phoneNumber.WAId, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
+		encrypted, err := encryptSecret(phoneNumber.WAId, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
 		if err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber
 		phoneNumber.WAId = ""
 	}
 	if phoneNumber.RegistrationPin != "" {
-		encrypted, err := encryptStoredSecret(phoneNumber.RegistrationPin, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
+		encrypted, err := encryptSecret(phoneNumber.RegistrationPin, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
 		if err != nil {
 			return err
 		}
@@ -246,7 +246,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) decryptBusinessPortfolioAc
 		return nil
 	}
 	// make sure the aad is correct here
-	accessToken, err := decryptStoredSecret(businessPortfolio.AccessTokenEncrypted, "wa.business_portfolios:access_token:"+businessPortfolio.MetaBusinessPortfolioId)
+	accessToken, err := decryptSecret(businessPortfolio.AccessTokenEncrypted, "wa.business_portfolios:access_token:"+businessPortfolio.MetaBusinessPortfolioId)
 	if err != nil {
 		return err
 	}
