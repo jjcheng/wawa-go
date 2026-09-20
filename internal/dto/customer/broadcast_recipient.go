@@ -13,9 +13,7 @@ type BroadcastRecipient struct {
 	MessageId   *int32         `json:"message_id"`
 	Payload     map[string]any `json:"-"` // do not include
 	// from customers
-	CustomerName        string `json:"customer_name"`
-	CustomerCountryCode string `json:"customer_country_code"`
-	CustomerPhoneNumber string `json:"customer_phone_number"`
+	CustomerName string `json:"customer_name"`
 	// lazy loaded
 	Message *dto_wa.Message `json:"message,omitempty"`
 }
