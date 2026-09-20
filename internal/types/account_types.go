@@ -16,3 +16,11 @@ const (
 	UserStatusPendingPassword UserStatus = "PENDING_PASSWORD"
 	UserStatusInactive        UserStatus = "INACTIVE"
 )
+
+type NotificationType string
+
+const (
+	NotificationTypeInfo    NotificationType = "INFO"
+	NotificationTypeWarning NotificationType = "WARNING"
+	NotificationTypeError   NotificationType = "ERROR"
+)

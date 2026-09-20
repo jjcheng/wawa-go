@@ -11,9 +11,10 @@ type UnitOfWork struct {
 	db     *gorm.DB
 	logger *service.Logger
 	// account
-	accountUserRepository    repository.AccountUserRepository
-	accountSettingRepository repository.AccountSettingRepository
-	accountSessionRepository repository.AccountSessionRepository
+	accountUserRepository         repository.AccountUserRepository
+	accountSettingRepository      repository.AccountSettingRepository
+	accountSessionRepository      repository.AccountSessionRepository
+	accountNotificationRepository repository.AccountNotificationRepository
 	// customer
 	customerRepository          repository.CustomerRepository
 	campaignRepository          repository.CampaignRepository
@@ -37,6 +38,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.accountUserRepository = NewAccountUserRepository(db, logger)
 	unitOfWork.accountSettingRepository = NewAccountSettingRepository(db, logger)
 	unitOfWork.accountSessionRepository = NewAccountSessionRepository(db, logger)
+	unitOfWork.accountNotificationRepository = NewAccountNotificationRepository(db, logger)
 	// customer
 	unitOfWork.customerRepository = NewCustomerRepository(db, logger)
 	unitOfWork.campaignRepository = NewWACampaignRepository(db, logger)
@@ -67,6 +69,10 @@ func (unitOfWork *UnitOfWork) AccountSettingRepository() repository.AccountSetti
 
 func (unitOfWork *UnitOfWork) AccountSessionRepository() repository.AccountSessionRepository {
 	return unitOfWork.accountSessionRepository
+}
+
+func (unitOfWork *UnitOfWork) AccountNotificationRepository() repository.AccountNotificationRepository {
+	return unitOfWork.accountNotificationRepository
 }
 
 // customer

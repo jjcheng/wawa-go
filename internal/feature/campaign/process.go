@@ -13,6 +13,7 @@ import (
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -177,6 +178,14 @@ func Process(ctx context.Context, campaignId int32, dependencies *service.Depend
 		dependencies.Logger.ErrorFunction(err, campaign.Id)
 		return fmt.Errorf("failed to set campaign %d status as COMPLETED: %w", campaign.Id, err)
 	}
+	// create notification
+	createNotification := feature_account_notification.Create{
+		Type:  types.NotificationTypeInfo,
+		Title: fmt.Sprintf("Your campaign %s has completed.", campaign.Name),
+		Body:  fmt.Sprintf("Your campaign %s has completed sending to a total %d recipients. You may receive separate notifications if there are errors when sending individual messages.", campaign.Name, campaign.RecipientCount),
+		URL:   fmt.Sprintf("/campaigns/recipients?campaign_id=%d", campaignId),
+	}
+	createNotification.Handle(ctx, &userDTO, dependencies)
 	return nil
 }
 

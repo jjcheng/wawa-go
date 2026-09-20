@@ -2,8 +2,10 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
 	feature_account_user "github.com/jjcheng/wawa-go/internal/feature/account/user"
 	"github.com/jjcheng/wawa-go/internal/service"
 )
@@ -14,4 +16,8 @@ func registerAccountController(routerGroup *gin.RouterGroup, dependencies *servi
 	registerRoute[*dto_account.User, feature_account_user.ChangePassword](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_account.User, feature_account_user.SetPassword](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_account.User, feature_account_user.Me](routerGroup, dependencies, apiGenerator)
+	// notification
+	registerRoute[*dto.ListResponse[dto_account.Notification], feature_account_notification.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_account_notification.Delete](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_account_notification.SetStatus](routerGroup, dependencies, apiGenerator)
 }
