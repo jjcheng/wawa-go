@@ -78,7 +78,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				var notificationType types.NotificationType
 				if templateStatus.Event == "APPROVED" {
 					title = fmt.Sprintf("Your template %s (%s) has been approved by Meta.", templateStatus.MessageTemplateName, templateStatus.MessageTemplateLanguage)
-					body = "You can now go to customers page, select at least 1 customer and start a campaign with your new template."
+					body = "You can now go to customers page, select at least 1 customer and start a broadcast with your new template."
 					notificationType = types.NotificationTypeSuccess
 					url = "/customers"
 				} else {

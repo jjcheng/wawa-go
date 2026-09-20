@@ -20,19 +20,19 @@ const (
 	CustomerAdditionalDataTypeBirthday CustomerAdditionalDataType = "BIRTHDAY"
 )
 
-type CampaignStatus string
+type BroadcastStatus string
 
 const (
-	CampaignStatusPending   CampaignStatus = "PENDING"
-	CampaignStatusCompleted CampaignStatus = "COMPLETED"
-	CampaignStatusSending   CampaignStatus = "SENDING"
-	CampaignStatusCancelled CampaignStatus = "CANCELLED"
+	BroadcastStatusPending   BroadcastStatus = "PENDING"
+	BroadcastStatusCompleted BroadcastStatus = "COMPLETED"
+	BroadcastStatusSending   BroadcastStatus = "SENDING"
+	BroadcastStatusCancelled BroadcastStatus = "CANCELLED"
 )
 
-type CampaignRecipientStatus string
+type BroadcastRecipientStatus string
 
 const (
-	CampaignRecipientStatusPending   CampaignRecipientStatus = "PENDING"
-	CampaignRecipientStatusCompleted CampaignRecipientStatus = "COMPLETED"
-	CampaignRecipientStatusCancelled CampaignRecipientStatus = "CANCELLED"
+	BroadcastRecipientStatusPending   BroadcastRecipientStatus = "PENDING"
+	BroadcastRecipientStatusCompleted BroadcastRecipientStatus = "COMPLETED"
+	BroadcastRecipientStatusCancelled BroadcastRecipientStatus = "CANCELLED"
 )

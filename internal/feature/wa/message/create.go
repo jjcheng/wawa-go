@@ -43,22 +43,22 @@ const (
 )
 
 type Create struct {
-	CustomerId          int32            `json:"customer_id" val:"required" description:"id of the customer"`
-	Type                MessageType      `json:"type" val:"required" description:"one of the enum types"`
-	Context             *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
-	Text                *TextObject      `json:"text,omitempty" description:"only present if type is text"`
-	Image               *MediaObject     `json:"image,omitempty" description:"only present if type is image"`
-	Audio               *MediaObject     `json:"audio,omitempty" description:"only present if type is audio"`
-	Video               *MediaObject     `json:"video,omitempty" description:"only present if type is video"`
-	Document            *MediaObject     `json:"document,omitempty" description:"only present if type is document"`
-	Sticker             *MediaObject     `json:"sticker,omitempty" description:"only present if type is sticker"`
-	Location            *LocationObject  `json:"location,omitempty" description:"only present if type is location"`
-	Contacts            []map[string]any `json:"contacts,omitempty" description:"only present if type is contacts"`
-	Interactive         *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
-	Template            *map[string]any  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
-	Reaction            *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
-	AttachmentURL       string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
-	CampaignRecipientId *int32           `json:"campaign_recipient_id,omitempty" description:"if it's from a campaign"`
+	CustomerId           int32            `json:"customer_id" val:"required" description:"id of the customer"`
+	Type                 MessageType      `json:"type" val:"required" description:"one of the enum types"`
+	Context              *MessageContext  `json:"context,omitempty" description:"if it's replying a previous message"`
+	Text                 *TextObject      `json:"text,omitempty" description:"only present if type is text"`
+	Image                *MediaObject     `json:"image,omitempty" description:"only present if type is image"`
+	Audio                *MediaObject     `json:"audio,omitempty" description:"only present if type is audio"`
+	Video                *MediaObject     `json:"video,omitempty" description:"only present if type is video"`
+	Document             *MediaObject     `json:"document,omitempty" description:"only present if type is document"`
+	Sticker              *MediaObject     `json:"sticker,omitempty" description:"only present if type is sticker"`
+	Location             *LocationObject  `json:"location,omitempty" description:"only present if type is location"`
+	Contacts             []map[string]any `json:"contacts,omitempty" description:"only present if type is contacts"`
+	Interactive          *InteractiveBody `json:"interactive,omitempty" description:"only if the message require user action, set the rest parameters to nil"`
+	Template             *map[string]any  `json:"template,omitempty" description:"only if the message is from a template, set the rest parameters to nil"`
+	Reaction             *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
+	AttachmentURL        string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
+	BroadcastRecipientId *int32           `json:"broadcast_recipient_id,omitempty" description:"if it's from a broadcast"`
 }
 
 type MessageContext struct {
@@ -281,11 +281,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		ErrorMessage:  sendError,
 		Token:         token,
 	}
-	// retry 3 min later if it's a campaign message and the error is a http request error (payload never go to Meta)
+	// retry 3 min later if it's a broadcast message and the error is a http request error (payload never go to Meta)
 	// for any Meta returned error, no need to retry
 	// set it to at least 3 mins because if the error was because meta did not return an id, it will return it in next 1-2 mins
 	var requestHTTPError *helper.HTTPRequestError
-	if sendError != "" && create.CampaignRecipientId != nil && errors.As(err, &requestHTTPError) {
+	if sendError != "" && create.BroadcastRecipientId != nil && errors.As(err, &requestHTTPError) {
 		message.NextAttemptAt = helper.ConvertToPointer(time.Now().UTC().Add(3 * time.Minute))
 	}
 	if response != nil && len(response.Messages) > 0 && strings.TrimSpace(response.Messages[0].ID) != "" {
@@ -295,7 +295,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_wa.NewMessage(message)
-	// publish the message even if it has error, so user is aware, this applies to campaign messages as well
+	// publish the message even if it has error, so user is aware, this applies to broadcast messages as well
 	// if user is currently on the chat page
 	channelName := helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token)
 	err = dependencies.Ably.Publish("message", channelName, result)

@@ -39,7 +39,7 @@ func main() {
 		}
 		var waitGroup sync.WaitGroup
 		waitGroup.Go(func() {
-			dispatchCampaigns(ctx, dependencies)
+			dispatchBroadcasts(ctx, dependencies)
 		})
 		waitGroup.Go(func() {
 			dispatchRetryMessages(ctx, dependencies)
@@ -53,26 +53,26 @@ func main() {
 	})
 }
 
-func dispatchCampaigns(ctx context.Context, dependencies *service.Dependencies) {
-	// find pending campaigns, skip if have error, will run again in next cycle
-	pendingCampaigns, _ := dependencies.UnitOfWork.CampaignRepository().ListPendingCampaigns(ctx)
-	log.Printf("%d pending campaings", len(pendingCampaigns))
-	if len(pendingCampaigns) == 0 {
+func dispatchBroadcasts(ctx context.Context, dependencies *service.Dependencies) {
+	// find pending broadcasts, skip if have error, will run again in next cycle
+	pendingBroadcasts, _ := dependencies.UnitOfWork.BroadcastRepository().ListPendingBroadcasts(ctx)
+	log.Printf("%d pending broadcasts", len(pendingBroadcasts))
+	if len(pendingBroadcasts) == 0 {
 		return
 	}
-	// dispatch each campaign to a worker task
-	// if one user has multiple campaigns, only send the first, don't block other user's resources, it will be processed
+	// dispatch each broadcast to a worker task
+	// if one user has multiple broadcasts, only send the first, don't block other user's resources, it will be processed
 	// in next time trigger
-	var userCampaigns map[int32]int = make(map[int32]int)
-	for _, pendingCampaign := range pendingCampaigns {
-		if userCampaigns[pendingCampaign.UserId] > 0 {
+	var userBroadcasts map[int32]int = make(map[int32]int)
+	for _, pendingBroadcast := range pendingBroadcasts {
+		if userBroadcasts[pendingBroadcast.UserId] > 0 {
 			continue
 		}
-		userCampaigns[pendingCampaign.UserId] = 1
-		log.Printf("dispatching campaign id: %d", pendingCampaign.Id)
+		userBroadcasts[pendingBroadcast.UserId] = 1
+		log.Printf("dispatching broadcast id: %d", pendingBroadcast.Id)
 		// send a message to SMQ which will trigger worker function
 		// ignore any error, the next cycle will do it again
-		_, _ = dependencies.MessageQueue.PublishJob("start_campaign", pendingCampaign.Id, 0, service.MessageQueuePriorityHigh)
+		_, _ = dependencies.MessageQueue.PublishJob("start_broadcast", pendingBroadcast.Id, 0, service.MessageQueuePriorityHigh)
 	}
 }
 

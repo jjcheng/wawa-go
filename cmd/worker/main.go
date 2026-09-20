@@ -15,7 +15,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
-	feature_campaign "github.com/jjcheng/wawa-go/internal/feature/campaign"
+	feature_broadcast "github.com/jjcheng/wawa-go/internal/feature/broadcast"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -142,12 +142,12 @@ func handleMessage(ctx context.Context, raw []byte) (*service.MessageQueueMessag
 		}
 		err := feature_wa_message.RetrySendingMessage(ctx, messageId, dependencies)
 		return &message, err
-	case "start_campaign":
-		var campaignID int32
-		if err := json.Unmarshal(queueJob.Data, &campaignID); err != nil {
-			return &message, fmt.Errorf("invalid start_campaign data: %w", err)
+	case "start_broadcast":
+		var broadcastId int32
+		if err := json.Unmarshal(queueJob.Data, &broadcastId); err != nil {
+			return &message, fmt.Errorf("invalid start_broadcast data: %w", err)
 		}
-		err := feature_campaign.Process(ctx, campaignID, int(message.DequeueCount), dependencies)
+		err := feature_broadcast.Process(ctx, broadcastId, int(message.DequeueCount), dependencies)
 		return &message, err
 	}
 	err = fmt.Errorf("unidentified type: %s", rawStr)

@@ -88,7 +88,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
 	}
-	// insert cache for campaign_id_user_id, expires in 48 hours
+	// insert cache for template_id_user_id, expires in 48 hours
 	cacheKey := helper.GetTemplateStatusChangeCacheKey(template.ID)
 	cacheValue := fmt.Sprint(user.Id)
 	err = dependencies.Cache.Insert(ctx, cacheKey, cacheValue, time.Now().Add(time.Hour*48))

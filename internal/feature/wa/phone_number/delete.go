@@ -30,7 +30,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
 	}
-	// only can delete if there is no message, no message event, no customer, no campaign
+	// only can delete if there is no message, no message event, no customer, no broadcast
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}

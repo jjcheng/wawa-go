@@ -1,4 +1,4 @@
-package feature_campaign
+package feature_broadcast
 
 import (
 	"context"
@@ -15,12 +15,12 @@ import (
 )
 
 type Delete struct {
-	Id int32 `uri:"id" val:"required" description:"id of the campaign to delete"`
+	Id int32 `uri:"id" val:"required" description:"id of the broadcast to delete"`
 }
 
 func (delete *Delete) Validate() []exception.InputException {
 	if delete.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid campaign id")}
+		return []exception.InputException{exception.NewInputException("id", "invalid broadcast id")}
 	}
 	return nil
 }
@@ -32,24 +32,24 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, delete.Id)
+	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, delete.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if campaign.UserId != user.Id {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
+	if broadcast.UserId != user.Id {
+		return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
 	}
-	if campaign.Status != types.CampaignStatusCancelled {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "only cancelled campaigns can be deleted")
+	if broadcast.Status != types.BroadcastStatusCancelled {
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "only cancelled broadcasts can be deleted")
 	}
 	// delete any attachementurl
-	if campaign.AttachmentURL != "" {
-		dependencies.File.DeleteFile(campaign.AttachmentURL)
+	if broadcast.AttachmentURL != "" {
+		dependencies.File.DeleteFile(broadcast.AttachmentURL)
 	}
-	if err := dependencies.UnitOfWork.CampaignRepository().DeleteById(ctx, campaign.Id); err != nil {
+	if err := dependencies.UnitOfWork.BroadcastRepository().DeleteById(ctx, broadcast.Id); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
@@ -57,17 +57,17 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Delete WhatsApp campaign",
-		"Deletes a cancelled campaign belonging to the authenticated user.",
+		"Delete WhatsApp broadcast",
+		"Deletes a cancelled broadcast belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
 		http.MethodDelete,
-		"/v1/campaigns/:id",
+		"/v1/broadcasts/:id",
 		true,
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("campaign not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("only cancelled campaigns can be deleted", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("only cancelled broadcasts can be deleted", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

@@ -3608,12 +3608,12 @@
         ]
       }
     },
-    "/v1/campaigns": {
+    "/v1/broadcasts": {
       "get": {
-        "description": "Lists campaigns belonging to the authenticated user.",
+        "description": "Lists broadcasts belonging to the authenticated user.",
         "parameters": [
           {
-            "description": "filter campaigns by name",
+            "description": "filter broadcasts by name",
             "example": "",
             "in": "query",
             "name": "name",
@@ -3622,7 +3622,7 @@
             }
           },
           {
-            "description": "filter campaigns by status",
+            "description": "filter broadcasts by status",
             "example": "",
             "in": "query",
             "name": "status",
@@ -3981,13 +3981,13 @@
             "apiKey": []
           }
         ],
-        "summary": "List WhatsApp campaigns",
+        "summary": "List WhatsApp broadcasts",
         "tags": [
           "WA"
         ]
       },
       "post": {
-        "description": "Start a pending campaign by the authenticated user.",
+        "description": "Start a pending broadcast by the authenticated user.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4337,7 +4337,7 @@
                     },
                     "message": {
                       "description": "error message if not success",
-                      "example": "one or more customers were not found, one or more customers do not have a WhatsApp ID, this campaign name is already used, whatsapp template not found, whatsapp template is not approved, invalid input",
+                      "example": "one or more customers were not found, one or more customers do not have a WhatsApp ID, this broadcast name is already used, whatsapp broadcast not found, whatsapp broadcast is not approved, invalid input",
                       "type": "string"
                     },
                     "request_id": {
@@ -4371,7 +4371,7 @@
                 }
               }
             },
-            "description": "one or more customers were not found, one or more customers do not have a WhatsApp ID, this campaign name is already used, whatsapp template not found, whatsapp template is not approved, invalid input"
+            "description": "one or more customers were not found, one or more customers do not have a WhatsApp ID, this broadcast name is already used, whatsapp broadcast not found, whatsapp broadcast is not approved, invalid input"
           },
           "401": {
             "content": {
@@ -4511,15 +4511,15 @@
             "apiKey": []
           }
         ],
-        "summary": "Start a campaign",
+        "summary": "Start a broadcast",
         "tags": [
           "Customer"
         ]
       }
     },
-    "/v1/campaigns/recipients": {
+    "/v1/broadcasts/recipients": {
       "get": {
-        "description": "Lists recipients belonging to an authenticated user's campaign.",
+        "description": "Lists recipients belonging to an authenticated user's broadcast.",
         "parameters": [
           {
             "description": "name of the customer to filter",
@@ -4531,10 +4531,10 @@
             }
           },
           {
-            "description": "id of the campaign",
+            "description": "id of the broadcast",
             "example": "",
             "in": "query",
-            "name": "campaign_id",
+            "name": "broadcast_id",
             "required": true,
             "schema": {
               "format": "int32",
@@ -4589,7 +4589,7 @@
                         "items": {
                           "items": {
                             "properties": {
-                              "campaign_id": {
+                              "broadcast_id": {
                                 "format": "int32",
                                 "type": "integer"
                               },
@@ -5014,18 +5014,18 @@
             "apiKey": []
           }
         ],
-        "summary": "List campaign recipients",
+        "summary": "List broadcast recipients",
         "tags": [
           "WA"
         ]
       }
     },
-    "/v1/campaigns/{id}": {
+    "/v1/broadcasts/{id}": {
       "delete": {
-        "description": "Deletes a cancelled campaign belonging to the authenticated user.",
+        "description": "Deletes a cancelled broadcast belonging to the authenticated user.",
         "parameters": [
           {
-            "description": "id of the campaign to delete",
+            "description": "id of the broadcast to delete",
             "example": "",
             "in": "path",
             "name": "id",
@@ -5105,7 +5105,7 @@
                     },
                     "message": {
                       "description": "error message if not success",
-                      "example": "only cancelled campaigns can be deleted, invalid input",
+                      "example": "only cancelled broadcasts can be deleted, invalid input",
                       "type": "string"
                     },
                     "request_id": {
@@ -5139,7 +5139,7 @@
                 }
               }
             },
-            "description": "only cancelled campaigns can be deleted, invalid input"
+            "description": "only cancelled broadcasts can be deleted, invalid input"
           },
           "401": {
             "content": {
@@ -5234,7 +5234,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "campaign not found",
+                      "example": "broadcast not found",
                       "type": "string"
                     },
                     "request_id": {
@@ -5268,7 +5268,7 @@
                 }
               }
             },
-            "description": "campaign not found"
+            "description": "broadcast not found"
           },
           "500": {
             "content": {
@@ -5322,16 +5322,16 @@
             "apiKey": []
           }
         ],
-        "summary": "Delete WhatsApp campaign",
+        "summary": "Delete WhatsApp broadcast",
         "tags": [
           "WA"
         ]
       },
       "get": {
-        "description": "Gets a campaign belonging to the authenticated user.",
+        "description": "Gets a broadcast belonging to the authenticated user.",
         "parameters": [
           {
-            "description": "id of the campaign",
+            "description": "id of the broadcast",
             "example": "",
             "in": "path",
             "name": "id",
@@ -5602,7 +5602,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "campaign not found",
+                      "example": "broadcast not found",
                       "type": "string"
                     },
                     "request_id": {
@@ -5636,7 +5636,7 @@
                 }
               }
             },
-            "description": "campaign not found"
+            "description": "broadcast not found"
           },
           "500": {
             "content": {
@@ -5690,18 +5690,18 @@
             "apiKey": []
           }
         ],
-        "summary": "Get WhatsApp campaign",
+        "summary": "Get WhatsApp broadcast",
         "tags": [
           "WA"
         ]
       }
     },
-    "/v1/campaigns/{id}/cancel": {
+    "/v1/broadcasts/{id}/cancel": {
       "patch": {
-        "description": "Cancels a pending campaign belonging to the authenticated user.",
+        "description": "Cancels a pending broadcast belonging to the authenticated user.",
         "parameters": [
           {
-            "description": "id of the campaign to cancel",
+            "description": "id of the broadcast to cancel",
             "example": "",
             "in": "path",
             "name": "id",
@@ -5781,7 +5781,7 @@
                     },
                     "message": {
                       "description": "error message if not success",
-                      "example": "only pending campaigns can be cancelled, invalid input",
+                      "example": "only pending broadcasts can be cancelled, invalid input",
                       "type": "string"
                     },
                     "request_id": {
@@ -5815,7 +5815,7 @@
                 }
               }
             },
-            "description": "only pending campaigns can be cancelled, invalid input"
+            "description": "only pending broadcasts can be cancelled, invalid input"
           },
           "401": {
             "content": {
@@ -5910,7 +5910,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "campaign not found",
+                      "example": "broadcast not found",
                       "type": "string"
                     },
                     "request_id": {
@@ -5944,7 +5944,7 @@
                 }
               }
             },
-            "description": "campaign not found"
+            "description": "broadcast not found"
           },
           "500": {
             "content": {
@@ -5998,18 +5998,18 @@
             "apiKey": []
           }
         ],
-        "summary": "Cancel WhatsApp campaign",
+        "summary": "Cancel WhatsApp broadcast",
         "tags": [
           "WA"
         ]
       }
     },
-    "/v1/campaigns/{id}/statistics": {
+    "/v1/broadcasts/{id}/statistics": {
       "get": {
-        "description": "Gets message status statistics for a campaign belonging to the authenticated user.",
+        "description": "Gets message status statistics for a broadcast belonging to the authenticated user.",
         "parameters": [
           {
-            "description": "id of the campaign",
+            "description": "id of the broadcast",
             "example": "",
             "in": "path",
             "name": "id",
@@ -6226,7 +6226,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "campaign not found",
+                      "example": "broadcast not found",
                       "type": "string"
                     },
                     "request_id": {
@@ -6260,7 +6260,7 @@
                 }
               }
             },
-            "description": "campaign not found"
+            "description": "broadcast not found"
           },
           "500": {
             "content": {
@@ -6314,7 +6314,7 @@
             "apiKey": []
           }
         ],
-        "summary": "Get WhatsApp campaign statistics",
+        "summary": "Get WhatsApp broadcast statistics",
         "tags": [
           "WA"
         ]
@@ -13298,8 +13298,8 @@
                     },
                     "type": "object"
                   },
-                  "campaign_recipient_id": {
-                    "description": "if it's from a campaign",
+                  "broadcast_recipient_id": {
+                    "description": "if it's from a broadcast",
                     "format": "int32",
                     "nullable": true,
                     "type": "integer"

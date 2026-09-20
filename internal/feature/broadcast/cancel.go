@@ -1,4 +1,4 @@
-package feature_campaign
+package feature_broadcast
 
 import (
 	"context"
@@ -15,12 +15,12 @@ import (
 )
 
 type Cancel struct {
-	Id int32 `uri:"id" val:"required" description:"id of the campaign to cancel"`
+	Id int32 `uri:"id" val:"required" description:"id of the broadcast to cancel"`
 }
 
 func (cancel *Cancel) Validate() []exception.InputException {
 	if cancel.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid campaign id")}
+		return []exception.InputException{exception.NewInputException("id", "invalid broadcast id")}
 	}
 	return nil
 }
@@ -32,20 +32,20 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	if errors := cancel.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
-	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, cancel.Id)
+	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, cancel.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if campaign.UserId != user.Id {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "campaign not found")
+	if broadcast.UserId != user.Id {
+		return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
 	}
-	if campaign.Status != types.CampaignStatusPending {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "only pending campaigns can be cancelled")
+	if broadcast.Status != types.BroadcastStatusPending {
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "only pending broadcasts can be cancelled")
 	}
-	// start a transaction to also cancel all campaign_recipients
+	// start a transaction to also cancel all broadcast_recipients
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	committed := false
 	defer func() {
@@ -53,8 +53,8 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 			transaction.Rollback()
 		}
 	}()
-	if err := transaction.CampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{
-		"status": types.CampaignStatusCancelled,
+	if err := transaction.BroadcastRepository().UpdateFields(ctx, broadcast.Id, map[string]any{
+		"status": types.BroadcastStatusCancelled,
 	}); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -67,17 +67,17 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Cancel) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Cancel WhatsApp campaign",
-		"Cancels a pending campaign belonging to the authenticated user.",
+		"Cancel WhatsApp broadcast",
+		"Cancels a pending broadcast belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
 		http.MethodPatch,
-		"/v1/campaigns/:id/cancel",
+		"/v1/broadcasts/:id/cancel",
 		true,
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("campaign not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("only pending campaigns can be cancelled", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("only pending broadcasts can be cancelled", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

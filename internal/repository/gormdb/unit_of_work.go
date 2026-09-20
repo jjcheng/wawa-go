@@ -17,9 +17,9 @@ type UnitOfWork struct {
 	accountNotificationRepository repository.AccountNotificationRepository
 	accountCacheRepository        repository.AccountCacheRepository
 	// customer
-	customerRepository          repository.CustomerRepository
-	campaignRepository          repository.CampaignRepository
-	campaignRecipientRepository repository.CampaignRecipientRepository
+	customerRepository           repository.CustomerRepository
+	broadcastRepository          repository.BarodcastRepository
+	broadcastRecipientRepository repository.BroadcastRecipientRepository
 	// wa
 	waBusinessPortfolioRepository repository.WABusinessPortfolioRepository
 	waBusinessAccountRepository   repository.WABusinessAccountRepository
@@ -43,8 +43,8 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.accountCacheRepository = NewAccountCacheRepository(db, logger)
 	// customer
 	unitOfWork.customerRepository = NewCustomerRepository(db, logger)
-	unitOfWork.campaignRepository = NewWACampaignRepository(db, logger)
-	unitOfWork.campaignRecipientRepository = NewCampaignRecipientRepository(db, logger)
+	unitOfWork.broadcastRepository = NewBroadcastRepository(db, logger)
+	unitOfWork.broadcastRecipientRepository = NewBroadcastRecipientRepository(db, logger)
 	// wa
 	unitOfWork.waBusinessPortfolioRepository = NewWABusinessPortfolioRepository(db, logger)
 	unitOfWork.waBusinessAccountRepository = NewWABusinessAccountRepository(db, logger)
@@ -86,12 +86,12 @@ func (unitOfWork *UnitOfWork) CustomerRepository() repository.CustomerRepository
 	return unitOfWork.customerRepository
 }
 
-func (unitOfWork *UnitOfWork) CampaignRepository() repository.CampaignRepository {
-	return unitOfWork.campaignRepository
+func (unitOfWork *UnitOfWork) BroadcastRepository() repository.BarodcastRepository {
+	return unitOfWork.broadcastRepository
 }
 
-func (unitOfWork *UnitOfWork) CampaignRecipientRepository() repository.CampaignRecipientRepository {
-	return unitOfWork.campaignRecipientRepository
+func (unitOfWork *UnitOfWork) BroadcastRecipientRepository() repository.BroadcastRecipientRepository {
+	return unitOfWork.broadcastRecipientRepository
 }
 
 // wa

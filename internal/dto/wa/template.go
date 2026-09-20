@@ -620,7 +620,7 @@ type SendTemplate struct {
 }
 
 // to payload to be sent to Meta, use concrete SendTemplate
-func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_customer.Customer, campaignToken string) (map[string]any, error) {
+func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_customer.Customer, broadcastToken string) (map[string]any, error) {
 	// load customer data
 	for _, component := range sendTemplate.Components {
 		for i, parameter := range component.Parameters {
@@ -651,7 +651,7 @@ func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_
 			case "FLOW":
 				parameter.Type = "action"
 				parameter.Action = &SendTemplateParameterAction{
-					FlowToken: campaignToken,
+					FlowToken: broadcastToken,
 				}
 				additionalButton.Type = "button"
 				additionalButton.SubType = "flow"
@@ -662,7 +662,7 @@ func (sendTemplate *SendTemplate) FinalPayload(template *Template, customer dao_
 				additionalButtons = append(additionalButtons, additionalButton)
 			case "QUICK_REPLY":
 				parameter.Type = "payload"
-				parameter.Payload = campaignToken
+				parameter.Payload = broadcastToken
 				additionalButton.Type = "button"
 				additionalButton.SubType = "quick_reply"
 				additionalButton.Index = fmt.Sprint(i)
@@ -736,7 +736,7 @@ type SendTemplateParameter struct {
 	// component.type = header, body, button, they are the variables not full text
 	ParameterName string `json:"parameter_name,omitempty"` // only for text
 	Text          string `json:"text,omitempty"`           // only for text
-	Source        string `json:"source,omitempty"`         // campaign-only; strip before Meta, if it's dynamic like: customer.name, customer.additional_data.birthday; will be computed and put in text
+	Source        string `json:"source,omitempty"`         // broadcast-only; strip before Meta, if it's dynamic like: customer.name, customer.additional_data.birthday; will be computed and put in text
 	// component.type = header, audio is not supported
 	Image    *SendTemplateMedia             `json:"image,omitempty"`    // type = image
 	Video    *SendTemplateMedia             `json:"video,omitempty"`    // type = video

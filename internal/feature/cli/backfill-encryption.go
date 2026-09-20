@@ -36,7 +36,7 @@ func BackfillEncryption(ctx context.Context) error {
 		backfillBusinessPortfolios,
 		backfillMessages,
 		backfillMessageStatuses,
-		backfillCampaignRecipients,
+		backfillBroadcastRecipients,
 	}
 	total := 0
 	if err := db.Transaction(func(tx *gorm.DB) error {
@@ -455,15 +455,15 @@ func backfillMessageStatuses(db *gorm.DB) (int, error) {
 }
 
 type recipientBackfillRow struct {
-	Id, CampaignId, CustomerId int32
-	EncryptionID               string
-	Payload                    []byte
-	PayloadEncrypted           string
+	Id, BroadcastId, CustomerId int32
+	EncryptionID                string
+	Payload                     []byte
+	PayloadEncrypted            string
 }
 
-func backfillCampaignRecipients(db *gorm.DB) (int, error) {
+func backfillBroadcastRecipients(db *gorm.DB) (int, error) {
 	var rows []recipientBackfillRow
-	if err := db.Raw("SELECT id, campaign_id, customer_id, encryption_id, payload, payload_encrypted FROM customer.campaign_recipients").Scan(&rows).Error; err != nil {
+	if err := db.Raw("SELECT id, broadcast_id, customer_id, encryption_id, payload, payload_encrypted FROM customer.broadcast_recipients").Scan(&rows).Error; err != nil {
 		return 0, err
 	}
 	updated := 0
@@ -474,7 +474,7 @@ func backfillCampaignRecipients(db *gorm.DB) (int, error) {
 			values["encryption_id"] = row.EncryptionID
 		}
 		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted == "" {
-			encrypted, err := encryptBackfillValue(string(row.Payload), "customer.campaign_recipients:payload:"+row.EncryptionID)
+			encrypted, err := encryptBackfillValue(string(row.Payload), "customer.broadcast_recipients:payload:"+row.EncryptionID)
 			if err != nil {
 				return updated, err
 			}
@@ -483,7 +483,7 @@ func backfillCampaignRecipients(db *gorm.DB) (int, error) {
 		if len(row.Payload) > 0 && string(row.Payload) != "null" && row.PayloadEncrypted != "" {
 			values["payload"] = nil
 		}
-		if err := applyBackfillUpdate(db, "customer.campaign_recipients", row.Id, values); err != nil {
+		if err := applyBackfillUpdate(db, "customer.broadcast_recipients", row.Id, values); err != nil {
 			return updated, err
 		}
 		if len(values) > 0 {

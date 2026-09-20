@@ -69,8 +69,8 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	messageIds := helper.Map(messages, func(message dao_wa.Message) int32 { return message.Id })
-	// get the campaigns
-	campaigns, err := dependencies.UnitOfWork.CampaignRepository().ListByMessageIds(ctx, messageIds)
+	// get the broadcasts
+	broadcasts, err := dependencies.UnitOfWork.BroadcastRepository().ListByMessageIds(ctx, messageIds)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -87,24 +87,24 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 			if err != nil {
 				continue
 			}
-			var campaign *dao_customer.Campaign
-			if len(campaigns) == 1 {
-				campaign = &campaigns[0]
+			var broadcast *dao_customer.Broadcast
+			if len(broadcasts) == 1 {
+				broadcast = &broadcasts[0]
 			} else if sendTemplateMap, ok := sendTemplatePayload.(map[string]any); ok {
 				if templateName, ok := sendTemplateMap["name"].(string); ok && templateName != "" {
-					campaign = helper.First(campaigns, func(c dao_customer.Campaign) bool {
+					broadcast = helper.First(broadcasts, func(c dao_customer.Broadcast) bool {
 						name, _ := c.TemplatePayload["name"].(string)
 						return name == templateName
 					})
 				}
 			}
-			if campaign == nil && len(campaigns) > 0 {
-				campaign = &campaigns[0]
+			if broadcast == nil && len(broadcasts) > 0 {
+				broadcast = &broadcasts[0]
 			}
-			if campaign == nil {
+			if broadcast == nil {
 				continue
 			}
-			template, err := helper.ConvertJSON[dto_wa.Template](campaign.TemplatePayload)
+			template, err := helper.ConvertJSON[dto_wa.Template](broadcast.TemplatePayload)
 			if err != nil {
 				continue
 			}

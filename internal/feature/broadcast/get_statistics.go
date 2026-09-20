@@ -1,4 +1,4 @@
-package feature_campaign
+package feature_broadcast
 
 import (
 	"context"
@@ -15,12 +15,12 @@ import (
 )
 
 type GetStatistics struct {
-	Id int32 `uri:"id" val:"required" description:"id of the campaign"`
+	Id int32 `uri:"id" val:"required" description:"id of the broadcast"`
 }
 
 func (getStatistics *GetStatistics) Validate() []exception.InputException {
 	if getStatistics.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid campaign id")}
+		return []exception.InputException{exception.NewInputException("id", "invalid broadcast id")}
 	}
 	return nil
 }
@@ -32,17 +32,17 @@ func (getStatistics GetStatistics) Handle(ctx context.Context, user *dto_account
 	if inputErrors := getStatistics.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*map[types.WAMessageStatus]int](inputErrors)
 	}
-	campaign, err := dependencies.UnitOfWork.CampaignRepository().GetById(ctx, getStatistics.Id)
+	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, getStatistics.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusNotFound, "campaign not found")
+			return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusNotFound, "broadcast not found")
 		}
 		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if campaign.UserId != user.Id {
-		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusNotFound, "campaign not found")
+	if broadcast.UserId != user.Id {
+		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusNotFound, "broadcast not found")
 	}
-	statistics, err := dependencies.UnitOfWork.CampaignRecipientRepository().CountMessageStatusesByCampaignId(ctx, campaign.Id)
+	statistics, err := dependencies.UnitOfWork.BroadcastRecipientRepository().CountMessageStatusesByBroadcastId(ctx, broadcast.Id)
 	if err != nil {
 		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -50,23 +50,23 @@ func (getStatistics GetStatistics) Handle(ctx context.Context, user *dto_account
 	for _, count := range statistics {
 		processedCount += count
 	}
-	unprocessedCount := max(int(campaign.RecipientCount)-processedCount, 0)
+	unprocessedCount := max(int(broadcast.RecipientCount)-processedCount, 0)
 	statistics["UNPROCESSED"] = unprocessedCount
 	return dto.NewSuccessResponse(&statistics)
 }
 
 func (GetStatistics) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get WhatsApp campaign statistics",
-		"Gets message status statistics for a campaign belonging to the authenticated user.",
+		"Get WhatsApp broadcast statistics",
+		"Gets message status statistics for a broadcast belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/campaigns/:id/statistics",
+		"/v1/broadcasts/:id/statistics",
 		true,
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("campaign not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
