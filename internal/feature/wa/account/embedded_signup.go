@@ -11,6 +11,7 @@ import (
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
 	feature_account_user "github.com/jjcheng/wawa-go/internal/feature/account/user"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
@@ -162,6 +163,25 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	storeUserResponse.Data.WAActivated = true
 	// Step 5 — Respond
 	// The new user is returned along with a session token, so the customer lands logged in
+	// Step 6 - if new user is not User himself/herself, send notification to the masters
+	if storeUserResponse.Data.New && hasMasterUser {
+		// get all masters
+		masterUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListAllMasterUsers(ctx, storeBusinessAccountResponse.Data.Id)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, storeBusinessAccountResponse.Data.Id)
+		} else {
+			// send notifications
+			for _, master := range masterUsers {
+				createNotification := feature_account_notification.Create{
+					Type:  types.NotificationTypeSuccess,
+					Title: fmt.Sprintf("%s has joined through Meta embedded signup.", storeUserResponse.Data.Name),
+					Body:  "You can view this new user in Phone numbers page or Account Settings / Users.",
+					URL:   "/phone-numbers",
+				}
+				_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(master)), dependencies)
+			}
+		}
+	}
 	return storeUserResponse
 }
 

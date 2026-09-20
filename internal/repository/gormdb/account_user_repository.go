@@ -83,6 +83,27 @@ func (accountUserRepository *AccountUserRepository) HasMasterUser(ctx context.Co
 	return count > 0, nil
 }
 
+func (accountUserRepository *AccountUserRepository) ListAllMasterUsers(ctx context.Context, businessAccountId int32) ([]dao_account.User, error) {
+	var users []dao_account.User
+	result := accountUserRepository.db.WithContext(ctx).
+		Table("account.users").
+		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = account.users.id").
+		Where("wa.phone_numbers.business_account_id = ? AND account.users.type = ?", businessAccountId, types.UserTypeMaster).
+		Distinct("account.users.*").
+		Order("account.users.id").
+		Find(&users)
+	if result.Error != nil {
+		accountUserRepository.logger.ErrorFunction(result.Error, businessAccountId)
+		return nil, result.Error
+	}
+	for i := range users {
+		if err := accountUserRepository.decryptSensitiveFields(&users[i]); err != nil {
+			return nil, err
+		}
+	}
+	return users, nil
+}
+
 func (accountUserRepository *AccountUserRepository) ListByBusinessPortfolioId(ctx context.Context, businessPortfolioId int32) ([]dao_account.User, error) {
 	var users []dao_account.User
 	result := accountUserRepository.db.WithContext(ctx).
