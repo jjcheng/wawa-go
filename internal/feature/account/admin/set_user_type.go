@@ -46,7 +46,7 @@ func (setUserType SetUserType) Handle(ctx context.Context, user *dto_account.Use
 	if user.Id == int32(setUserType.UserId) {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot update status of yourself")
 	}
-	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, int32(setUserType.UserId))
+	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, int32(setUserType.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "user not found")

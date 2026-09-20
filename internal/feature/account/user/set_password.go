@@ -48,7 +48,7 @@ func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.Use
 	if user.Status != types.UserStatusPendingPassword {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "password is already set, use change password instead")
 	}
-	existing, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
+	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")

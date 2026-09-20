@@ -41,11 +41,12 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 		if err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, err.Error())
 		}
-		if err := feature_wa_message.ProcessIncoming(ctx, *waIncoming, &service.MessageQueueMessage{}, dependencies); err != nil {
+		if err := feature_wa_message.ProcessIncoming(ctx, *waIncoming, dependencies); err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, err.Error())
 		}
 	} else {
 		_, err := dependencies.MessageQueue.PublishJob("handle_wa_incoming", receive.RawBody, 0, service.MessageQueuePriorityHighest)
+		// Meta will retry sending if failed here
 		if err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to queue raw webhook body")
 		}

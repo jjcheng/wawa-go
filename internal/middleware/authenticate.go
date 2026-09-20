@@ -56,7 +56,7 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 			// update last used
 			dependencies.UnitOfWork.AccountSessionRepository().UpdateLastUsed(ctx, session.Id)
 			// get user
-			user, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx.Request.Context(), session.UserId)
+			user, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx.Request.Context(), session.UserId)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")

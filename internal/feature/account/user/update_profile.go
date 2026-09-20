@@ -38,7 +38,7 @@ func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, 
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
-	existing, err := dependencies.UnitOfWork.AccountUserRepository().Get(ctx, user.Id)
+	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")

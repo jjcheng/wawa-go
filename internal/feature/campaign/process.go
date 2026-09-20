@@ -26,18 +26,18 @@ import (
 func Process(ctx context.Context, campaignId int32, dequeueCount int, dependencies *service.Dependencies) (processErr error) {
 	log.Printf("processing campaign ID: %d", campaignId)
 	var campaign *dao_customer.Campaign
-	// no need to record the processErr if we can't event get the campaign
-	err := retry(ctx, 3, 1000*time.Millisecond, func() error {
+	// just return if we can't event get the campaign
+	err := try(ctx, func() error {
 		var e error
 		campaign, e = dependencies.UnitOfWork.CampaignRepository().GetById(ctx, campaignId)
 		return e
 	})
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, campaignId)
 		// no need to record error message since campaign is nil
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("campaign %d not found", campaignId)
 		}
+		dependencies.Logger.ErrorFunction(err, campaignId)
 		return fmt.Errorf("failed to get campaign %d: %w", campaignId, err)
 	}
 	// only process if the status is PENIDNG or SENDING
@@ -45,17 +45,33 @@ func Process(ctx context.Context, campaignId int32, dequeueCount int, dependenci
 		log.Printf("campaign %d is %s, skip", campaignId, campaign.Status)
 		return nil
 	}
+	// take snapshot of original error messages, so we know if there are new errors
 	originalErrorMessages := strings.Split(strings.TrimSpace(campaign.ErrorMessage), "\n")
-	errorMessages := strings.Split(strings.TrimSpace(campaign.ErrorMessage), "\n")
+	errorMessages := append([]string(nil), originalErrorMessages...)
+	wasPending := campaign.Status == types.CampaignStatusPending
+	// set status to SENDING, next time trigger will not call this again
+	if campaign.Status != types.CampaignStatusSending {
+		campaign.Status = types.CampaignStatusSending
+		err = try(ctx, func() error {
+			return dependencies.UnitOfWork.CampaignRepository().Update(ctx, campaign)
+		})
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, campaign.Id)
+			errorMessages = append(errorMessages, "failed to set campaign status to sending")
+			return fmt.Errorf("failed to set campaign %d status to sending", campaign.Id)
+		}
+	}
 	// get user
 	var user *dao_account.User
-	err = retry(ctx, 3, 1000*time.Millisecond, func() error {
+	err = try(ctx, func() error {
 		var e error
-		user, e = dependencies.UnitOfWork.AccountUserRepository().Get(ctx, campaign.UserId)
+		user, e = dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, campaign.UserId)
 		return e
 	})
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, campaign.UserId)
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			dependencies.Logger.ErrorFunction(err, campaign.UserId)
+		}
 		errorMessages = append(errorMessages, "failed to get user")
 		return fmt.Errorf("failed to get user %d for campaign %d: %w", campaign.UserId, campaign.Id, err)
 	}
@@ -67,18 +83,18 @@ func Process(ctx context.Context, campaignId int32, dequeueCount int, dependenci
 		// if dequeueTime >= max dequeue time, this campaign has failed
 		if dequeueCount >= cfg.Default().AliyunSMQ.MaxDequeueCount {
 			createNotification := feature_account_notification.Create{
-				Title: fmt.Sprintf("We failed to send your campaign %s", campaign.Name),
-				Body:  fmt.Sprintf("We are sorry to inform you that your campaign %s has failed to send depite %d retries. Please try again later. The errors are below:\n\n%s", campaign.Name, dequeueCount, strings.Join(errorMessages, "\n")),
+				Title: fmt.Sprintf("Error occurred when sending your campaign %s", campaign.Name),
+				Body:  fmt.Sprintf("We are sorry to inform you that your campaign %s has failed to send despite %d deliveries. Please try again later. The errors are below:\n\n%s", campaign.Name, dequeueCount, strings.Join(errorMessages, "\n")),
 				Type:  types.NotificationTypeError,
 				URL:   "/campaigns",
 			}
 			createNotification.Handle(ctx, &userDTO, dependencies)
 		}
-		if err := retry(ctx, 3, 1000*time.Millisecond, func() error {
-			return dependencies.UnitOfWork.CampaignRepository().UpdateFields(ctx, campaign.Id, map[string]any{
-				"error_message": strings.Join(errorMessages, "\n"),
-			})
+		if err := try(ctx, func() error {
+			campaign.ErrorMessage = strings.Join(errorMessages, "\n")
+			return dependencies.UnitOfWork.CampaignRepository().Update(ctx, campaign)
 		}); err != nil {
+			dependencies.Logger.ErrorFunction(err, campaign.Id, errorMessages)
 			log.Printf("failed to update campaign %d error message: %v", campaign.Id, err)
 		}
 	}()
@@ -86,7 +102,7 @@ func Process(ctx context.Context, campaignId int32, dequeueCount int, dependenci
 	var phoneNumber *dao_wa.PhoneNumber
 	var businessAccount *dao_wa.BusinessAccount
 	var businessPortfolio *dao_wa.BusinessPortfolio
-	err = retry(ctx, 3, 1000*time.Millisecond, func() error {
+	err = try(ctx, func() error {
 		var e error
 		phoneNumber, businessAccount, businessPortfolio, e = dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
 		return e
@@ -106,22 +122,22 @@ func Process(ctx context.Context, campaignId int32, dequeueCount int, dependenci
 		BusinessPortfolioAccessToken: businessPortfolio.AccessToken,
 	}
 	page := 1
-	// set campaign status to SENDING
-	campaign.Status = types.CampaignStatusSending
-	err = retry(ctx, 3, 1000*time.Millisecond, func() error {
-		return dependencies.UnitOfWork.CampaignRepository().Update(ctx, campaign)
-	})
-	if err != nil {
-		dependencies.Logger.ErrorFunction(err, campaign.Id)
-		errorMessages = append(errorMessages, "failed to update campaign status to SENDING")
-		return fmt.Errorf("failed to update campaign %d to SENDING status: %w", campaign.Id, err)
+	// now only, if the original campaign status is pending, push notification to info user it's started
+	if wasPending {
+		createNotification := feature_account_notification.Create{
+			Type:  types.NotificationTypeInfo,
+			Title: fmt.Sprintf("Your campaign %s has started", campaign.Name),
+			Body:  fmt.Sprintf("We have started your campaign %s, total %d recipients. Check the campaign recipients page to see any individual messages that are failed to be sent.", campaign.Name, campaign.RecipientCount),
+			URL:   fmt.Sprintf("/campaigns/recipients?campaign_id=%d", campaignId),
+		}
+		_ = createNotification.Handle(ctx, &userDTO, dependencies)
 	}
-	// send in batches
-	var failedRecipients []string
+	// send in batches, record down the failed recipients
+	var failedRecipientErrorMessages []string
 	for {
 		var recipients []dao_customer.CampaignRecipient
 		var totalPages int
-		err = retry(ctx, 3, 1000*time.Millisecond, func() error {
+		err = try(ctx, func() error {
 			var e error
 			recipients, _, totalPages, e = dependencies.UnitOfWork.CampaignRecipientRepository().ListByCampaignId(ctx, campaign.Id, "", "", false, page, 50)
 			return e
@@ -152,59 +168,60 @@ func Process(ctx context.Context, campaignId int32, dequeueCount int, dependenci
 			// it's ok if sending failed, as long as a message is created
 			if response.Data == nil {
 				log.Printf("failed to create message for campaign %d recipient %d: %s", campaign.Id, recipient.Id, response.Message)
-				failedRecipients = append(failedRecipients, fmt.Sprintf("recipient %d: %s", recipient.Id, response.Message))
+				failedRecipientErrorMessages = append(failedRecipientErrorMessages, fmt.Sprintf("recipient %d: %s", recipient.Id, response.Message))
 				continue
 			}
 			recipient.MessageId = &response.Data.Id
-			if err := retry(ctx, 3, 1000*time.Millisecond, func() error {
+			if err := try(ctx, func() error {
 				return dependencies.UnitOfWork.CampaignRecipientRepository().Update(ctx, &recipient)
 			}); err != nil {
 				dependencies.Logger.ErrorFunction(err, campaign.Id, recipient.Id, response.Data.Id)
-				failedRecipients = append(failedRecipients, fmt.Sprintf("failed to link recipient %d to message id %d", recipient.Id, response.Data.Id))
+				failedRecipientErrorMessages = append(failedRecipientErrorMessages, fmt.Sprintf("failed to link recipient %d to message id %d", recipient.Id, response.Data.Id))
 			}
+			// we don't care if the message is successfully sent or not, that's handled by another task
 		}
 		if page >= totalPages {
 			break
 		}
 		page++
 	}
-	if len(failedRecipients) > 0 {
-		for _, failedRecipient := range failedRecipients {
-			errorMessages = append(errorMessages, failedRecipient)
+	// add all recipient error messages to errorMessages and return, let SMQ retry
+	if len(failedRecipientErrorMessages) > 0 {
+		for _, failedRecipientErrorMessage := range failedRecipientErrorMessages {
+			errorMessages = append(errorMessages, failedRecipientErrorMessage)
 		}
-		return fmt.Errorf("campaign %d has %d recipient message creation/link failures: %s", campaign.Id, len(failedRecipients), strings.Join(failedRecipients, "; "))
+		return fmt.Errorf("campaign %d has %d recipient message creation/link failures", campaign.Id, len(failedRecipientErrorMessages))
 	}
-	// complete campaign
-	log.Print("all recipient messages created (may not be sent successfully), campaign is completed")
+	// complete campaign, set status to COMPLETED so SMQ won't retry
+	log.Print("all recipient messages created, campaign is completed")
 	campaign.Status = types.CampaignStatusCompleted
-	campaign.ErrorMessage = ""
-	err = retry(ctx, 3, 1000*time.Millisecond, func() error {
+	err = try(ctx, func() error {
 		return dependencies.UnitOfWork.CampaignRepository().Update(ctx, campaign)
 	})
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, campaign.Id)
 		errorMessages = append(errorMessages, "failed to set campaign status to COMPLETED")
-		return fmt.Errorf("failed to set campaign %d status as COMPLETED: %w", campaign.Id, err)
+		return fmt.Errorf("failed to set campaign %d status to COMPLETED: %w", campaign.Id, err)
 	}
 	// create notification
 	createNotification := feature_account_notification.Create{
 		Type:  types.NotificationTypeInfo,
 		Title: fmt.Sprintf("Your campaign %s has completed.", campaign.Name),
-		Body:  fmt.Sprintf("Your campaign %s has completed sending to a total %d recipients. Check the campaign recipients page to see any individual messages that are failed to be sent.", campaign.Name, campaign.RecipientCount),
+		Body:  fmt.Sprintf("Your campaign %s has completed sending to a total %d recipients. Check the campaign recipients page to see any individual messages that fail to send.", campaign.Name, campaign.RecipientCount),
 		URL:   fmt.Sprintf("/campaigns/recipients?campaign_id=%d", campaignId),
 	}
-	createNotification.Handle(ctx, &userDTO, dependencies)
+	_ = createNotification.Handle(ctx, &userDTO, dependencies)
 	return nil
 }
 
-func retry(ctx context.Context, attempts int, delay time.Duration, fn func() error) error {
+func try(ctx context.Context, fn func() error) error {
 	var err error
-	for i := 0; i < attempts; i++ {
+	for i := range cfg.Default().AliyunSMQ.MaxDequeueCount {
 		if i > 0 {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(delay * time.Duration(i)):
+			case <-time.After(time.Second * time.Duration(i)):
 			}
 		}
 		if ctx.Err() != nil {

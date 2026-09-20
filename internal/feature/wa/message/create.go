@@ -235,8 +235,8 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
-	if customer.WAId == "" {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID, please edit the details")
+	if customer.WAId == "" && customer.MetaUserId == "" {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID or Meta user ID, please edit the details")
 	}
 	payload, err := messagePayload(create)
 	if err != nil {
@@ -260,6 +260,9 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if err != nil {
 		sendError = err.Error()
 		messageStatus = types.WAMessageStatusRejected
+	} else if response == nil {
+		sendError = "Meta response is nil"
+		messageStatus = types.WAMessageStatusRejected
 	} else if len(response.Messages) == 0 || strings.TrimSpace(response.Messages[0].ID) == "" {
 		sendError = "WhatsApp did not return a message ID"
 		messageStatus = types.WAMessageStatusRejected
@@ -280,7 +283,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	// retry 3 min later if it's a campaign message and the error is a http request error (payload never go to Meta)
 	// for any Meta returned error, no need to retry
-	// set it to at least 3 mins becuase if the error was becuase meta did not return an id, it will return it in next 1-2 mins
+	// set it to at least 3 mins because if the error was because meta did not return an id, it will return it in next 1-2 mins
 	var requestHTTPError *helper.HTTPRequestError
 	if sendError != "" && create.CampaignRecipientId != nil && errors.As(err, &requestHTTPError) {
 		message.NextAttemptAt = helper.ConvertToPointer(time.Now().UTC().Add(3 * time.Minute))
@@ -294,7 +297,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	result := dto_wa.NewMessage(message)
 	// publish the message even if it has error, so user is aware, this applies to campaign messages as well
 	// if user is currently on the chat page
-	dependencies.Ably.Publish("message", helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token), result)
+	channelName := helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token)
+	err = dependencies.Ably.Publish("message", channelName, result)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, channelName)
+	}
 	return dto.NewSuccessResponse(&result)
 }
 

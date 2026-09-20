@@ -83,7 +83,7 @@ const (
 type WAMessageStatus string
 
 const (
-	WAMessageStatusRejected  WAMessageStatus = "REJECTED" // this is created by us, maybe payload or settings error
+	WAMessageStatusRejected  WAMessageStatus = "REJECTED" // this is created by us, it can be from Meta (payload error, account error), or by us (http error, response has no Id, nextAttemptAt will be set)
 	WAMessageStatusAccepted  WAMessageStatus = "ACCEPTED"
 	WAMessageStatusSent      WAMessageStatus = "SENT"
 	WAMessageStatusDelivered WAMessageStatus = "DELIVERED"
