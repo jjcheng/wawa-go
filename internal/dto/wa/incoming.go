@@ -59,7 +59,7 @@ type IncomingMessage struct {
 
 type IncomingTemplateStatusChange struct {
 	Event                   string `json:"event"` // APPROVED
-	MessageTemplateId       int32  `json:"message_template_id"`
+	MessageTemplateId       int64  `json:"message_template_id"`
 	MessageTemplateName     string `json:"message_template_name"`
 	MessageTemplateLanguage string `json:"message_template_language"`
 	Reason                  string `json:"name"`

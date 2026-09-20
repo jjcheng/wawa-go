@@ -58,13 +58,46 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 					dependencies.Logger.ErrorFunction(err)
 					return fmt.Errorf("invalid message template status change value: %w", err)
 				}
-				// TODO: do not store it into db, create a notification to inform user
-				fmt.Println(templateStatus.Event)
-				key := fmt.Sprintf("campaign_status_change_for_id_%d", templateStatus.MessageTemplateId)
-				fmt.Println(key)
-				// get from cache
-				// get user_id
-				// send ably
+				// do not store it into db, create a notification to inform user
+				key := helper.GetTemplateStatusChangeCacheKey(fmt.Sprint(templateStatus.MessageTemplateId))
+				cachedValue, err := dependencies.Cache.Get(ctx, key)
+				if err != nil {
+					dependencies.Logger.ErrorFunction(err, key)
+					return nil
+				}
+				userId, err := strconv.Atoi(cachedValue)
+				if err != nil {
+					dependencies.Logger.ErrorFunction(err, userId)
+					return nil
+				}
+				user, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, int32(userId))
+				if err != nil {
+					dependencies.Logger.ErrorFunction(err, userId)
+				}
+				var title, body, url string
+				var notificationType types.NotificationType
+				if templateStatus.Event == "APPROVED" {
+					title = fmt.Sprintf("Your template %s (%s) has been approved by Meta.", templateStatus.MessageTemplateName, templateStatus.MessageTemplateLanguage)
+					body = "You can now go to customers page, select at least 1 customer and start a campaign with your new template."
+					notificationType = types.NotificationTypeSuccess
+					url = "/customers"
+				} else {
+					title = fmt.Sprintf("Your template %s (%s) has been %s by Meta.", templateStatus.Event, templateStatus.MessageTemplateName, templateStatus.MessageTemplateLanguage)
+					body = fmt.Sprintf("Reason returned by Meta is: %s", templateStatus.Reason)
+					notificationType = types.NotificationTypeWarning
+					url = "/templates"
+				}
+				createNotification := feature_account_notification.Create{
+					Type:  notificationType,
+					Title: title,
+					Body:  body,
+					URL:   url,
+				}
+				_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(*user)), dependencies)
+				err = dependencies.Cache.Remove(ctx, key)
+				if err != nil {
+					dependencies.Logger.ErrorFunction(err, key)
+				}
 			}
 		}
 	}

@@ -67,6 +67,18 @@ func (accountNotificationRepository *AccountNotificationRepository) DeleteByIds(
 	return nil
 }
 
+func (accountNotificationRepository *AccountNotificationRepository) GetUnreadCount(ctx context.Context, userId int32) (int, error) {
+	var count int64
+	if err := accountNotificationRepository.db.WithContext(ctx).
+		Model(&dao_account.Notification{}).
+		Where("user_id = ? AND read = false", userId).
+		Count(&count).Error; err != nil {
+		accountNotificationRepository.logger.ErrorFunction(err, userId)
+		return 0, err
+	}
+	return int(count), nil
+}
+
 func (accountNotificationRepository *AccountNotificationRepository) ListByUserId(ctx context.Context, userId int32, typ types.NotificationType, read *bool, page int, pageSize int) (notifications []dao_account.Notification, totalCount int, totalPages int, err error) {
 	query := accountNotificationRepository.db.WithContext(ctx).
 		Model(&dao_account.Notification{}).

@@ -20,6 +20,7 @@ const (
 type NotificationType string
 
 const (
+	NotificationTypeSuccess NotificationType = "SUCCESS"
 	NotificationTypeInfo    NotificationType = "INFO"
 	NotificationTypeWarning NotificationType = "WARNING"
 	NotificationTypeError   NotificationType = "ERROR"

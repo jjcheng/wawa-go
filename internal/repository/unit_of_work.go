@@ -14,6 +14,7 @@ type UnitOfWork interface {
 	AccountSettingRepository() AccountSettingRepository
 	AccountSessionRepository() AccountSessionRepository
 	AccountNotificationRepository() AccountNotificationRepository
+	AccountCacheRepository() AccountCacheRepository
 	// customer
 	CustomerRepository() CustomerRepository
 	CampaignRepository() CampaignRepository

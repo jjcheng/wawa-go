@@ -13,4 +13,5 @@ type AccountNotificationRepository interface {
 	ListByUserId(ctx context.Context, userId int32, typ types.NotificationType, read *bool, page int, pageSize int) (notifications []dao_account.Notification, totalCount int, totalPages int, err error)
 	SetStatusByIds(ctx context.Context, userId int32, ids []int32, read bool) error
 	DeleteByIds(ctx context.Context, ids []int32, userId int32) error
+	GetUnreadCount(ctx context.Context, userId int32) (int, error)
 }

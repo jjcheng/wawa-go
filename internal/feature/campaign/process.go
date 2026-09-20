@@ -205,7 +205,7 @@ func Process(ctx context.Context, campaignId int32, dequeueCount int, dependenci
 	}
 	// create notification
 	createNotification := feature_account_notification.Create{
-		Type:  types.NotificationTypeInfo,
+		Type:  types.NotificationTypeSuccess,
 		Title: fmt.Sprintf("Your campaign %s has completed.", campaign.Name),
 		Body:  fmt.Sprintf("Your campaign %s has completed sending to a total %d recipients. Check the campaign recipients page to see any individual messages that fail to send.", campaign.Name, campaign.RecipientCount),
 		URL:   fmt.Sprintf("/campaigns/recipients?campaign_id=%d", campaignId),

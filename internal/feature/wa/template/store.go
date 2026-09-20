@@ -2,14 +2,17 @@ package feature_wa_template
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -84,6 +87,13 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	template, err := dependencies.Whatsapp.CreateTemplate(ctx, user.WA.BusinessAccount.WABAId, payload, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
+	}
+	// insert cache for campaign_id_user_id, expires in 48 hours
+	cacheKey := helper.GetTemplateStatusChangeCacheKey(template.ID)
+	cacheValue := fmt.Sprint(user.Id)
+	err = dependencies.Cache.Insert(ctx, cacheKey, cacheValue, time.Now().Add(time.Hour*48))
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, cacheKey, cacheValue)
 	}
 	return dto.NewSuccessResponse(template)
 }

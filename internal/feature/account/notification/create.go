@@ -27,7 +27,7 @@ func (create *Create) Validate() []exception.InputException {
 	create.Body = strings.TrimSpace(create.Body)
 	create.URL = strings.TrimSpace(create.URL)
 	inputErrors := []exception.InputException{}
-	if create.Type != types.NotificationTypeInfo && create.Type != types.NotificationTypeWarning && create.Type != types.NotificationTypeError {
+	if create.Type != types.NotificationTypeInfo && create.Type != types.NotificationTypeWarning && create.Type != types.NotificationTypeError && create.Type != types.NotificationTypeSuccess {
 		inputErrors = append(inputErrors, exception.NewInputException("type", "invalid notification type"))
 	}
 	if create.Title == "" {
@@ -58,7 +58,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_account.Notification](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_account.NewNotification(notification)
-	dependencies.Ably.Publish("notification", helper.GetNotificationChannelName(user.Id), result)
+	channelName := helper.GetNotificationChannelName(user.Id)
+	if err := dependencies.Ably.Publish("notification", channelName, result); err != nil {
+		dependencies.Logger.ErrorFunction(err, channelName, result)
+	}
 	return dto.NewSuccessResponse(&result)
 }
 

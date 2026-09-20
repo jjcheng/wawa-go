@@ -64,6 +64,10 @@ func GetChatChannelName(metaPhoneNumberId string, customerToken string) string {
 	return fmt.Sprintf("chat:%s-%s", metaPhoneNumberId, customerToken)
 }
 
+func GetTemplateStatusChangeCacheKey(templateId string) string {
+	return fmt.Sprintf("template_%s_status_change_user_id", templateId)
+}
+
 // take X-Hub-Signature-256 from header
 func VerifyWhatsAppWebhookSignature(signature string, body []byte, appSecret string) bool {
 	signature = strings.TrimPrefix(strings.TrimSpace(signature), "sha256=")

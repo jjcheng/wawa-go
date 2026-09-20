@@ -16,29 +16,29 @@ import (
 	"gorm.io/gorm"
 )
 
-type CreateChatToken struct {
+type CreateAblyToken struct {
 	CustomerId int32 `form:"customer_id" val:"required" description:"id of the customer"`
 }
 
-func (createChatToken *CreateChatToken) Validate() []exception.InputException {
+func (createAblyToken *CreateAblyToken) Validate() []exception.InputException {
 	inputErrors := []exception.InputException{}
-	if createChatToken.CustomerId <= 0 {
+	if createAblyToken.CustomerId <= 0 {
 		inputErrors = append(inputErrors, exception.NewInputException("customer_id", "missing customer ID"))
 	}
 	return inputErrors
 }
 
-func (createChatToken CreateChatToken) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.AblyTokenRequest] {
+func (createAblyToken CreateAblyToken) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.AblyTokenRequest] {
 	if user == nil {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusForbidden, "you are not authenticated")
 	}
-	if inputErrors := createChatToken.Validate(); len(inputErrors) > 0 {
+	if inputErrors := createAblyToken.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.AblyTokenRequest](inputErrors)
 	}
 	if user.WA == nil || user.WA.PhoneNumber_ == nil {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
-	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, createChatToken.CustomerId)
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, createAblyToken.CustomerId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusBadRequest, "customer not found")
@@ -53,7 +53,7 @@ func (createChatToken CreateChatToken) Handle(ctx context.Context, user *dto_acc
 	return dto.NewSuccessResponse(tokenRequest)
 }
 
-func (CreateChatToken) APISettings() feature.APISettings {
+func (CreateAblyToken) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create WhatsApp conversation realtime chat token",
 		"Creates a short-lived Ably token restricted to subscribe and presence on WhatsApp chat page.",
