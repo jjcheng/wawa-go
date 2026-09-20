@@ -112,7 +112,7 @@ func (mq *MessageQueue) PublishJob(jobType string, data any, delaySeconds int64,
 func (mq *MessageQueue) ReceiveMessage(ctx context.Context) (*MessageQueueMessage, error) {
 	respChan := make(chan ali_mns.MessageReceiveResponse, 1)
 	errChan := make(chan error, 1)
-	mq.queue.ReceiveMessage(respChan, errChan, cfg.Default().AliyunSMQ.PollingWaitSeconds)
+	mq.queue.ReceiveMessage(respChan, errChan, 15)
 	var timeout <-chan time.Time
 	if deadline, ok := ctx.Deadline(); ok {
 		remaining := time.Until(deadline)

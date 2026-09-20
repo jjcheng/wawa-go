@@ -9,6 +9,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -57,6 +58,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_account.Notification](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
 	result := dto_account.NewNotification(notification)
+	dependencies.Ably.Publish("notification", helper.GetNotificationChannelName(user.Id), result)
 	return dto.NewSuccessResponse(&result)
 }
 

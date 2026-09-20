@@ -25,24 +25,7 @@ import (
 // do not parse rawBody to dto_wa.Incoming before here as we are receiving raw data from Meta
 func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, message *service.MessageQueueMessage, dependencies *service.Dependencies) error {
 	dependencies.Logger.Infof("processing WA incoming: %s", message.MessageID)
-	acknowledge := func() {
-		if message.ReceiptHandle == "" {
-			return
-		}
-		if deleteErr := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle); deleteErr != nil {
-			dependencies.Logger.ErrorFunction(deleteErr, message.MessageID)
-		}
-	}
-	err := processIncoming(ctx, dependencies, incoming)
-	if err != nil {
-		// delete the queued message if already stored
-		if strings.Contains(err.Error(), "duplicate key value violates") {
-			acknowledge()
-		}
-		return err
-	}
-	acknowledge()
-	return nil
+	return processIncoming(ctx, dependencies, incoming)
 }
 
 func processIncoming(ctx context.Context, dependencies *service.Dependencies, incoming dto_wa.Incoming) error {
@@ -286,17 +269,9 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 	if mqMessage == nil {
 		return errors.New("message queue message is required")
 	}
-	acknowledge := func() {
-		if mqMessage.ReceiptHandle != "" {
-			if deleteErr := dependencies.MessageQueue.DeleteMessage(mqMessage.ReceiptHandle); deleteErr != nil {
-				dependencies.Logger.ErrorFunction(deleteErr, mqMessage.MessageID)
-			}
-		}
-	}
 	message, err := dependencies.UnitOfWork.WAMessageRepository().GetById(ctx, messageId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			acknowledge()
 			return nil
 		}
 		// returning error will make SQM retry automatcially
@@ -304,7 +279,6 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 	}
 	now := time.Now().UTC()
 	if !shouldRetryWAMessageStatus(message.Status) || message.NextAttemptAt == nil || message.NextAttemptAt.After(now) {
-		acknowledge()
 		return nil
 	}
 	stopRetry := func(reason string) error {
@@ -314,7 +288,6 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 		if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
 			return err
 		}
-		acknowledge()
 		return nil
 	}
 	resetNextAttemptAt := func() error {
@@ -333,7 +306,6 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 		return err
 	}
 	if !updated {
-		acknowledge()
 		return nil
 	}
 	if message.PhoneNumberId == 0 {
@@ -380,7 +352,6 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 		if updateErr := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); updateErr != nil {
 			return updateErr
 		}
-		acknowledge()
 		// if nextAttemptAt is set successfully, no need to return error for retry
 		return nil
 	}
@@ -394,7 +365,6 @@ func RetrySendingMessage(ctx context.Context, messageId int32, mqMessage *servic
 	if err := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message); err != nil {
 		return err
 	}
-	acknowledge()
 	return nil
 }
 

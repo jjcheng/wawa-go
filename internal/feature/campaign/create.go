@@ -190,7 +190,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	committed = true
 	// process after commit because this is like a process of event which happens in fc task
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
-		err := Process(ctx, campaign.Id, dependencies)
+		err := Process(ctx, campaign.Id, 1, dependencies)
 		if err != nil {
 			dependencies.Logger.Warnf("failed to run campaign worker locally: campaign_id=%d err=%v", campaign.Id, err)
 		}

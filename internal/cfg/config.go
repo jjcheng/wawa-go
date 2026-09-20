@@ -57,11 +57,11 @@ type AliyunOSSConfig struct {
 }
 
 type AliyunSMQConfig struct {
-	Endpoint           string
-	AccessKeyID        string
-	AccessKeySecret    string
-	QueueName          string
-	PollingWaitSeconds int64
+	Endpoint        string
+	AccessKeyID     string
+	AccessKeySecret string
+	QueueName       string
+	MaxDequeueCount int
 }
 
 type AblyConfig struct {
@@ -125,11 +125,10 @@ func Default() *Config {
 				BucketName:      os.Getenv("ALIYUN_OSS_BUCKET_NAME"),
 			},
 			AliyunSMQ: AliyunSMQConfig{
-				Endpoint:           os.Getenv("ALIYUN_SMQ_ENDPOINT"),
-				AccessKeyID:        os.Getenv("ALIYUN_SMQ_ACCESS_KEY_ID"),
-				AccessKeySecret:    os.Getenv("ALIYUN_SMQ_ACCESS_KEY_SECRET"),
-				QueueName:          os.Getenv("ALIYUN_SMQ_QUEUE_NAME"),
-				PollingWaitSeconds: 15,
+				Endpoint:        os.Getenv("ALIYUN_SMQ_ENDPOINT"),
+				AccessKeyID:     os.Getenv("ALIYUN_SMQ_ACCESS_KEY_ID"),
+				AccessKeySecret: os.Getenv("ALIYUN_SMQ_ACCESS_KEY_SECRET"),
+				QueueName:       os.Getenv("ALIYUN_SMQ_QUEUE_NAME"),
 			},
 			Ably: AblyConfig{
 				APIKey: os.Getenv("ABLY_API_KEY"),
@@ -144,6 +143,13 @@ func Default() *Config {
 			},
 		}
 	})
+	// set max dequeue count in SMQ (max number of deliveries)
+	smqMaxDequeueCount, err := strconv.Atoi(os.Getenv("ALIYUN_SMQ_MAX_DEQUEUE_COUNT"))
+	if err != nil {
+		configInstance.AliyunSMQ.MaxDequeueCount = 3
+	} else {
+		configInstance.AliyunSMQ.MaxDequeueCount = smqMaxDequeueCount
+	}
 	return configInstance
 }
 
