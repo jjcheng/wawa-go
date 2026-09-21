@@ -12,7 +12,7 @@ import (
 
 type Website struct {
 	dto.DTOBase
-	BusinessAccountId int32                       `json:"business_account_id"`
+	BusinessAccountId int32                       `json:"business_account_id,omitempty"` // hide when serving custom wbsite
 	DomainName        string                      `json:"domain_name"`
 	Status            types.CommerceWebsiteStatus `json:"status"`
 	URL               string                      `json:"url"`
@@ -24,7 +24,7 @@ type Website struct {
 	Email             string `json:"email"`
 	Vertical          string `json:"vertical"`
 	// from catalogs table
-	MetaCatalogId string `json:"meta_catalog_id"`
+	MetaCatalogId string `json:"meta_catalog_id,omitempty"` // hide when serving custom website
 	CatalogName   string `json:"catalog_name"`
 }
 

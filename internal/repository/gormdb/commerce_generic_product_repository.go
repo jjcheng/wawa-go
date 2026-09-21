@@ -27,8 +27,8 @@ func NewCommericeGenericProductRepository(db *gorm.DB, logger *service.Logger) r
 func (commerceGenericProductRepository CommerceGenericProductRepository) List(ctx context.Context, catalogId int32, setId int32, name string, orderBy string, desc bool, page int, pageSize int) (products []dao_commerce.GenericProduct, totalItems int, totalPages int, err error) {
 	query := commerceGenericProductRepository.db.WithContext(ctx).
 		Table("commerce.generic_products").
-		Joins("JOIN commerce.product_sets ON commerce.product_sets.id = commerce.generic_products.set_id").
-		Where("commerce.product_sets.catalog_id = ?", catalogId)
+		Joins("JOIN commerce.sets ON commerce.sets.id = commerce.generic_products.set_id").
+		Where("commerce.sets.catalog_id = ?", catalogId)
 	if setId > 0 {
 		query = query.Where("commerce.generic_products.set_id = ?", setId)
 	}

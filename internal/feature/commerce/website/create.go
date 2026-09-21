@@ -13,6 +13,7 @@ import (
 	dto_commerce "github.com/jjcheng/wawa-go/internal/dto/commerce"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -31,6 +32,13 @@ func (create *Create) Validate() []exception.InputException {
 		inputErrors = append(inputErrors, exception.NewInputException("subdomain", "missing subdomain"))
 	} else if len(create.Subdomain) > 60 || !regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`).MatchString(create.Subdomain) {
 		inputErrors = append(inputErrors, exception.NewInputException("subdomain", "invalid subdomain"))
+	} else {
+		reservedSubdomains := []string{"admin", "portal", "hello", "public", "private", "reserved", "panel", "api", "web", "app", "website", "application", "gateway", "gate", "mobile", "mobile-web", "mobileweb", "system", "llm", "model", "open", "closed", "wwww", "wwwww", "ww", "www", "xyz"}
+		if helper.Any(reservedSubdomains, func(s string) bool {
+			return s == create.Subdomain
+		}) {
+			inputErrors = append(inputErrors, exception.NewInputException("subdomain", "this subdomain is reserved"))
+		}
 	}
 	if create.MetaCatalogId == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("meta_catalog_id", "missing Meta catalog id"))

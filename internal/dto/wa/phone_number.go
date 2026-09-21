@@ -1,6 +1,8 @@
 package dto_wa
 
 import (
+	"fmt"
+
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -35,4 +37,8 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 		UserName:           phoneNumber.UserName,
 	}
 	return d
+}
+
+func (phoneNumber *PhoneNumber) WALink() string {
+	return fmt.Sprintf("https://wa.me/%s", phoneNumber.WAId)
 }

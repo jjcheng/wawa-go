@@ -42,8 +42,9 @@ type SiteConfig struct {
 	Environment                  types.Environment
 	HTTPRequestUserKey           string // to retrieve user object from context, used in controller.registerRoute
 	HTTPRequestItemKey           string // to retrieve request object from context, used in bindRequest
+	HTTPRequestWebsiteKey        string // to retrieve user's customer website
 	HTTPRequestIdKey             string // to retrieve per-request correlation id from context, used to correlate access/error logs
-	HTTPHeaderUserAccessTokenKey string // to retrieve user access token string from context, used in authenticate
+	HTTPHeaderUserAccessTokenKey string // to retrieve user access token string from context, used in authenticate\\
 	SessionExpirySeconds         int
 	GoogleMapAPIKey              string
 	GlobalKeys                   *helper.CryptoKeys
@@ -117,6 +118,7 @@ func Default() *Config {
 				HTTPRequestUserKey:           "HTTP_REQUEST_USER",
 				HTTPRequestItemKey:           "HTTP_REQUEST_ITEM",
 				HTTPRequestIdKey:             "HTTP_REQUEST_ID",
+				HTTPRequestWebsiteKey:        "HTTP_REQUEST_WEBSITE",
 				HTTPHeaderUserAccessTokenKey: "x-user-access-token",
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
 				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days

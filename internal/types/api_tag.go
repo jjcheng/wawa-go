@@ -8,4 +8,5 @@ const (
 	APITagCustomer APITag = "Customer"
 	APITagWA       APITag = "WA"
 	APITagCommerce APITag = "Commerce"
+	APITagPublic   APITag = "Public"
 )

@@ -10,6 +10,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	feature_public "github.com/jjcheng/wawa-go/internal/feature/public"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -93,6 +94,20 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 				dependencies.AuthCache.Set(tokenHash, &userDTO, time.Now())
 			}
 			ctx.Set(cfg.Default().Site.HTTPRequestUserKey, &userDTO)
+		} else { // public website
+			origin := ctx.GetHeader("X-Forwarded-Host")
+			if origin == "" {
+				origin = ctx.GetHeader("Host")
+			}
+			if origin != "" {
+				getWebsiteByDomain := feature_public.GetWebsiteByDomain{
+					Domain: origin,
+				}
+				getWebsiteByDomainResponse := getWebsiteByDomain.Handle(ctx, nil, dependencies)
+				if getWebsiteByDomainResponse.Success {
+					ctx.Set(cfg.Default().Site.HTTPRequestWebsiteKey, getWebsiteByDomainResponse.Data)
+				}
+			}
 		}
 		ctx.Next()
 	}
