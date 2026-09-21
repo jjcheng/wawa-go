@@ -6,9 +6,9 @@ import (
 	"github.com/lib/pq"
 )
 
-type Product struct {
+type GenericProduct struct {
 	dto.DTOBase
-	ProductSetId        int32          `json:"product_set_id"`
+	SetId               int32          `json:"set_id"`
 	MetaId              string         `json:"meta_id"`
 	Name                string         `json:"name"`
 	Price               string         `json:"price"`
@@ -24,14 +24,14 @@ type Product struct {
 	AdditionalImageUrls pq.StringArray `json:"additional_image_urls"`
 }
 
-func NewProduct(product dao_commerce.Product) Product {
-	return Product{
+func NewProduct(product dao_commerce.GenericProduct) GenericProduct {
+	return GenericProduct{
 		DTOBase: dto.DTOBase{
 			Id:         product.Id,
 			EntryDate:  product.EntryDate,
 			LastUpdate: product.LastUpdate,
 		},
-		ProductSetId:        product.ProductSetId,
+		SetId:               product.SetId,
 		MetaId:              product.MetaId,
 		Name:                product.Name,
 		Price:               product.Price,

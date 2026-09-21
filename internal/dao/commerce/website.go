@@ -1,13 +1,26 @@
 package dao_commerce
 
-import "github.com/jjcheng/wawa-go/internal/dao"
+import (
+	"github.com/jjcheng/wawa-go/internal/dao"
+	"github.com/jjcheng/wawa-go/internal/types"
+)
 
 // each website belongs to the entire business portfolio not an individual user
 type Website struct {
 	dao.DAOBase
-	CatalogId  int32  `gorm:"column:catalog_id"`
-	ThemeId    int32  `gorm:"column:theme_id"`
-	DomainName string `gorm:"column:domain_name"`
+	BusinessAccountId int32                       `gorm:"column:business_account_id"`
+	DomainName        string                      `gorm:"column:domain_name"`
+	Status            types.CommerceWebsiteStatus `gorm:"column:status"`
+	// phone number profile
+	About             string `gorm:"column:about"`
+	Description       string `gorm:"column:description"`
+	ProfilePictureURL string `gorm:"column:profile_picture_url"`
+	Address           string `gorm:"column:address"`
+	Email             string `gorm:"column:email"`
+	Vertical          string `gorm:"column:vertical"`
+	// from catalogs table
+	MetaCatalogId string `gorm:"column:meta_catalog_id;->"`
+	CatalogName   string `gorm:"column:catalog_name;->"`
 }
 
 func (Website) TableName() string {

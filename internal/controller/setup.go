@@ -36,6 +36,7 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 	registerCustomerController(routerGroup, dependencies, apiGenerator)
 	registerBroadcastController(routerGroup, dependencies, apiGenerator)
 	registerWAController(routerGroup, dependencies, apiGenerator)
+	registerCommerceController(routerGroup, dependencies, apiGenerator)
 	// generate api doc
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		generateAPIDoc(apiGenerator, dependencies.Logger)

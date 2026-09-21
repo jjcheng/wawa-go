@@ -32,7 +32,7 @@ func NewAPIGenerator() *APIGenerator {
 		},
 		Servers: []*openapi3.Server{
 			{
-				URL:         "https://api.coreconcept.tech",
+				URL:         "https://api.wawago.app",
 				Description: "PRODUCTION",
 			},
 		},

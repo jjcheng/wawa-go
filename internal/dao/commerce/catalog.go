@@ -4,10 +4,10 @@ import "github.com/jjcheng/wawa-go/internal/dao"
 
 type Catalog struct {
 	dao.DAOBase
-	BusinessAccountId int32  `gorm:"column:business_account_id"`
-	MetaId            string `gorm:"column:meta_id"`
-	Name              string `gorm:"column:name"`
-	Vertical          string `gorm:"column:vertical"`
+	WebsiteId int32  `gorm:"column:website_id"`
+	MetaId    string `gorm:"column:meta_id"`
+	Name      string `gorm:"column:name"`
+	Vertical  string `gorm:"column:vertical"`
 }
 
 // adoptable_pets

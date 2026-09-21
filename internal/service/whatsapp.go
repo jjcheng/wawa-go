@@ -246,6 +246,8 @@ type WhatsAppProduct struct {
 	SalePrice           string   `json:"sale_price,omitempty"`
 	Condition           string   `json:"condition,omitempty"`
 	AdditionalImageUrls []string `json:"additional_image_urls,omitempty"`
+	Gender              string   `json:"gender"`
+	FBCategory          string   `json:"fb_category"`
 }
 
 type WhatsAppWABAResponse struct {
@@ -291,6 +293,20 @@ type WhatsAppPhoneNumberThroughput struct {
 
 type WhatsAppPhoneNumberWebhookConfig struct {
 	Application string `json:"application"`
+}
+
+type WhatsAppPhoneNumberBusinessProfileResponse struct {
+	Data []WhatsAppPhoneNumberBusinessProfileData `json:"data"`
+}
+
+type WhatsAppPhoneNumberBusinessProfileData struct {
+	About             string   `json:"about"`
+	Description       string   `json:"description"`
+	ProfilePictureURL string   `json:"profile_picture_url"`
+	Address           string   `json:"address"`
+	Email             string   `json:"email"`
+	Websites          []string `json:"websites"`
+	Vertical          string   `json:"vertical"`
 }
 
 type WhatsAppMediaResponse struct {
@@ -935,6 +951,19 @@ func (whatsapp *Whatsapp) GetPhoneNumber(ctx context.Context, metaPhoneNumberId 
 	}
 	if strings.TrimSpace(response.DisplayPhoneNumber) == "" || strings.TrimSpace(response.VerifiedName) == "" {
 		return nil, fmt.Errorf("display phone number or verified name is missing from the WhatsApp API response")
+	}
+	return &response, nil
+}
+
+func (whatsapp *Whatsapp) GetPhoneNumberBusinessProfile(ctx context.Context, phoneNumberID string, businessAccessToken string) (*WhatsAppPhoneNumberBusinessProfileResponse, error) {
+	phoneNumberID = strings.TrimSpace(phoneNumberID)
+	query := url.Values{}
+	query.Set("fields", "about,description,profile_picture_url,address,email,websites,vertical")
+	endpoint := whatsapp.buildEndpoint(phoneNumberID, "whatsapp_business_profile") + "?" + query.Encode()
+	var response WhatsAppPhoneNumberBusinessProfileResponse
+	if err := whatsapp.doJSONRequest(ctx, "get_phone_number_business_profile", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, phoneNumberID)
+		return nil, err
 	}
 	return &response, nil
 }

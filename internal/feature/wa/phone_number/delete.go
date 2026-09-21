@@ -65,7 +65,7 @@ func (Delete) APISettings() feature.APISettings {
 		http.MethodDelete,
 		"/v1/wa/phone-numbers/:id",
 		true,
-		false,
+		true,
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),

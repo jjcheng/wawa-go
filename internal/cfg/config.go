@@ -23,6 +23,7 @@ type Config struct {
 	AliyunSMQ AliyunSMQConfig
 	Ably      AblyConfig
 	WhatsApp  WhatsAppConfig
+	Commerce  CommerceConfig
 }
 
 type DatabaseConfig struct {
@@ -75,6 +76,10 @@ type WhatsAppConfig struct {
 	AppSecret            string
 	WebhookVerifyToken   string
 	MaxDelayStartSeconds float32
+}
+
+type CommerceConfig struct {
+	WebsiteDomain string
 }
 
 var configInstance *Config
@@ -140,6 +145,9 @@ func Default() *Config {
 				AppSecret:            os.Getenv("META_APP_SECRET"),
 				WebhookVerifyToken:   os.Getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN"),
 				MaxDelayStartSeconds: 10,
+			},
+			Commerce: CommerceConfig{
+				WebsiteDomain: os.Getenv("COMMERCE_WEBSITE_DOMAIN"),
 			},
 		}
 	})

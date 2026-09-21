@@ -7,4 +7,5 @@ const (
 	APITagAuth     APITag = "Auth"
 	APITagCustomer APITag = "Customer"
 	APITagWA       APITag = "WA"
+	APITagCommerce APITag = "Commerce"
 )

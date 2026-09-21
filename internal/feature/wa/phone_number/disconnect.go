@@ -87,7 +87,7 @@ func (Disconnect) APISettings() feature.APISettings {
 		http.MethodPost,
 		"/v1/wa/phone-numbers/:id/disconnect",
 		true,
-		false,
+		true,
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),

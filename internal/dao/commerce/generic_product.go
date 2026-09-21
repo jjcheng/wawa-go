@@ -5,9 +5,9 @@ import (
 	"github.com/lib/pq"
 )
 
-type Product struct {
+type GenericProduct struct {
 	dao.DAOBase
-	ProductSetId        int32          `gorm:"column:product_set_id"`
+	SetId               int32          `gorm:"column:set_id"`
 	MetaId              string         `gorm:"column:meta_id"`
 	Name                string         `gorm:"column:name"`
 	Price               string         `gorm:"column:price"`
@@ -23,10 +23,10 @@ type Product struct {
 	AdditionalImageUrls pq.StringArray `gorm:"column:additional_image_urls;type:text[]"`
 }
 
-func (Product) TableName() string {
-	return "commerce.products"
+func (GenericProduct) TableName() string {
+	return "commerce.generic_products"
 }
 
-func (product Product) Base() dao.DAOBase {
+func (product GenericProduct) Base() dao.DAOBase {
 	return product.DAOBase
 }

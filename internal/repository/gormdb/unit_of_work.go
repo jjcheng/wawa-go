@@ -28,6 +28,11 @@ type UnitOfWork struct {
 	waMessageRepository           repository.WAMessageRepository
 	waMessageStatusRepository     repository.WAMessageStatusRepository
 	waSampleTemplateRepository    repository.WASampleTemplateRepository
+	// commerce
+	commerceCatalogRepository        repository.CommerceCatalogRepository
+	commerceSetRepository            repository.CommerceSetRepository
+	commerceGenericProductRepository repository.CommerceGenericProductRepository
+	commerceWebsiteRepository        repository.CommerceWebsiteRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -53,6 +58,11 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waMessageRepository = NewWAMessageRepository(db, logger)
 	unitOfWork.waMessageStatusRepository = NewWAMessageStatusRepository(db, logger)
 	unitOfWork.waSampleTemplateRepository = NewWASampleTemplateRepository(db, logger)
+	// commerce
+	unitOfWork.commerceCatalogRepository = NewCommerceCatalogRepository(db, logger)
+	unitOfWork.commerceSetRepository = NewCommerceSetRepository(db, logger)
+	unitOfWork.commerceGenericProductRepository = NewCommericeGenericProductRepository(db, logger)
+	unitOfWork.commerceWebsiteRepository = NewCommerceWebsiteRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -121,6 +131,23 @@ func (unitOfWork *UnitOfWork) WAMessageStatusRepository() repository.WAMessageSt
 
 func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTemplateRepository {
 	return unitOfWork.waSampleTemplateRepository
+}
+
+// commerce
+func (unitOfWork *UnitOfWork) CommerceCatalogRepository() repository.CommerceCatalogRepository {
+	return unitOfWork.commerceCatalogRepository
+}
+
+func (unitOfWork *UnitOfWork) CommerceSetRepository() repository.CommerceSetRepository {
+	return unitOfWork.commerceSetRepository
+}
+
+func (unitOfWork *UnitOfWork) CommerceGenericProductRepository() repository.CommerceGenericProductRepository {
+	return unitOfWork.commerceGenericProductRepository
+}
+
+func (unitOfWork *UnitOfWork) CommerceWebsiteRepository() repository.CommerceWebsiteRepository {
+	return unitOfWork.commerceWebsiteRepository
 }
 
 // transaction
