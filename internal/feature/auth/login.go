@@ -60,8 +60,11 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	if !helper.VerifyPassword(login.Password, user.PasswordHash) {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid phone number or password")
 	}
-	if user.Status == types.UserStatusInactive {
+	switch user.Status {
+	case types.UserStatusInactive:
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "user is inactive")
+	case types.UserStatusClosed:
+		return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "invalid phone number of password")
 	}
 	// create user session
 	accessToken, err := helper.GenerateRandomString(64)

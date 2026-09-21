@@ -125,7 +125,7 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 	// now only, if the original broadcast status is pending, push notification to info user it's started
 	if wasPending {
 		createNotification := feature_account_notification.Create{
-			Type:  types.NotificationTypeInfo,
+			Type:  types.NotificationTypeSuccess,
 			Title: fmt.Sprintf("Your broadcast %s has started.", broadcast.Name),
 			Body:  fmt.Sprintf("We have started your broadcast %s, total %d recipients. Check the broadcast recipients page to see any individual messages that are failed to be sent.", broadcast.Name, broadcast.RecipientCount),
 			URL:   fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),

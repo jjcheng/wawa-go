@@ -29,7 +29,7 @@ func (listUsers ListUsers) Handle(ctx context.Context, user *dto_account.User, d
 	if inputErrors := listUsers.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_account.User](inputErrors)
 	}
-	users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessPortfolioId(ctx, user.WA.BusinessPortfolio.Id)
+	users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -42,8 +42,8 @@ func (listUsers ListUsers) Handle(ctx context.Context, user *dto_account.User, d
 
 func (ListUsers) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List users",
-		"Lists all users. Only master users can access this endpoint.",
+		"List all users",
+		"Lists all users in the business account. Only master users can access this endpoint.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/admin/users",

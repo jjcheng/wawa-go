@@ -11,4 +11,5 @@ type AccountSessionRepository interface {
 	GetByAccessTokenHash(ctx context.Context, accessTokenHash string) (*dao_account.Session, error)
 	UpdateLastUsed(ctx context.Context, id int32) error
 	UpdateRevokedAt(ctx context.Context, id int32) error
+	DeleteByUserId(ctx context.Context, userId int32) error
 }

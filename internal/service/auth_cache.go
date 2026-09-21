@@ -70,6 +70,16 @@ func (cache *AuthCache) InvalidateSession(sessionID int32) {
 	cache.mu.Unlock()
 }
 
+func (cache *AuthCache) InvalidateUser(userID int32) {
+	cache.mu.Lock()
+	for tokenHash, entry := range cache.entries {
+		if entry.user.Id == userID {
+			delete(cache.entries, tokenHash)
+		}
+	}
+	cache.mu.Unlock()
+}
+
 func cloneCachedUser(user dto_account.User) dto_account.User {
 	clone := user
 	if user.AccessTokenExpiry != nil {

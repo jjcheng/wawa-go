@@ -105,8 +105,8 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	if !storeBusinessAccountResponse.Success {
 		return dto.NewFailedResponse[*dto_account.User](storeBusinessAccountResponse.StatusCode, storeBusinessAccountResponse.Message)
 	}
-	// user — the login account. Before creating it you ask the database "does this portfolio already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
-	hasMasterUser, err := transaction.AccountUserRepository().HasMasterUser(ctx, storeBusinessAccountResponse.Data.Id)
+	// user — the login account. Before creating it you ask the database "does this business account (not portoflio) already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
+	hasMasterUser, err := transaction.AccountUserRepository().HasMasterUserInBusinessAccount(ctx, storeBusinessAccountResponse.Data.Id)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}
@@ -166,7 +166,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	// Step 6 - if new user is not User himself/herself, send notification to the masters
 	if storeUserResponse.Data.New && hasMasterUser {
 		// get all masters
-		masterUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListAllMasterUsers(ctx, storeBusinessAccountResponse.Data.Id)
+		masterUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, storeBusinessPortfolioResponse.Data.Id, helper.ConvertToPointer(types.UserTypeMaster), true)
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, storeBusinessAccountResponse.Data.Id)
 		} else {

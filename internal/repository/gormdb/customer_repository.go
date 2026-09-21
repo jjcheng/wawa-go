@@ -361,6 +361,16 @@ func (customerRepository *CustomerRepository) List(ctx context.Context, userId i
 	return decrypted[start:end], totalItems, totalPages, nil
 }
 
+func (customerRepository *CustomerRepository) DeleteByUserId(ctx context.Context, userId int32) error {
+	if err := customerRepository.db.WithContext(ctx).
+		Where("user_id = ?", userId).
+		Delete(&dao_customer.Customer{}).Error; err != nil {
+		customerRepository.logger.ErrorFunction(err, userId)
+		return err
+	}
+	return nil
+}
+
 type customerSensitiveSnapshot struct {
 	phoneNumber         string
 	waId                string

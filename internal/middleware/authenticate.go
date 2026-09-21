@@ -67,6 +67,12 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}
+			// check user status
+			if user.Status == types.UserStatusInactive || user.Status == types.UserStatusClosed {
+				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")
+				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+				return
+			}
 			userDTO := dto_account.NewUser(*user)
 			userDTO.Session = helper.ConvertToPointer(dto_account.NewSession(*session))
 			// load wa reloated objects

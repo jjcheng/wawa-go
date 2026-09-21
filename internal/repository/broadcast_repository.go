@@ -15,4 +15,5 @@ type BarodcastRepository interface {
 	ListByIds(ctx context.Context, ids []int32) ([]dao_customer.Broadcast, error)
 	ListByMessageIds(ctx context.Context, messageIds []int32) ([]dao_customer.Broadcast, error)
 	ListPendingBroadcasts(ctx context.Context) ([]dao_customer.Broadcast, error)
+	DeleteByUserId(ctx context.Context, userId int32) error
 }

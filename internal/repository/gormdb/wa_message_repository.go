@@ -149,6 +149,19 @@ func (messageRepository *WAMessageRepository) UpdateNextAttemptAt(ctx context.Co
 	return result.RowsAffected == 1, nil
 }
 
+func (messageRepository *WAMessageRepository) DeleteByPhoneNumberId(ctx context.Context, phoneNumberId int32) error {
+	db := messageRepository.db.WithContext(ctx)
+	if err := db.Exec("DELETE FROM wa.message_status WHERE message_id IN (SELECT id FROM wa.messages WHERE phone_number_id = ?)", phoneNumberId).Error; err != nil {
+		messageRepository.logger.ErrorFunction(err, phoneNumberId)
+		return err
+	}
+	if err := db.Where("phone_number_id = ?", phoneNumberId).Delete(&dao_wa.Message{}).Error; err != nil {
+		messageRepository.logger.ErrorFunction(err, phoneNumberId)
+		return err
+	}
+	return nil
+}
+
 func (messageRepository *WAMessageRepository) encryptPayload(message *dao_wa.Message) error {
 	if message.Payload == nil {
 		return nil

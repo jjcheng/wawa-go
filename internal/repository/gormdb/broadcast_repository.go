@@ -113,3 +113,13 @@ func (broadcastRepository *BroadcastRepository) ListPendingBroadcasts(ctx contex
 	}
 	return broadcasts, nil
 }
+
+func (broadcastRepository *BroadcastRepository) DeleteByUserId(ctx context.Context, userId int32) error {
+	if err := broadcastRepository.db.WithContext(ctx).
+		Where("user_id = ?", userId).
+		Delete(&dao_customer.Broadcast{}).Error; err != nil {
+		broadcastRepository.logger.ErrorFunction(err, userId)
+		return err
+	}
+	return nil
+}

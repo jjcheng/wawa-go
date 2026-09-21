@@ -15,6 +15,7 @@ const (
 	UserStatusActive          UserStatus = "ACTIVE"
 	UserStatusPendingPassword UserStatus = "PENDING_PASSWORD"
 	UserStatusInactive        UserStatus = "INACTIVE"
+	UserStatusClosed          UserStatus = "CLOSED"
 )
 
 type NotificationType string

@@ -3,17 +3,20 @@ package dao_account
 import (
 	"github.com/jjcheng/wawa-go/internal/dao"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"github.com/lib/pq"
 )
 
 type User struct {
 	dao.DAOBase
-	Name        string           `gorm:"column:name"`
-	CountryCode string           `gorm:"column:country_code"`
-	PhoneNumber string           `gorm:"-"` // not a column in db
-	Email       string           `gorm:"-"` // not a column in db
-	Description string           `gorm:"column:description"`
-	Type        types.UserType   `gorm:"column:type"`
-	Status      types.UserStatus `gorm:"column:status"`
+	Name             string           `gorm:"column:name"`
+	CountryCode      string           `gorm:"column:country_code"`
+	PhoneNumber      string           `gorm:"-"` // not a column in db
+	Email            string           `gorm:"-"` // not a column in db
+	Description      string           `gorm:"column:description"`
+	Type             types.UserType   `gorm:"column:type"`
+	Status           types.UserStatus `gorm:"column:status"`
+	CloseReason      string           `gorm:"column:close_reason"`
+	CloseReasonTypes pq.StringArray   `gorm:"column:close_reason_types;type:text[]"`
 	// encryption
 	EncryptionID         string `gorm:"column:encryption_id"` // used to generate aad
 	PhoneNumberEncrypted string `gorm:"column:phone_number_encrypted"`

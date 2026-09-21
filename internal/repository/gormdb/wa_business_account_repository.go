@@ -48,3 +48,17 @@ func (businessAccountRepository *WABusinessAccountRepository) GetByWABAId(ctx co
 	}
 	return businessAccount, businessPortfolio, nil
 }
+
+func (businessAccountRepository *WABusinessAccountRepository) ListByBusinessPortfolioId(ctx context.Context, businessPortfolioId int32) ([]dao_wa.BusinessAccount, error) {
+	var businessAccounts []dao_wa.BusinessAccount
+	result := businessAccountRepository.db.WithContext(ctx).
+		Model(&dao_wa.BusinessAccount{}).
+		Where("business_portfolio_id = ?", businessPortfolioId).
+		Order("id").
+		Find(&businessAccounts)
+	if result.Error != nil {
+		businessAccountRepository.logger.ErrorFunction(result.Error, businessPortfolioId)
+		return nil, result.Error
+	}
+	return businessAccounts, nil
+}

@@ -36,3 +36,16 @@ const (
 	BroadcastRecipientStatusCompleted BroadcastRecipientStatus = "COMPLETED"
 	BroadcastRecipientStatusCancelled BroadcastRecipientStatus = "CANCELLED"
 )
+
+type CloseAccountReasonType string
+
+const (
+	CloseAccountReasonTypeLackOfFeatures  CloseAccountReasonType = "LACK_OF_FEATURES"
+	CloseAccountReasonTypeHardToUse       CloseAccountReasonType = "HARD_TO_USE"
+	CloseAccountReasonTypeBadUI           CloseAccountReasonType = "BAD_UI"
+	CloseAccountReasonTypeBuggy           CloseAccountReasonType = "BUGGY"
+	CloseAccountReasonTypeLackOfUse       CloseAccountReasonType = "LACK_OF_USE"
+	CloseAccountReasonTypeLackOfSupport   CloseAccountReasonType = "LACK_OF_SUPPORT"
+	CloseAccountReasonTypeInternalChanges CloseAccountReasonType = "INTERNAL_CHANGES"
+	CloseAccountReasonTypeSwitchVendor    CloseAccountReasonType = "SWITCH_OF_VENDOR"
+)

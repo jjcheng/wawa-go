@@ -48,3 +48,13 @@ func (accountSessionRepository *AccountSessionRepository) UpdateLastUsed(ctx con
 func (accountSessionRepository *AccountSessionRepository) UpdateRevokedAt(ctx context.Context, id int32) error {
 	return accountSessionRepository.UpdateFields(ctx, id, map[string]any{"revoked_at": time.Now()})
 }
+
+func (accountSessionRepository *AccountSessionRepository) DeleteByUserId(ctx context.Context, userId int32) error {
+	if err := accountSessionRepository.db.WithContext(ctx).
+		Where("user_id = ?", userId).
+		Delete(&dao_account.Session{}).Error; err != nil {
+		accountSessionRepository.logger.ErrorFunction(err, userId)
+		return err
+	}
+	return nil
+}
