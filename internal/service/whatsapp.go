@@ -222,10 +222,23 @@ type WhatsAppBusinessResponse struct {
 }
 
 type WhatsAppProductCatalog struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Vertical     string `json:"vertical,omitempty"`
-	ProductCount int    `json:"product_count,omitempty"`
+	ID             string                  `json:"id"`
+	Name           string                  `json:"name"`
+	Vertical       string                  `json:"vertical,omitempty"`
+	ProductCount   int                     `json:"product_count,omitempty"`
+	SubscribedApps *WhatsAppSubscribedApps `json:"subscribed_apps,omitempty"`
+	// from commerce websites
+	WebsiteDomainName string `json:"website_domain_name"`
+	WebsiteURL        string `json:"website_url"`
+	WebsiteStatus     string `json:"website_status"`
+}
+
+type WhatsAppSubscribedApps struct {
+	Data []WhatsAppSubscribedApp `json:"data"`
+}
+
+type WhatsAppSubscribedApp struct {
+	ID string `json:"id"`
 }
 
 type WhatsAppProductSet struct {
@@ -574,6 +587,27 @@ func (whatsapp *Whatsapp) SubscribeApp(ctx context.Context, wabaId string, busin
 	endpoint := whatsapp.buildEndpoint(wabaId, "subscribed_apps")
 	if err := whatsapp.doJSONRequest(ctx, "subscribe_app", http.MethodPost, endpoint, nil, nil, businessAccessToken); err != nil {
 		whatsapp.logger.ErrorFunction(err, wabaId)
+		return err
+	}
+	return nil
+}
+
+// SubscribeCatalog subscribes this app to a catalog's webhooks.
+func (whatsapp *Whatsapp) SubscribeCatalog(ctx context.Context, catalogId string, businessAccessToken string) error {
+	catalogId = strings.TrimSpace(catalogId)
+	if catalogId == "" {
+		return fmt.Errorf("catalogId is required")
+	}
+	appID := strings.TrimSpace(whatsapp.appID)
+	if appID == "" {
+		return fmt.Errorf("WhatsApp appID is required")
+	}
+	payload := map[string]any{
+		"app_id": appID,
+	}
+	endpoint := fmt.Sprintf("%s/%s/%s/subscribed_apps", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(catalogId))
+	if err := whatsapp.doJSONRequest(ctx, "subscribe_catalog", http.MethodPost, endpoint, payload, nil, businessAccessToken); err != nil {
+		whatsapp.logger.ErrorFunction(err, catalogId)
 		return err
 	}
 	return nil
@@ -1139,6 +1173,10 @@ func (whatsapp *Whatsapp) ListProductsBySetID(ctx context.Context, productSetID 
 	}
 	return response.Data, response.Paging, nil
 }
+
+// #endregion
+
+// #region commerce
 
 // #endregion
 

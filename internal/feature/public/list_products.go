@@ -62,7 +62,7 @@ func (listProducts ListProducts) Handle(ctx context.Context, _ *dto_account.User
 	if set.CatalogId != catalog.Id {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_commerce.GenericProduct]](http.StatusNotFound, "set not found")
 	}
-	products, totalItems, totalPages, err := dependencies.UnitOfWork.CommerceGenericProductRepository().List(ctx, set.CatalogId, listProducts.SetId, "", "", false, int(listProducts.Page), int(listProducts.PageSize))
+	products, totalItems, totalPages, err := dependencies.UnitOfWork.CommerceGenericProductRepository().List(ctx, set.CatalogId, listProducts.SetId, "", "id", true, int(listProducts.Page), int(listProducts.PageSize))
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, set.CatalogId, listProducts.SetId)
 		return dto.NewFailedResponse[*dto.ListResponse[dto_commerce.GenericProduct]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)

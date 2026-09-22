@@ -36,7 +36,7 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 	}
 	// for development, process it straightaway; for staging/production, push rawBody to SMQ
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
-		helper.WriteToFile(receive.RawBody, filepath.Join("files/wa", "receive.json"))
+		helper.WriteToFile(receive.RawBody, filepath.Join("files/receive", "receive.json"))
 		waIncoming, err := helper.DeserializeJSON[dto_wa.Incoming](receive.RawBody)
 		if err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, err.Error())

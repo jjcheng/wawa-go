@@ -19,5 +19,6 @@ func registerCommerceController(routerGroup *gin.RouterGroup, dependencies *serv
 	registerRoute[*dto_commerce.Website, feature_commerce_website.GetByMetaCatalogId](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_commerce.Website, feature_commerce_website.Update](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_commerce_website.SetStatus](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_commerce_website.Sync](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_commerce_website.Delete](routerGroup, dependencies, apiGenerator)
 }

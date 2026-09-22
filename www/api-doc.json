@@ -2252,7 +2252,7 @@
                         "wa_activated": {
                           "type": "boolean"
                         },
-                        "wa_activation_error": {
+                        "wa_error": {
                           "type": "string"
                         }
                       },
@@ -2642,7 +2642,7 @@
                         "wa_activated": {
                           "type": "boolean"
                         },
-                        "wa_activation_error": {
+                        "wa_error": {
                           "type": "string"
                         }
                       },
@@ -2984,7 +2984,7 @@
                         "wa_activated": {
                           "type": "boolean"
                         },
-                        "wa_activation_error": {
+                        "wa_error": {
                           "type": "string"
                         }
                       },
@@ -3303,7 +3303,7 @@
                           "wa_activated": {
                             "type": "boolean"
                           },
-                          "wa_activation_error": {
+                          "wa_error": {
                             "type": "string"
                           }
                         },
@@ -3654,7 +3654,7 @@
                         "wa_activated": {
                           "type": "boolean"
                         },
-                        "wa_activation_error": {
+                        "wa_error": {
                           "type": "string"
                         }
                       },
@@ -9420,6 +9420,357 @@
         ]
       }
     },
+    "/v1/commerce/websites/{id}/sync": {
+      "post": {
+        "description": "Syncs the catalog, sets and products for a website belonging to the authenticated user's business account.",
+        "parameters": [
+          {
+            "description": "id of the website",
+            "example": "",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authorized, unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authorized, unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "website not found, catalog not found",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 404,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "website not found, catalog not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, an error occured at the vendor.",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 502,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, an error occured at the vendor."
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Sync commerce website",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
     "/v1/customers": {
       "delete": {
         "description": "Deletes customers for the authenticated user.",
@@ -13060,6 +13411,9 @@
                               "retailer_id": {
                                 "type": "string"
                               },
+                              "sale_price": {
+                                "type": "string"
+                              },
                               "set_id": {
                                 "format": "int32",
                                 "type": "integer"
@@ -13630,6 +13984,9 @@
                           "type": "string"
                         },
                         "retailer_id": {
+                          "type": "string"
+                        },
+                        "sale_price": {
                           "type": "string"
                         },
                         "set_id": {
@@ -14412,7 +14769,7 @@
                         "wa_activated": {
                           "type": "boolean"
                         },
-                        "wa_activation_error": {
+                        "wa_error": {
                           "type": "string"
                         }
                       },
@@ -15146,7 +15503,32 @@
                             "format": "int32",
                             "type": "integer"
                           },
+                          "subscribed_apps": {
+                            "properties": {
+                              "data": {
+                                "items": {
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "type": "array"
+                              }
+                            },
+                            "type": "object"
+                          },
                           "vertical": {
+                            "type": "string"
+                          },
+                          "website_domain_name": {
+                            "type": "string"
+                          },
+                          "website_status": {
+                            "type": "string"
+                          },
+                          "website_url": {
                             "type": "string"
                           }
                         },
@@ -15474,7 +15856,32 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "subscribed_apps": {
+                          "properties": {
+                            "data": {
+                              "items": {
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            }
+                          },
+                          "type": "object"
+                        },
                         "vertical": {
+                          "type": "string"
+                        },
+                        "website_domain_name": {
+                          "type": "string"
+                        },
+                        "website_status": {
+                          "type": "string"
+                        },
+                        "website_url": {
                           "type": "string"
                         }
                       },

@@ -11,6 +11,7 @@ type GenericProduct struct {
 	MetaId              string         `gorm:"column:meta_id"`
 	Name                string         `gorm:"column:name"`
 	Price               string         `gorm:"column:price"`
+	SalePrice           string         `gorm:"column:sale_price"`
 	Availability        string         `gorm:"column:availability"`
 	Condition           string         `gorm:"column:condition"`
 	Currency            string         `gorm:"column:currency"`
@@ -21,6 +22,8 @@ type GenericProduct struct {
 	RetailerId          string         `gorm:"column:retailer_id"`
 	Url                 string         `gorm:"column:url"`
 	AdditionalImageUrls pq.StringArray `gorm:"column:additional_image_urls;type:text[]"`
+	// for bulk edit tracking
+	Processed bool `gorm:"-"`
 }
 
 func (GenericProduct) TableName() string {

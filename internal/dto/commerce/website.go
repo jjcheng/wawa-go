@@ -1,12 +1,10 @@
 package dto_commerce
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
 	"github.com/jjcheng/wawa-go/internal/dto"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
@@ -47,13 +45,6 @@ func NewWebsite(website dao_commerce.Website) Website {
 		Email:             website.Email,
 		Vertical:          website.Vertical,
 	}
-	w.URL = w.FullUrl()
+	w.URL = helper.GetWebhsiteFullUrl(w.DomainName, cfg.Default().Commerce.WebsiteDomain)
 	return w
-}
-
-func (website *Website) FullUrl() string {
-	if strings.HasPrefix(website.DomainName, "https://") {
-		return website.DomainName
-	}
-	return fmt.Sprintf("https://%s.%s", website.DomainName, cfg.Default().Commerce.WebsiteDomain)
 }

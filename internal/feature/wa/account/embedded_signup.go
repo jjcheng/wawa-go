@@ -157,13 +157,12 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	// Step 4 — Commit, then subscribe the app and activate the phone number
 	// The transaction commits. Only now does activateOnMeta run, because these two calls change things on Meta's side and a database rollback can't undo them:
 	if err := embeddedSignup.activateOnMeta(ctx, accessToken, storePhoneNumberResponse.Data.Id, phoneNumberDetails.Status, dependencies); err != nil {
-		storeUserResponse.Data.WAActivationError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta at the moment. Please try again later. Error from Meta: %v", err)
+		storeUserResponse.Data.WAError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta at the moment. Please try again later. Error from Meta: %v", err.Error())
 		return storeUserResponse
 	}
 	storeUserResponse.Data.WAActivated = true
-	// Step 5 — Respond
 	// The new user is returned along with a session token, so the customer lands logged in
-	// Step 6 - if new user is not User himself/herself, send notification to the masters
+	// Step 5 - if new user is not User himself/herself, send notification to the masters
 	if storeUserResponse.Data.New && hasMasterUser {
 		// get all masters
 		masterUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, storeBusinessPortfolioResponse.Data.Id, helper.ConvertToPointer(types.UserTypeMaster), true)

@@ -12,6 +12,7 @@ type GenericProduct struct {
 	MetaId              string         `json:"meta_id"`
 	Name                string         `json:"name"`
 	Price               string         `json:"price"`
+	SalePrice           string         `json:"sale_price"`
 	Availability        string         `json:"availability"`
 	Condition           string         `json:"condition"`
 	Currency            string         `json:"currency"`
@@ -35,6 +36,7 @@ func NewProduct(product dao_commerce.GenericProduct) GenericProduct {
 		MetaId:              product.MetaId,
 		Name:                product.Name,
 		Price:               product.Price,
+		SalePrice:           product.SalePrice,
 		Availability:        product.Availability,
 		Condition:           product.Condition,
 		Currency:            product.Currency,

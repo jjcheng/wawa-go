@@ -8,6 +8,8 @@ type Set struct {
 	MetaId    string `gorm:"column:meta_id"`
 	Name      string `gorm:"column:name"`
 	Rank      int32  `gorm:"column:rank"`
+	// for bulk edit tracking only
+	Processed bool `gorm:"-"`
 }
 
 func (Set) TableName() string {

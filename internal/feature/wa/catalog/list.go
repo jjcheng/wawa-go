@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -35,6 +37,32 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	catalogs, err := dependencies.Whatsapp.ListCatalogs(ctx, user.WA.BusinessPortfolio.MetaBusinessPortfolioId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
 		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusBadGateway, err.Error())
+	}
+	// retrive catalogs in our db, not every Meta catalog is in db, only those need to create website
+	commerceCatalogs, err := dependencies.UnitOfWork.CommerceCatalogRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
+	if err != nil {
+		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusInternalServerError, "failed to get catalogs")
+	}
+	for _, commerceCatalog := range commerceCatalogs {
+		if metaCatalogIndex := helper.IndexOf(catalogs, func(c service.WhatsAppProductCatalog) bool {
+			return c.ID == commerceCatalog.MetaId
+		}); metaCatalogIndex != nil {
+			catalogs[*metaCatalogIndex].WebsiteDomainName = commerceCatalog.WebsiteDomainName
+			catalogs[*metaCatalogIndex].WebsiteURL = helper.GetWebhsiteFullUrl(commerceCatalog.WebsiteDomainName, cfg.Default().Commerce.WebsiteDomain)
+			catalogs[*metaCatalogIndex].WebsiteStatus = string(commerceCatalog.WebsiteStatus)
+		}
+		if commerceCatalog.Subscribed {
+			continue
+		}
+		err := dependencies.Whatsapp.SubscribeCatalog(ctx, commerceCatalog.MetaId, user.WA.BusinessPortfolioAccessToken)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, commerceCatalog.MetaId)
+			continue // no need to return error
+		}
+		commerceCatalog.Subscribed = true
+		if err = dependencies.UnitOfWork.CommerceCatalogRepository().Update(ctx, &commerceCatalog); err != nil {
+			dependencies.Logger.ErrorFunction(err, commerceCatalog)
+		}
 	}
 	return dto.NewSuccessResponse(catalogs)
 }

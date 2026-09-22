@@ -66,6 +66,18 @@ type IncomingTemplateStatusChange struct {
 	MessageTemplateCategory string `json:"message_template_category"`
 }
 
+type IncomingItemsBatch struct {
+	CatalogId string `json:"catalog_id"`
+	Handle    string `json:"handle"`
+	Status    string `json:"status"`
+}
+
+type IncomingProductFeed struct {
+	CatalogId     string `json:"catalog_id"`
+	ProductFeedId string `json:"product_feed_id"`
+	Status        string `json:"status"`
+}
+
 func (message *IncomingMessage) UnmarshalJSON(data []byte) error {
 	type incomingMessageAlias IncomingMessage
 	var decoded incomingMessageAlias

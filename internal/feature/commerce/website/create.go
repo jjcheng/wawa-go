@@ -161,6 +161,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 				MetaId:              metaProduct.ID,
 				Name:                metaProduct.Name,
 				Price:               metaProduct.Price,
+				SalePrice:           metaProduct.SalePrice,
 				Availability:        metaProduct.Availability,
 				ImageUrl:            metaProduct.ImageURL,
 				AdditionalImageUrls: metaProduct.AdditionalImageUrls,

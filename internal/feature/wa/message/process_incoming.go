@@ -98,6 +98,15 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				if err != nil {
 					dependencies.Logger.ErrorFunction(err, key)
 				}
+			} else if change.Field == "product_feed" {
+				var productFeed dto_wa.IncomingProductFeed
+				if err := json.Unmarshal(change.Value, &productFeed); err != nil {
+					dependencies.Logger.ErrorFunction(err)
+					return fmt.Errorf("invalid message template status change value: %w", err)
+				}
+				if productFeed.Status == "finished" {
+					// TODO: sync catalog db
+				}
 			}
 		}
 	}

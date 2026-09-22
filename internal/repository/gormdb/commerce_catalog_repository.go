@@ -37,3 +37,19 @@ func (commerceCatalogRepository *CommerceCatalogRepository) GetByWebsiteId(ctx c
 	}
 	return &catalog, nil
 }
+
+func (commerceCatalogRepository *CommerceCatalogRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32) ([]dao_commerce.Catalog, error) {
+	var catalogs []dao_commerce.Catalog
+	result := commerceCatalogRepository.db.WithContext(ctx).
+		Table("commerce.catalogs").
+		Joins("JOIN commerce.websites ON commerce.websites.id = commerce.catalogs.website_id").
+		Where("commerce.websites.business_account_id = ?", businessAccountId).
+		Select("commerce.catalogs.*, commerce.websites.domain_name AS website_domain_name, commerce.websites.status AS website_status").
+		Order("commerce.catalogs.id").
+		Find(&catalogs)
+	if result.Error != nil {
+		commerceCatalogRepository.logger.ErrorFunction(result.Error, businessAccountId)
+		return nil, result.Error
+	}
+	return catalogs, nil
+}
