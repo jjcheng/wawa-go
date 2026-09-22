@@ -44,6 +44,9 @@ func main() {
 		waitGroup.Go(func() {
 			dispatchRetryMessages(ctx, dependencies)
 		})
+		waitGroup.Go(func() {
+			cleanUpExpiredCaches(ctx, dependencies)
+		})
 		waitGroup.Wait()
 		return nil
 	})
@@ -87,4 +90,8 @@ func dispatchRetryMessages(ctx context.Context, dependencies *service.Dependenci
 		// ignore any error, the next cycle will do it again
 		_, _ = dependencies.MessageQueue.PublishJob("retry_send_message", pendingMessage.Id, 0, service.MessageQueuePriorityHigh)
 	}
+}
+
+func cleanUpExpiredCaches(ctx context.Context, dependencies *service.Dependencies) {
+	dependencies.Cache.Cleanup(ctx)
 }

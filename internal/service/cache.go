@@ -54,7 +54,7 @@ func (cacheService *Cache) Remove(ctx context.Context, key string) error {
 	return cacheService.unitOfWork.AccountCacheRepository().DeleteByKey(ctx, key)
 }
 
-// TODO: need to schedule clean up
+// is scheduled at cmd/dispatcher/main.go
 func (cacheService *Cache) Cleanup(ctx context.Context) error {
 	return cacheService.unitOfWork.AccountCacheRepository().DeleteExpired(ctx)
 }
