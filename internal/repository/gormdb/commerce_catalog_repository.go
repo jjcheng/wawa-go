@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -31,7 +32,7 @@ func (commerceCatalogRepository *CommerceCatalogRepository) GetByWebsiteId(ctx c
 		First(&catalog)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			commerceCatalogRepository.logger.ErrorFunction(result.Error, websiteId)
+			return nil, fmt.Errorf("CommerceCatalogRepository.GetByWebsiteId websiteId=%d error=%w", websiteId, result.Error)
 		}
 		return nil, result.Error
 	}
@@ -48,8 +49,7 @@ func (commerceCatalogRepository *CommerceCatalogRepository) ListByBusinessAccoun
 		Order("commerce.catalogs.id").
 		Find(&catalogs)
 	if result.Error != nil {
-		commerceCatalogRepository.logger.ErrorFunction(result.Error, businessAccountId)
-		return nil, result.Error
+		return nil, fmt.Errorf("CommerceCatalogRepository.ListByBusinessAccountId businessAccountId=%d error=%w", businessAccountId, result.Error)
 	}
 	return catalogs, nil
 }

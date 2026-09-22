@@ -37,8 +37,7 @@ func (commerceGenericProductRepository CommerceGenericProductRepository) List(ct
 	}
 	var count int64
 	if err = query.Count(&count).Error; err != nil {
-		commerceGenericProductRepository.logger.ErrorFunction(err, catalogId, setId, name, orderBy, desc, page, pageSize)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("CommerceGenericProductRepository.List index=0 catalogId=%d setId=%d name=%s orderBy=%s desc=%v page=%d pageSize=%v error=%w", catalogId, setId, name, orderBy, desc, page, pageSize, err)
 	}
 	totalItems = int(count)
 	totalPages = (totalItems + pageSize - 1) / pageSize
@@ -49,8 +48,7 @@ func (commerceGenericProductRepository CommerceGenericProductRepository) List(ct
 	offset := (page - 1) * pageSize
 	order := fmt.Sprintf("commerce.generic_products.%s %s", commerceGenericProductRepository.orderColumn(orderBy), direction)
 	if err = query.Select("commerce.generic_products.*").Order(order).Offset(offset).Limit(pageSize).Find(&products).Error; err != nil {
-		commerceGenericProductRepository.logger.ErrorFunction(err, catalogId, setId, name, orderBy, desc, page, pageSize)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("CommerceGenericProductRepository.List index=1 catalogId=%d setId=%d name=%s orderBy=%s desc=%v page=%d pageSize=%v error=%w", catalogId, setId, name, orderBy, desc, page, pageSize, err)
 	}
 	return products, totalItems, totalPages, nil
 }

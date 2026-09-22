@@ -2,6 +2,7 @@ package gormdb
 
 import (
 	"context"
+	"fmt"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -34,8 +35,7 @@ func (accountNotificationRepository *AccountNotificationRepository) ListByIds(ct
 		Model(&dao_account.Notification{}).
 		Where("user_id = ? AND id IN ?", userId, ids).
 		Find(&notifications).Error; err != nil {
-		accountNotificationRepository.logger.ErrorFunction(err, userId, ids)
-		return nil, err
+		return nil, fmt.Errorf("AccountNotificationRepository.ListByIds ids=%v userId=%d error=%w", ids, userId, err)
 	}
 	return notifications, nil
 }
@@ -48,8 +48,7 @@ func (accountNotificationRepository *AccountNotificationRepository) SetStatusByI
 		Model(&dao_account.Notification{}).
 		Where("user_id = ? AND id IN ?", userId, ids).
 		Updates(map[string]any{"read": read}).Error; err != nil {
-		accountNotificationRepository.logger.ErrorFunction(err, userId, ids, read)
-		return err
+		return fmt.Errorf("AccountNotificationRepository.SetStatusByIds userId=%d ids=%v read=%v error=%w", userId, ids, read, err)
 	}
 	return nil
 }
@@ -61,8 +60,7 @@ func (accountNotificationRepository *AccountNotificationRepository) DeleteByIds(
 	if err := accountNotificationRepository.db.WithContext(ctx).
 		Where("user_id = ? AND id IN ?", userId, ids).
 		Delete(&dao_account.Notification{}).Error; err != nil {
-		accountNotificationRepository.logger.ErrorFunction(err, userId, ids)
-		return err
+		return fmt.Errorf("AccountNotificationRepository.DeleteByIds ids=%v userId=%d error=%w", ids, userId, err)
 	}
 	return nil
 }
@@ -73,8 +71,7 @@ func (accountNotificationRepository *AccountNotificationRepository) GetUnreadCou
 		Model(&dao_account.Notification{}).
 		Where("user_id = ? AND read = false", userId).
 		Count(&count).Error; err != nil {
-		accountNotificationRepository.logger.ErrorFunction(err, userId)
-		return 0, err
+		return 0, fmt.Errorf("AccountNotificationRepository.GetUnreadCount userId=%d error=%w", userId, err)
 	}
 	return int(count), nil
 }
@@ -95,8 +92,7 @@ func (accountNotificationRepository *AccountNotificationRepository) ListByUserId
 	}
 	var count int64
 	if err = query.Count(&count).Error; err != nil {
-		accountNotificationRepository.logger.ErrorFunction(err, userId, typ, page, pageSize)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("AccountNotificationRepository.ListByUserId index=0 userId=%d typ=%s read=%v page=%d pageSize=%d error=%w", userId, typ, read, page, pageSize, err)
 	}
 	totalCount = int(count)
 	if page < 1 {
@@ -107,8 +103,7 @@ func (accountNotificationRepository *AccountNotificationRepository) ListByUserId
 	}
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	if err = query.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&notifications).Error; err != nil {
-		accountNotificationRepository.logger.ErrorFunction(err, userId, typ, page, pageSize)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("AccountNotificationRepository.ListByUserId index=1 userId=%d typ=%s read=%v page=%d pageSize=%d error=%w", userId, typ, read, page, pageSize, err)
 	}
 	return notifications, totalCount, totalPages, nil
 }

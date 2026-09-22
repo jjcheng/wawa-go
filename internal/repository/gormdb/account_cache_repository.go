@@ -2,6 +2,7 @@ package gormdb
 
 import (
 	"context"
+	"fmt"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -29,7 +30,7 @@ func (accountCacheRepository *AccountCacheRepository) GetByKey(ctx context.Conte
 	result := accountCacheRepository.db.WithContext(ctx).Where("key = ?", key).First(&cache)
 	if result.Error != nil {
 		if result.Error != gorm.ErrRecordNotFound {
-			accountCacheRepository.logger.ErrorFunction(result.Error, key)
+			return nil, fmt.Errorf("AccountCacheRepository.GetByKey key=%s error=%w", key, result.Error)
 		}
 		return nil, result.Error
 	}
@@ -38,16 +39,14 @@ func (accountCacheRepository *AccountCacheRepository) GetByKey(ctx context.Conte
 
 func (accountCacheRepository *AccountCacheRepository) DeleteByKey(ctx context.Context, key string) error {
 	if err := accountCacheRepository.db.WithContext(ctx).Exec("delete from account.cache where key = ?", key).Error; err != nil {
-		accountCacheRepository.logger.ErrorFunction(err, key)
-		return err
+		return fmt.Errorf("AccountCacheRepository.DeleteByKey key=%s error=%w", key, err)
 	}
 	return nil
 }
 
 func (accountCacheRepository *AccountCacheRepository) DeleteExpired(ctx context.Context) error {
 	if err := accountCacheRepository.db.WithContext(ctx).Exec("delete from account.cache where expires_at <= now()").Error; err != nil {
-		accountCacheRepository.logger.ErrorFunction(err)
-		return err
+		return fmt.Errorf("AccountCacheRepository.DeleteExpired error=%w", err)
 	}
 	return nil
 }

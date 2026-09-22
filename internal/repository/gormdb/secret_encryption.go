@@ -2,7 +2,6 @@ package gormdb
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
@@ -14,16 +13,13 @@ func encryptSecret(secret string, aadContext string) (string, error) {
 		return "", nil
 	}
 	keys := cfg.Default().Site.GlobalKeys
-	if keys == nil {
-		return "", errors.New("encryption keys are not configured")
-	}
 	encrypted, err := helper.EncryptSecret([]byte(secret), keys, aadContext)
 	if err != nil {
-		return "", fmt.Errorf("encrypt secret: %w", err)
+		return "", fmt.Errorf("encryptSecret index=0 error=%w", err)
 	}
 	serialized, err := json.Marshal(encrypted)
 	if err != nil {
-		return "", fmt.Errorf("serialize encrypted secret: %w", err)
+		return "", fmt.Errorf("encryptSecret index=1 error=%w", err)
 	}
 	return string(serialized), nil
 }
@@ -33,12 +29,9 @@ func decryptSecret(serialized string, aadContext string) (string, error) {
 		return "", nil
 	}
 	keys := cfg.Default().Site.GlobalKeys
-	if keys == nil {
-		return "", errors.New("encryption keys are not configured")
-	}
 	var encrypted helper.EncryptedData
 	if err := json.Unmarshal([]byte(serialized), &encrypted); err != nil {
-		return "", fmt.Errorf("parse encrypted secret: %w", err)
+		return "", fmt.Errorf("decryptSecret index=0 error=%w", err)
 	}
 	// some data may be using a different key version, use key ring to find the correct version
 	keyRing := cfg.Default().Site.GlobalKeyRing
@@ -46,24 +39,21 @@ func decryptSecret(serialized string, aadContext string) (string, error) {
 		var err error
 		keyRing, err = helper.NewCryptoKeyRing(keys)
 		if err != nil {
-			return "", fmt.Errorf("initialize encryption key ring: %w", err)
+			return "", fmt.Errorf("decryptSecret index=1 error=%w", err)
 		}
 	}
 	plaintext, err := helper.DecryptSecretWithKeyRing(&encrypted, keyRing, aadContext)
 	if err != nil {
-		return "", fmt.Errorf("decrypt secret: %w", err)
+		return "", fmt.Errorf("decryptSecret index=2 error=%w", err)
 	}
 	return string(plaintext), nil
 }
 
 func hashSecret(secret string) (string, error) {
 	keys := cfg.Default().Site.GlobalKeys
-	if keys == nil {
-		return "", errors.New("encryption keys are not configured")
-	}
 	hash, err := helper.HashSecretHex(secret, keys.HMACKey)
 	if err != nil {
-		return "", fmt.Errorf("hash secret: %w", err)
+		return "", fmt.Errorf("hashSecret error=%w", err)
 	}
 	return hash, nil
 }

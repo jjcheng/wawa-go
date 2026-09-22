@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -34,8 +35,7 @@ func (websiteRepository *CommerceWebsiteRepository) ListByBusinessAccountId(ctx 
 		Order("commerce.websites.id").
 		Find(&websites)
 	if result.Error != nil {
-		websiteRepository.logger.ErrorFunction(result.Error, businessAccountId)
-		return nil, result.Error
+		return nil, fmt.Errorf("WebsiteRepository.ListByBusinessAccountId businessAccountId=%d error=%w", businessAccountId, result.Error)
 	}
 	return websites, nil
 }
@@ -50,7 +50,7 @@ func (websiteRepository *CommerceWebsiteRepository) GetByMetaCatalogId(ctx conte
 		First(&website)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			websiteRepository.logger.ErrorFunction(result.Error, metaCatalogId)
+			return nil, fmt.Errorf("WebsiteRepository.GetByMetaCatalogId metaCatalogId=%s error=%w", metaCatalogId, result.Error)
 		}
 		return nil, result.Error
 	}
@@ -67,7 +67,7 @@ func (websiteRepository *CommerceWebsiteRepository) GetByDomainName(ctx context.
 		First(&website)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			websiteRepository.logger.ErrorFunction(result.Error, domainName)
+			return nil, fmt.Errorf("WebsiteRepository.GetByDomainName domainName=%s error=%w", domainName, result.Error)
 		}
 		return nil, result.Error
 	}

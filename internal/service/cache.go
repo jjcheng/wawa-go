@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
@@ -26,7 +27,7 @@ func (cacheService *Cache) Get(ctx context.Context, key string) (string, error) 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", CacheNotFoundError
 		}
-		return "", err
+		return "", fmt.Errorf("Cache.Get key=%s error=%w", key, err)
 	}
 	return cache.Value, nil
 }
@@ -40,23 +41,35 @@ func (cacheService *Cache) Set(ctx context.Context, key string, value string, ex
 	existing, err := cacheService.unitOfWork.AccountCacheRepository().GetByKey(ctx, key)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
+			return fmt.Errorf("Cache.Set index=0 key=%s value=%s expiresAt=%v error=%w", key, value, expiresAt, err)
 		}
 	}
 	if existing == nil {
-		return cacheService.unitOfWork.AccountCacheRepository().Insert(ctx, &cache)
+		err = cacheService.unitOfWork.AccountCacheRepository().Insert(ctx, &cache)
 	} else {
-		return cacheService.unitOfWork.AccountCacheRepository().UpdateFields(ctx, existing.Id, map[string]any{"value": value})
+		err = cacheService.unitOfWork.AccountCacheRepository().UpdateFields(ctx, existing.Id, map[string]any{"value": value})
 	}
+	if err != nil {
+		return fmt.Errorf("Cache.Set index=1 key=%s value=%s expiresAt=%v error=%w", key, value, expiresAt, err)
+	}
+	return nil
 }
 
 func (cacheService *Cache) Remove(ctx context.Context, key string) error {
-	return cacheService.unitOfWork.AccountCacheRepository().DeleteByKey(ctx, key)
+	err := cacheService.unitOfWork.AccountCacheRepository().DeleteByKey(ctx, key)
+	if err != nil {
+		return fmt.Errorf("Cache.Remove key=%s error=%w", key, err)
+	}
+	return nil
 }
 
 // is scheduled at cmd/dispatcher/main.go
-func (cacheService *Cache) Cleanup(ctx context.Context) error {
-	return cacheService.unitOfWork.AccountCacheRepository().DeleteExpired(ctx)
+func (cacheService *Cache) CleanUp(ctx context.Context) error {
+	err := cacheService.unitOfWork.AccountCacheRepository().DeleteExpired(ctx)
+	if err != nil {
+		return fmt.Errorf("Cache.CleanUp error=%w", err)
+	}
+	return nil
 }
 
 var CacheNotFoundError = errors.New("cache key not found")

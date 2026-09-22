@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
@@ -34,7 +35,7 @@ func (accountSessionRepository *AccountSessionRepository) GetByAccessTokenHash(c
 		First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			accountSessionRepository.logger.ErrorFunction(result.Error, accessTokenHash)
+			return nil, fmt.Errorf("AccountSessionRepository.GetByAccessTokenHash accessTokenHash=%s error=%w", accessTokenHash, result.Error)
 		}
 		return nil, result.Error
 	}
@@ -42,19 +43,26 @@ func (accountSessionRepository *AccountSessionRepository) GetByAccessTokenHash(c
 }
 
 func (accountSessionRepository *AccountSessionRepository) UpdateLastUsed(ctx context.Context, id int32) error {
-	return accountSessionRepository.UpdateFields(ctx, id, map[string]any{"last_used_at": time.Now()})
+	err := accountSessionRepository.UpdateFields(ctx, id, map[string]any{"last_used_at": time.Now()})
+	if err != nil {
+		return fmt.Errorf("AccountSessionRepository.UpdateLastUsed id=%d error=%w", id, err)
+	}
+	return nil
 }
 
 func (accountSessionRepository *AccountSessionRepository) UpdateRevokedAt(ctx context.Context, id int32) error {
-	return accountSessionRepository.UpdateFields(ctx, id, map[string]any{"revoked_at": time.Now()})
+	err := accountSessionRepository.UpdateFields(ctx, id, map[string]any{"revoked_at": time.Now()})
+	if err != nil {
+		return fmt.Errorf("AccountSessionRepository.UpdateRevokedAt id=%d error=%w", id, err)
+	}
+	return nil
 }
 
 func (accountSessionRepository *AccountSessionRepository) DeleteByUserId(ctx context.Context, userId int32) error {
 	if err := accountSessionRepository.db.WithContext(ctx).
 		Where("user_id = ?", userId).
 		Delete(&dao_account.Session{}).Error; err != nil {
-		accountSessionRepository.logger.ErrorFunction(err, userId)
-		return err
+		return fmt.Errorf("AccountSessionRepository.DeleteByUserId userId=%d error=%w", userId, err)
 	}
 	return nil
 }

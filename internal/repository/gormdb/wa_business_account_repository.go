@@ -3,6 +3,7 @@ package gormdb
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -32,7 +33,7 @@ func (businessAccountRepository *WABusinessAccountRepository) GetByWABAId(ctx co
 		First(&businessAccount)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			businessAccountRepository.logger.ErrorFunction(result.Error, wabaId)
+			return nil, nil, fmt.Errorf("BusinessAccountRepository.GetByWABAId index=0 wabaId=%s error=%w", wabaId, result.Error)
 		}
 		return nil, nil, result.Error
 	}
@@ -42,7 +43,7 @@ func (businessAccountRepository *WABusinessAccountRepository) GetByWABAId(ctx co
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			businessAccountRepository.logger.ErrorFunction(result.Error, wabaId)
+			return nil, nil, fmt.Errorf("BusinessAccountRepository.GetByWABAId index=1 wabaId=%s error=%w", wabaId, result.Error)
 		}
 		return nil, nil, result.Error
 	}
@@ -57,8 +58,7 @@ func (businessAccountRepository *WABusinessAccountRepository) ListByBusinessPort
 		Order("id").
 		Find(&businessAccounts)
 	if result.Error != nil {
-		businessAccountRepository.logger.ErrorFunction(result.Error, businessPortfolioId)
-		return nil, result.Error
+		return nil, fmt.Errorf("BusinessAccountRepository.ListByBusinessPortfolioId businessPortfolioId=%d error=%w", businessPortfolioId, result.Error)
 	}
 	return businessAccounts, nil
 }

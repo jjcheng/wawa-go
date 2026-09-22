@@ -93,5 +93,5 @@ func dispatchRetryMessages(ctx context.Context, dependencies *service.Dependenci
 }
 
 func cleanUpExpiredCaches(ctx context.Context, dependencies *service.Dependencies) {
-	dependencies.Cache.Cleanup(ctx)
+	dependencies.Cache.CleanUp(ctx)
 }

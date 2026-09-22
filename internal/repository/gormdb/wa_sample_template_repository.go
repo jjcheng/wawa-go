@@ -1,6 +1,8 @@
 package gormdb
 
 import (
+	"fmt"
+
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -32,10 +34,7 @@ func (sampleTemplateRepository *WASampleTemplateRepository) List(category types.
 		query = query.Where("language = ?", language)
 	}
 	if err := query.Order("id").Find(&templates).Error; err != nil {
-		if sampleTemplateRepository.logger != nil {
-			sampleTemplateRepository.logger.ErrorFunction(err, "wa.sample_templates", category, language)
-		}
-		return nil, err
+		return nil, fmt.Errorf("SampleTemplateRepository.List category=%s language=%s error=%w", category, language, err)
 	}
 	return templates, nil
 }

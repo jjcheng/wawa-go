@@ -2,6 +2,7 @@ package gormdb
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
@@ -39,13 +40,11 @@ func (broadcastRepository *BroadcastRepository) ListByUserId(ctx context.Context
 	}
 	var numberOfItems int64
 	if err := query.Count(&numberOfItems).Error; err != nil {
-		broadcastRepository.logger.ErrorFunction(err, userId, status, page, pageSize)
-		return nil, err
+		return nil, fmt.Errorf("BroadcastRepository.ListByUserId index=0 userId=%d name=%s status=%s page=%d pageSize=%d error=%w", userId, name, status, page, pageSize, err)
 	}
 	offset := (page - 1) * pageSize
 	if err := query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&broadcasts).Error; err != nil {
-		broadcastRepository.logger.ErrorFunction(err, userId, status, page, pageSize)
-		return nil, err
+		return nil, fmt.Errorf("BroadcastRepository.ListByUserId index=1 userId=%d name=%s status=%s page=%d pageSize=%d error=%w", userId, name, status, page, pageSize, err)
 	}
 	numberOfPages := int(math.Ceil(float64(numberOfItems) / float64(pageSize)))
 	result := dto.NewPagedListResponse(broadcasts, numberOfPages, int(numberOfItems))
@@ -59,8 +58,7 @@ func (broadcastRepository *BroadcastRepository) CheckNameExist(ctx context.Conte
 		Where("user_id = ? AND name = ?", userId, name).
 		Count(&count).Error
 	if err != nil {
-		broadcastRepository.logger.ErrorFunction(err, userId, name)
-		return false, err
+		return false, fmt.Errorf("BroadcastRepository.CheckNameExists userId=%d name=%s error=%w", userId, name, err)
 	}
 	return count > 0, nil
 }
@@ -76,8 +74,7 @@ func (broadcastRepository *BroadcastRepository) ListByIds(ctx context.Context, i
 		Order("id").
 		Find(&broadcasts)
 	if result.Error != nil {
-		broadcastRepository.logger.ErrorFunction(result.Error, ids)
-		return nil, result.Error
+		return nil, fmt.Errorf("BroadcastRepository.ListByIds ids=%v error=%w", ids, result.Error)
 	}
 	return broadcasts, nil
 }
@@ -94,8 +91,7 @@ func (broadcastRepository *BroadcastRepository) ListByMessageIds(ctx context.Con
 		Distinct("c.*").
 		Find(&broadcasts)
 	if result.Error != nil {
-		broadcastRepository.logger.ErrorFunction(result.Error, messageIds)
-		return nil, result.Error
+		return nil, fmt.Errorf("BroadcastRepository.ListByMessageIds messageIds=%v error=%w", messageIds, result.Error)
 	}
 	return broadcasts, nil
 }
@@ -108,8 +104,7 @@ func (broadcastRepository *BroadcastRepository) ListPendingBroadcasts(ctx contex
 		Order("send_date, id").
 		Find(&broadcasts)
 	if result.Error != nil {
-		broadcastRepository.logger.ErrorFunction(result.Error)
-		return nil, result.Error
+		return nil, fmt.Errorf("BroadcastRepository.ListPendingBroadcasts error=%w", result.Error)
 	}
 	return broadcasts, nil
 }
@@ -118,8 +113,7 @@ func (broadcastRepository *BroadcastRepository) DeleteByUserId(ctx context.Conte
 	if err := broadcastRepository.db.WithContext(ctx).
 		Where("user_id = ?", userId).
 		Delete(&dao_customer.Broadcast{}).Error; err != nil {
-		broadcastRepository.logger.ErrorFunction(err, userId)
-		return err
+		return fmt.Errorf("BroadcastRepository.DeleteByUserId userId=%d error=%w", userId, err)
 	}
 	return nil
 }

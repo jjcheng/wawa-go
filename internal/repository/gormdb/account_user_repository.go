@@ -35,19 +35,27 @@ func (accountUserRepository *AccountUserRepository) Insert(ctx context.Context, 
 	}
 	original := accountUserRepository.userSensitiveSnapshotOf(user)
 	if err := accountUserRepository.encryptSensitiveFields(user); err != nil {
-		return err
+		return fmt.Errorf("AccountUserReposutory.Insert index=0 userId=%d error=%w", user.Id, err)
 	}
 	defer accountUserRepository.restoreUserSensitiveFields(user, original)
-	return accountUserRepository.Repository.Insert(ctx, user)
+	err := accountUserRepository.Repository.Insert(ctx, user)
+	if err != nil {
+		return fmt.Errorf("AccountUserRepository.Insert index=1 userId=%d error=%w", user.Id, err)
+	}
+	return nil
 }
 
 func (accountUserRepository *AccountUserRepository) Update(ctx context.Context, user *dao_account.User) error {
 	original := accountUserRepository.userSensitiveSnapshotOf(user)
 	if err := accountUserRepository.encryptSensitiveFields(user); err != nil {
-		return err
+		return fmt.Errorf("AccountUserRepository.Update index=0 userId=%d error=%w", user.Id, err)
 	}
 	defer accountUserRepository.restoreUserSensitiveFields(user, original)
-	return accountUserRepository.Repository.Update(ctx, user)
+	err := accountUserRepository.Repository.Update(ctx, user)
+	if err != nil {
+		return fmt.Errorf("AccountUserRepository.Update index=1 userId=%d error=%w", user.Id, err)
+	}
+	return nil
 }
 
 func (accountUserRepository *AccountUserRepository) GetById(ctx context.Context, id int32) (*dao_account.User, error) {
@@ -55,12 +63,12 @@ func (accountUserRepository *AccountUserRepository) GetById(ctx context.Context,
 	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("id = ?", id).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			accountUserRepository.logger.ErrorFunction(result.Error, id)
+			return nil, fmt.Errorf("AccountUserRepository.GetById index=0 id=%d error=%w", id, result.Error)
 		}
 		return nil, result.Error
 	}
 	if err := accountUserRepository.decryptSensitiveFields(item); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("AccountUserRepository.GetById index=1 id=%d error=%w", id, err)
 	}
 	if item.Status == types.UserStatusClosed {
 		return nil, gorm.ErrRecordNotFound
@@ -78,8 +86,7 @@ func (accountUserRepository *AccountUserRepository) HasMasterUserInBusinessAccou
 		Where("account.users.status <> ? AND wa.business_accounts.id = ? AND account.users.type = ?", types.UserStatusClosed, businessAccountId, types.UserTypeMaster).
 		Count(&count)
 	if result.Error != nil {
-		accountUserRepository.logger.ErrorFunction(result.Error, businessAccountId)
-		return false, result.Error
+		return false, fmt.Errorf("AccountUserRepository.HasMasterUserInBusinessAccount businessAccountId=%d error=%w", businessAccountId, result.Error)
 	}
 	return count > 0, nil
 }
@@ -100,12 +107,11 @@ func (accountUserRepository *AccountUserRepository) ListByBusinessAccountId(ctx 
 	}
 	result := query.Order("account.users.id").Find(&users)
 	if result.Error != nil {
-		accountUserRepository.logger.ErrorFunction(result.Error, businessAccountId)
-		return nil, result.Error
+		return nil, fmt.Errorf("AccountUserRepository.ListByBusinessAccountId index=0 businessAccountId=%d typ=%v excludeClosed=%v error=%w", businessAccountId, typ, excludeClosed, result.Error)
 	}
 	for i := range users {
 		if err := accountUserRepository.decryptSensitiveFields(&users[i]); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("AccountUserRepository.ListByBusinessAccountId index=1 businessAccountId=%d typ=%v excludeClosed=%v error=%w", businessAccountId, typ, excludeClosed, err)
 		}
 	}
 	return users, nil
@@ -115,17 +121,17 @@ func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context
 	var item *dao_account.User
 	phoneNumberHash, err := hashSecret(phoneNumber)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("AccountUserRepository.GetByPhoneNumber index=0 countryCode=%s error=%w", countryCode, err)
 	}
 	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number_hash = ?", countryCode, phoneNumberHash).First(&item)
 	if result.Error != nil {
-		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			accountUserRepository.logger.ErrorFunction(result.Error, phoneNumber)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
 		}
-		return nil, result.Error
+		return nil, fmt.Errorf("AccountUserRepository.GetByPhoneNumber index=1 countryCode=%s error=%w", countryCode, result.Error)
 	}
 	if err := accountUserRepository.decryptSensitiveFields(item); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("AccountUserRepository.GetByPhoneNumber index=2 countryCode=%s error=%w", countryCode, err)
 	}
 	if item.Status == types.UserStatusClosed {
 		return nil, gorm.ErrRecordNotFound
@@ -156,12 +162,12 @@ func (accountUserRepository *AccountUserRepository) encryptSensitiveFields(user 
 	if user.PhoneNumber != "" {
 		hash, err := hashSecret(user.PhoneNumber)
 		if err != nil {
-			return err
+			return fmt.Errorf("AccountUserRepository.encryptSensitiveFields index=0 userId=%d error=%w", user.Id, err)
 		}
 		user.PhoneNumberHash = hash
 		encrypted, err := encryptSecret(user.PhoneNumber, accountUserRepository.userSecretAAD(user, "phone_number"))
 		if err != nil {
-			return err
+			return fmt.Errorf("AccountUserRepository.encryptSensitiveFields index=1 userId=%d error=%w", user.Id, err)
 		}
 		user.PhoneNumberEncrypted = encrypted
 		user.PhoneNumber = ""
@@ -169,12 +175,12 @@ func (accountUserRepository *AccountUserRepository) encryptSensitiveFields(user 
 	if user.Email != "" {
 		hash, err := hashSecret(user.Email)
 		if err != nil {
-			return err
+			return fmt.Errorf("AccountUserRepository.encryptSensitiveFields index=2 userId=%d error=%w", user.Id, err)
 		}
 		user.EmailHash = hash
 		encrypted, err := encryptSecret(user.Email, accountUserRepository.userSecretAAD(user, "email"))
 		if err != nil {
-			return err
+			return fmt.Errorf("AccountUserRepository.encryptSensitiveFields index=3 userId=%d error=%w", user.Id, err)
 		}
 		user.EmailEncrypted = encrypted
 		user.Email = ""
@@ -186,14 +192,14 @@ func (accountUserRepository *AccountUserRepository) decryptSensitiveFields(user 
 	if user.PhoneNumberEncrypted != "" {
 		phoneNumber, err := decryptSecret(user.PhoneNumberEncrypted, accountUserRepository.userSecretAAD(user, "phone_number"))
 		if err != nil {
-			return err
+			return fmt.Errorf("AccountUserRepository.decryptSensitiveFields index=0 userId=%d error=%w", user.Id, err)
 		}
 		user.PhoneNumber = phoneNumber
 	}
 	if user.EmailEncrypted != "" {
 		email, err := decryptSecret(user.EmailEncrypted, accountUserRepository.userSecretAAD(user, "email"))
 		if err != nil {
-			return err
+			return fmt.Errorf("AccountUserRepository.decryptSensitiveFields index=1 userId=%d error=%w", user.Id, err)
 		}
 		user.Email = email
 	}

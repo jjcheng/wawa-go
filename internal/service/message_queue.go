@@ -1,13 +1,11 @@
 package service
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 
@@ -85,8 +83,7 @@ func (mq *MessageQueue) publishMessage(body string, delaySeconds int64, priority
 		Priority:     int64(priority),
 	})
 	if err != nil {
-		mq.logger.ErrorFunction(err, body)
-		return "", fmt.Errorf("failed to publish message to queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
+		return "", fmt.Errorf("MessageQueue.publishMessage body=%s delaySeconds=%d priority=%v error=%w", body, delaySeconds, priority, err)
 	}
 	mq.logger.Debugf("SMQ message published: queue=%s message_id=%s", cfg.Default().AliyunSMQ.QueueName, resp.MessageId)
 	return resp.MessageId, nil
@@ -95,7 +92,7 @@ func (mq *MessageQueue) publishMessage(body string, delaySeconds int64, priority
 func (mq *MessageQueue) publishJSON(v any, delaySeconds int64, priority MessageQueuePriority) (string, error) {
 	body, err := json.Marshal(v)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal message payload: %w", err)
+		return "", fmt.Errorf("MessageQueue.publishJSON v=%v delaySeconds=%d priority=%v error=%w", v, delaySeconds, priority, err)
 	}
 	return mq.publishMessage(string(body), delaySeconds, priority)
 }
@@ -103,81 +100,36 @@ func (mq *MessageQueue) publishJSON(v any, delaySeconds int64, priority MessageQ
 func (mq *MessageQueue) PublishJob(jobType string, data any, delaySeconds int64, priority MessageQueuePriority) (string, error) {
 	payload, err := json.Marshal(data)
 	if err != nil {
-		mq.logger.ErrorFunction(err, jobType, data, delaySeconds, priority)
-		return "", fmt.Errorf("failed to marshal queue job data: %w", err)
+		return "", fmt.Errorf("MessageQueue.PublishJob jobType=%s data=%v delaySeconds=%d priority=%v error=%w", jobType, data, delaySeconds, priority, err)
 	}
-	return mq.publishJSON(MessageQueueJob{Type: jobType, Data: payload}, delaySeconds, priority)
-}
-
-func (mq *MessageQueue) ReceiveMessage(ctx context.Context) (*MessageQueueMessage, error) {
-	respChan := make(chan ali_mns.MessageReceiveResponse, 1)
-	errChan := make(chan error, 1)
-	mq.queue.ReceiveMessage(respChan, errChan, 15)
-	var timeout <-chan time.Time
-	if deadline, ok := ctx.Deadline(); ok {
-		remaining := time.Until(deadline)
-		if remaining <= 0 {
-			return nil, context.DeadlineExceeded
-		}
-		timer := time.NewTimer(remaining)
-		defer timer.Stop()
-		timeout = timer.C
+	messageId, err := mq.publishJSON(MessageQueueJob{Type: jobType, Data: payload}, delaySeconds, priority)
+	if err != nil {
+		return "", fmt.Errorf("MessageQueue.PublishJob jobType=%s data=%v delaySeconds=%d priority=%v error=%w", jobType, data, delaySeconds, priority, err)
 	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-timeout:
-			return nil, context.DeadlineExceeded
-		case err := <-errChan:
-			if err == nil {
-				continue
-			}
-			if ali_mns.ERR_MNS_MESSAGE_NOT_EXIST.IsEqual(err) {
-				return nil, nil
-			}
-			errText := strings.ToLower(err.Error())
-			if strings.Contains(errText, "messagenotexist") || strings.Contains(errText, "not exist") {
-				return nil, nil
-			}
-			return nil, fmt.Errorf("failed to receive message from queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
-		case resp := <-respChan:
-			msg := &MessageQueueMessage{
-				MessageID:      resp.MessageId,
-				ReceiptHandle:  resp.ReceiptHandle,
-				MessageBody:    resp.MessageBody,
-				MessageBodyMD5: resp.MessageBodyMD5,
-				EnqueueTime:    resp.EnqueueTime,
-				DequeueCount:   resp.DequeueCount,
-				Priority:       resp.Priority,
-			}
-			return msg, nil
-		}
-	}
+	return messageId, nil
 }
 
 func (mq *MessageQueue) DeleteMessage(receiptHandle string) error {
 	if strings.TrimSpace(receiptHandle) == "" {
-		return errors.New("receipt handle cannot be empty")
+		return fmt.Errorf("MessageQueue.DeleteMessage index=0 recipientHandle=%s error=%w", receiptHandle, errors.New("recipient handle is empty"))
 	}
 	err := mq.queue.DeleteMessage(receiptHandle)
 	if err != nil {
-		return fmt.Errorf("failed to delete message from queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
+		return fmt.Errorf("Message`Queue.DeleteMessage index=1 recipientHandle=%s error=%w", receiptHandle, err)
 	}
 	return nil
 }
 
 func (mq *MessageQueue) ExtendMessageVisibility(message *MessageQueueMessage, visibilityTimeoutSeconds int64) error {
 	if message == nil || strings.TrimSpace(message.ReceiptHandle) == "" {
-		return errors.New("message receipt handle cannot be empty")
+		return fmt.Errorf("MessageQueue.ExtendMessageVisibility index=0 messageId=%s visibilityTimeoutSeconds=%d error=%w", message.MessageID, visibilityTimeoutSeconds, errors.New("message is nil or message.ReciptHandle is empty"))
 	}
 	if visibilityTimeoutSeconds <= 0 {
 		return errors.New("visibility timeout must be positive")
 	}
 	response, err := mq.queue.ChangeMessageVisibility(message.ReceiptHandle, visibilityTimeoutSeconds)
 	if err != nil {
-		return fmt.Errorf("failed to extend visibility for queue %s: %w", cfg.Default().AliyunSMQ.QueueName, err)
+		return fmt.Errorf("MessageQueue.ExtendMessageVisibility index=1 messageId=%s visibilityTimeoutSeconds=%d error=%w", message.MessageID, visibilityTimeoutSeconds, err)
 	}
 	if strings.TrimSpace(response.ReceiptHandle) == "" {
 		return errors.New("queue returned an empty receipt handle after visibility extension")

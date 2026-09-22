@@ -35,10 +35,14 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) Insert(ctx con
 		recipient.EncryptionID = uuid.NewString()
 	}
 	if err := broadcastRecipientRepository.encryptPayload(recipient); err != nil {
-		return err
+		return fmt.Errorf("BroadcastRecipientRepository.Insert index=0 recipientId=%d error=%w", recipient.Id, err)
 	}
 	defer func() { recipient.Payload = payload }()
-	return broadcastRecipientRepository.Repository.Insert(ctx, recipient)
+	err := broadcastRecipientRepository.Repository.Insert(ctx, recipient)
+	if err != nil {
+		return fmt.Errorf("BroadcastRecipientRepository.Insert index=1 recipientId=%d error=%w", recipient.Id, err)
+	}
+	return nil
 }
 
 func (broadcastRecipientRepository *BroadcastRecipientRepository) InsertBulk(ctx context.Context, recipients []dao_customer.BroadcastRecipient) error {
@@ -49,7 +53,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) InsertBulk(ctx
 			recipients[i].EncryptionID = uuid.NewString()
 		}
 		if err := broadcastRecipientRepository.encryptPayload(&recipients[i]); err != nil {
-			return err
+			return fmt.Errorf("BroadcastRecipientRepository.InsertBulk index=0 recipients=%d error=%w", len(recipients), err)
 		}
 	}
 	defer func() {
@@ -57,16 +61,24 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) InsertBulk(ctx
 			recipients[i].Payload = payloads[i]
 		}
 	}()
-	return broadcastRecipientRepository.Repository.InsertBulk(ctx, recipients)
+	err := broadcastRecipientRepository.Repository.InsertBulk(ctx, recipients)
+	if err != nil {
+		return fmt.Errorf("BroadcastRecipientRepository.InsertBulk index=1 recipients=%d error=%w", len(recipients), err)
+	}
+	return nil
 }
 
 func (broadcastRecipientRepository *BroadcastRecipientRepository) Update(ctx context.Context, recipient *dao_customer.BroadcastRecipient) error {
 	payload := recipient.Payload
 	if err := broadcastRecipientRepository.encryptPayload(recipient); err != nil {
-		return err
+		return fmt.Errorf("BroadcastRecipientRepository.Update index=0 recipientId=%d error=%w", recipient.Id, err)
 	}
 	defer func() { recipient.Payload = payload }()
-	return broadcastRecipientRepository.Repository.Update(ctx, recipient)
+	err := broadcastRecipientRepository.Repository.Update(ctx, recipient)
+	if err != nil {
+		return fmt.Errorf("BroadcastRecipientRepository.Update index=1 recipientId=%d error=%w", recipient.Id, err)
+	}
+	return nil
 }
 
 func (broadcastRecipientRepository *BroadcastRecipientRepository) GetById(ctx context.Context, id int32) (*dao_customer.BroadcastRecipient, error) {
@@ -77,12 +89,12 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) GetById(ctx co
 		First(&recipient)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			broadcastRecipientRepository.logger.ErrorFunction(result.Error, id)
+			return nil, fmt.Errorf("BroadcastRecipientRepository.GetById index=0 id=%d error=%w", id, result.Error)
 		}
 		return nil, result.Error
 	}
 	if err := broadcastRecipientRepository.decryptPayload(&recipient); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("BroadcastRecipientRepository.GetById index=1 id=%d error=%w", id, result.Error)
 	}
 	return &recipient, nil
 }
@@ -104,18 +116,16 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) ListByBroadcas
 	}
 	var count int64
 	if err = query.Count(&count).Error; err != nil {
-		broadcastRecipientRepository.logger.ErrorFunction(err, broadcastId, status, page, pageSize)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("BroadcastRecipientRepository.ListByBroadcastId index=0 broadcastId=%d name=%s status=%s onlyMessageCreated=%v page=%d pageSize=%d error=%w", broadcastId, name, status, onlyMessageCreated, page, pageSize, err)
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	if err = query.Select("cr.*, c.display_name AS customer_name").Order("cr.id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&broadcastRecipients).Error; err != nil {
-		broadcastRecipientRepository.logger.ErrorFunction(err, broadcastId, status, page, pageSize)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("BroadcastRecipientRepository.ListByBroadcastId index=1 broadcastId=%d name=%s status=%s onlyMessageCreated=%v page=%d pageSize=%d error=%w", broadcastId, name, status, onlyMessageCreated, page, pageSize, err)
 	}
 	for i := range broadcastRecipients {
 		if err = broadcastRecipientRepository.decryptPayload(&broadcastRecipients[i]); err != nil {
-			return nil, 0, 0, err
+			return nil, 0, 0, fmt.Errorf("BroadcastRecipientRepository.ListByBroadcastId index=2 broadcastId=%d name=%s status=%s onlyMessageCreated=%v page=%d pageSize=%d error=%w", broadcastId, name, status, onlyMessageCreated, page, pageSize, err)
 		}
 	}
 	messageIds := make([]int32, 0, len(broadcastRecipients))
@@ -131,8 +141,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) ListByBroadcas
 			messageQuery = messageQuery.Where("status = ?", status)
 		}
 		if err = messageQuery.Order("id DESC").Find(&messages).Error; err != nil {
-			broadcastRecipientRepository.logger.ErrorFunction(err, broadcastId, status, page, pageSize)
-			return nil, 0, 0, err
+			return nil, 0, 0, fmt.Errorf("BroadcastRecipientRepository.ListByBroadcastId index=3 broadcastId=%d name=%s status=%s onlyMessageCreated=%v page=%d pageSize=%d error=%w", broadcastId, name, status, onlyMessageCreated, page, pageSize, err)
 		}
 		messageById := make(map[int32]*dao_wa.Message, len(messages))
 		for i := range messages {
@@ -160,8 +169,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) CountMessageSt
 		Select("m.status AS status, COUNT(*) AS count").
 		Group("m.status").
 		Scan(&rows).Error; err != nil {
-		broadcastRecipientRepository.logger.ErrorFunction(err, broadcastId)
-		return nil, err
+		return nil, fmt.Errorf("BroadcastRecipientRepository.CountMessageStatusesByBroadcastId broadcastId=%d error=%w", broadcastId, err)
 	}
 	counts := map[types.WAMessageStatus]int{
 		types.WAMessageStatusAccepted:  0,
@@ -187,11 +195,11 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) encryptPayload
 	}
 	payload, err := json.Marshal(recipient.Payload)
 	if err != nil {
-		return err
+		return fmt.Errorf("BroadcastReicpientRepository.encryptPayload index=0 recipientId=%d error=%w", recipient.Id, err)
 	}
 	encrypted, err := encryptSecret(string(payload), broadcastRecipientRepository.broadcastRecipientAAD(recipient, "payload"))
 	if err != nil {
-		return err
+		return fmt.Errorf("BroadcastReicpientRepository.encryptPayload index=1 recipientId=%d error=%w", recipient.Id, err)
 	}
 	recipient.PayloadEncrypted = encrypted
 	recipient.Payload = nil
@@ -204,8 +212,11 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) decryptPayload
 	}
 	payload, err := decryptSecret(recipient.PayloadEncrypted, broadcastRecipientRepository.broadcastRecipientAAD(recipient, "payload"))
 	if err != nil {
-		broadcastRecipientRepository.logger.ErrorFunction(err, "broadcast_recipient", recipient.Id)
-		return err
+		return fmt.Errorf("BroadcastReicpientRepository.decryptPayload index=0 recipientId=%d error=%w", recipient.Id, err)
 	}
-	return json.Unmarshal([]byte(payload), &recipient.Payload)
+	err = json.Unmarshal([]byte(payload), &recipient.Payload)
+	if err != nil {
+		return fmt.Errorf("BroadcastReicpientRepository.decryptPayload index=1 recipientId=%d error=%w", recipient.Id, err)
+	}
+	return nil
 }

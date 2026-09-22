@@ -31,12 +31,12 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetById(ctx context.Contex
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("id = ?", id).First(&phoneNumber)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, id)
+			return nil, fmt.Errorf("PhoneNumberRepository.GetById index=0 id=%d error=%w", id, result.Error)
 		}
 		return nil, result.Error
 	}
 	if err := phoneNumberRepository.decryptSecrets(phoneNumber); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("PhoneNumberRepository.GetById index=1 id=%d error=%w", id, result.Error)
 	}
 	return phoneNumber, nil
 }
@@ -46,14 +46,18 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Insert(ctx context.Context
 	waId := phoneNumber.WAId
 	registrationPin := phoneNumber.RegistrationPin
 	if err := phoneNumberRepository.encryptSecrets(phoneNumber); err != nil {
-		return err
+		return fmt.Errorf("PhoneNumberRepository.Insert index=0 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 	}
 	defer func() {
 		phoneNumber.DisplayPhoneNumber = displayPhoneNumber
 		phoneNumber.WAId = waId
 		phoneNumber.RegistrationPin = registrationPin
 	}()
-	return phoneNumberRepository.Repository.Insert(ctx, phoneNumber)
+	err := phoneNumberRepository.Repository.Insert(ctx, phoneNumber)
+	if err != nil {
+		return fmt.Errorf("PhoneNumberRepository.Insert index=1 phoneNumberId=%d error=%w", phoneNumber.Id, err)
+	}
+	return nil
 }
 
 func (phoneNumberRepository *WAPhoneNumberRepository) Update(ctx context.Context, phoneNumber *dao_wa.PhoneNumber) error {
@@ -61,14 +65,18 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Update(ctx context.Context
 	waId := phoneNumber.WAId
 	registrationPin := phoneNumber.RegistrationPin
 	if err := phoneNumberRepository.encryptSecrets(phoneNumber); err != nil {
-		return err
+		return fmt.Errorf("PhoneNumberRepository.Update index=0 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 	}
 	defer func() {
 		phoneNumber.DisplayPhoneNumber = displayPhoneNumber
 		phoneNumber.WAId = waId
 		phoneNumber.RegistrationPin = registrationPin
 	}()
-	return phoneNumberRepository.Repository.Update(ctx, phoneNumber)
+	err := phoneNumberRepository.Repository.Update(ctx, phoneNumber)
+	if err != nil {
+		return fmt.Errorf("PhoneNumberRepository.Update index=1 phoneNumberId=%d error=%w", phoneNumber.Id, err)
+	}
+	return nil
 }
 
 func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx context.Context, metaPhoneNumberId string) (*dao_wa.PhoneNumber, error) {
@@ -76,12 +84,12 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx
 	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", metaPhoneNumberId).First(&phoneNumber)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, metaPhoneNumberId)
+			return nil, fmt.Errorf("PhoneNumberRepository.GetByMetaPhoneNumberId index=0 metaPhoneNumberId=%s error=%w", metaPhoneNumberId, result.Error)
 		}
 		return nil, result.Error
 	}
 	if err := phoneNumberRepository.decryptSecrets(phoneNumber); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("PhoneNumberRepository.GetByMetaPhoneNumberId index=1 metaPhoneNumberId=%s error=%w", metaPhoneNumberId, result.Error)
 	}
 	return phoneNumber, nil
 }
@@ -92,8 +100,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) CountByBusinessAccountId(c
 		Model(&dao_wa.PhoneNumber{}).
 		Where("business_account_id = ?", businessAccountId).
 		Count(&count).Error; err != nil {
-		phoneNumberRepository.logger.ErrorFunction(err, businessAccountId)
-		return 0, err
+		return 0, fmt.Errorf("PhoneNumberRepository.CountByBusinessAccountId businessAccountId=%d error=%w", businessAccountId, err)
 	}
 	return int(count), nil
 }
@@ -108,18 +115,16 @@ func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessAccountId(ct
 	}
 	var count int64
 	if err := query.Distinct("pn.id").Count(&count).Error; err != nil {
-		phoneNumberRepository.logger.ErrorFunction(err, businessAccountId)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("PhoneNumberRepository.ListByBusinessAccountId index=0 businessAccountId=%d status=%s page=%d pageSize=%d error=%w", businessAccountId, status, page, pageSize, err)
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	if err := query.Select("pn.*, u.name AS user_name").Order("pn.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers).Error; err != nil {
-		phoneNumberRepository.logger.ErrorFunction(err, businessAccountId)
-		return nil, 0, 0, err
+		return nil, 0, 0, fmt.Errorf("PhoneNumberRepository.ListByBusinessAccountId index=1 businessAccountId=%d status=%s page=%d pageSize=%d error=%w", businessAccountId, status, page, pageSize, err)
 	}
 	for i := range phoneNumbers {
 		if err := phoneNumberRepository.decryptSecrets(&phoneNumbers[i]); err != nil {
-			return nil, 0, 0, err
+			return nil, 0, 0, fmt.Errorf("PhoneNumberRepository.ListByBusinessAccountId index=2 businessAccountId=%d status=%s page=%d pageSize=%d error=%w", businessAccountId, status, page, pageSize, err)
 		}
 	}
 	return phoneNumbers, totalCount, totalPages, nil
@@ -133,16 +138,16 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Co
 		First(&phoneNumber)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, userId)
+			return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=0 userId=%d error=%w", userId, result.Error)
 		}
 		return nil, nil, nil, result.Error
 	}
 	if err := phoneNumberRepository.decryptSecrets(&phoneNumber); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=1 userId=%d error=%w", userId, result.Error)
 	}
 	businessPortfolio, businessAccount, err := phoneNumberRepository.GetBusinessPortfolioAndAccountByUserId(ctx, userId)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=2 userId=%d error=%w", userId, result.Error)
 	}
 	return &phoneNumber, businessAccount, businessPortfolio, nil
 }
@@ -159,7 +164,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 		First(&businessAccount)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, userId)
+			return nil, nil, fmt.Errorf("PhoneNumberRepository.GetBusinessPortfolioAndAccountByUserId index=0 userId=%d error=%w", userId, result.Error)
 		}
 		return nil, nil, result.Error
 	}
@@ -170,12 +175,12 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 		First(&businessPortfolio)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			phoneNumberRepository.logger.ErrorFunction(result.Error, userId, businessAccount.BussinessPortfolioId)
+			return nil, nil, fmt.Errorf("PhoneNumberRepository.GetBusinessPortfolioAndAccountByUserId index=1 userId=%d error=%w", userId, result.Error)
 		}
 		return nil, nil, result.Error
 	}
 	if err := (phoneNumberRepository).decryptBusinessPortfolioAccessToken(&businessPortfolio); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("PhoneNumberRepository.GetBusinessPortfolioAndAccountByUserId index=2 userId=%d error=%w", userId, result.Error)
 	}
 	return &businessPortfolio, &businessAccount, nil
 }
@@ -184,24 +189,21 @@ func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber
 	if phoneNumber.DisplayPhoneNumberEncrypted != "" {
 		displayPhoneNumber, err := decryptSecret(phoneNumber.DisplayPhoneNumberEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
 		if err != nil {
-			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
-			return err
+			return fmt.Errorf("PhoneNumberRepository.decryptSecrets index=0 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 		}
 		phoneNumber.DisplayPhoneNumber = displayPhoneNumber
 	}
 	if phoneNumber.WAIdEncrypted != "" {
 		waId, err := decryptSecret(phoneNumber.WAIdEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
 		if err != nil {
-			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
-			return err
+			return fmt.Errorf("PhoneNumberRepository.decryptSecrets index=1 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 		}
 		phoneNumber.WAId = waId
 	}
 	if phoneNumber.RegistrationPinEncrypted != "" {
 		registrationPin, err := decryptSecret(phoneNumber.RegistrationPinEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
 		if err != nil {
-			phoneNumberRepository.logger.ErrorFunction(err, "phone_number", phoneNumber.Id)
-			return err
+			return fmt.Errorf("PhoneNumberRepository.decryptSecrets index=2 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 		}
 		phoneNumber.RegistrationPin = registrationPin
 	}
@@ -212,7 +214,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber
 	if phoneNumber.DisplayPhoneNumber != "" {
 		encrypted, err := encryptSecret(phoneNumber.DisplayPhoneNumber, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))
 		if err != nil {
-			return err
+			return fmt.Errorf("PhoneNumberRepository.encryptSecrets index=0 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 		}
 		phoneNumber.DisplayPhoneNumberEncrypted = encrypted
 		phoneNumber.DisplayPhoneNumber = ""
@@ -220,12 +222,12 @@ func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber
 	if phoneNumber.WAId != "" {
 		hashed, err := hashSecret(phoneNumber.WAId)
 		if err != nil {
-			return err
+			return fmt.Errorf("PhoneNumberRepository.encryptSecrets index=1 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 		}
 		phoneNumber.WAIdHash = hashed
 		encrypted, err := encryptSecret(phoneNumber.WAId, phoneNumberRepository.phoneNumberAAD(phoneNumber, "wa_id"))
 		if err != nil {
-			return err
+			return fmt.Errorf("PhoneNumberRepository.encryptSecrets index=2 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 		}
 		phoneNumber.WAIdEncrypted = encrypted
 		phoneNumber.WAId = ""
@@ -233,7 +235,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) encryptSecrets(phoneNumber
 	if phoneNumber.RegistrationPin != "" {
 		encrypted, err := encryptSecret(phoneNumber.RegistrationPin, phoneNumberRepository.phoneNumberAAD(phoneNumber, "registration_pin"))
 		if err != nil {
-			return err
+			return fmt.Errorf("PhoneNumberRepository.encryptSecrets index=3 phoneNumberId=%d error=%w", phoneNumber.Id, err)
 		}
 		phoneNumber.RegistrationPinEncrypted = encrypted
 		phoneNumber.RegistrationPin = ""
@@ -248,7 +250,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) decryptBusinessPortfolioAc
 	// make sure the aad is correct here
 	accessToken, err := decryptSecret(businessPortfolio.AccessTokenEncrypted, "wa.business_portfolios:access_token:"+businessPortfolio.MetaBusinessPortfolioId)
 	if err != nil {
-		return err
+		return fmt.Errorf("PhoneNumberRepository.decryptBusinessPortfolioAccessToken businessPortfolioId=%d error=%w", businessPortfolio.Id, err)
 	}
 	businessPortfolio.AccessToken = accessToken
 	return nil

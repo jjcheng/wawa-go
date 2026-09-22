@@ -2,6 +2,7 @@ package gormdb
 
 import (
 	"context"
+	"fmt"
 
 	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
 	"github.com/jjcheng/wawa-go/internal/repository"
@@ -31,8 +32,7 @@ func (commerceSetRepository *CommerceSetRepository) ListByCatalogId(ctx context.
 		Order("id").
 		Find(&sets)
 	if result.Error != nil {
-		commerceSetRepository.logger.ErrorFunction(result.Error, catalogId)
-		return nil, result.Error
+		return nil, fmt.Errorf("CommerceSetRepository.ListByCatalogId catalogId=%d error=%w", catalogId, result.Error)
 	}
 	return sets, nil
 }

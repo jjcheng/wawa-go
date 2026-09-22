@@ -32,19 +32,27 @@ func (messageStatusRepository *WAMessageStatusRepository) Insert(ctx context.Con
 	}
 	payload := messageStatus.Payload
 	if err := messageStatusRepository.encryptPayload(messageStatus); err != nil {
-		return err
+		return fmt.Errorf("MessageStatusRepository.Insert index=0 messageStatusId=%d error=%w", messageStatus.Id, err)
 	}
 	defer func() { messageStatus.Payload = payload }()
-	return messageStatusRepository.Repository.Insert(ctx, messageStatus)
+	err := messageStatusRepository.Repository.Insert(ctx, messageStatus)
+	if err != nil {
+		return fmt.Errorf("MessageStatusRepository.Insert index=1 messageStatusId=%d error=%w", messageStatus.Id, err)
+	}
+	return nil
 }
 
 func (messageStatusRepository *WAMessageStatusRepository) Update(ctx context.Context, messageStatus *dao_wa.MessageStatus) error {
 	payload := messageStatus.Payload
 	if err := messageStatusRepository.encryptPayload(messageStatus); err != nil {
-		return err
+		return fmt.Errorf("MessageStatusRepository.Update index=0 messageStatusId=%d error=%w", messageStatus.Id, err)
 	}
 	defer func() { messageStatus.Payload = payload }()
-	return messageStatusRepository.Repository.Update(ctx, messageStatus)
+	err := messageStatusRepository.Repository.Update(ctx, messageStatus)
+	if err != nil {
+		return fmt.Errorf("MessageStatusRepository.Update index=1 messageStatusId=%d error=%w", messageStatus.Id, err)
+	}
+	return nil
 }
 
 func (messageStatusRepository *WAMessageStatusRepository) GetById(ctx context.Context, id int32) (*dao_wa.MessageStatus, error) {
@@ -52,10 +60,10 @@ func (messageStatusRepository *WAMessageStatusRepository) GetById(ctx context.Co
 	if err := messageStatusRepository.db.WithContext(ctx).
 		Where("id = ?", id).
 		First(&messageStatus).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("MessageStatusRepository.Insert index=0 id=%d error=%w", id, err)
 	}
 	if err := messageStatusRepository.decryptPayload(&messageStatus); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("MessageStatusRepository.Insert index=1 id=%d error=%w", id, err)
 	}
 	return &messageStatus, nil
 }
@@ -68,12 +76,11 @@ func (messageStatusRepository *WAMessageStatusRepository) ListByMessageId(ctx co
 		Order("timestamp").
 		Find(&events)
 	if result.Error != nil {
-		messageStatusRepository.logger.ErrorFunction(result.Error, messageId)
-		return nil, result.Error
+		return nil, fmt.Errorf("MessageStatusRepository.ListByMessageId index=0 messageId=%d error=%w", messageId, result.Error)
 	}
 	for i := range events {
 		if err := messageStatusRepository.decryptPayload(&events[i]); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("MessageStatusRepository.ListByMessageId index=1 messageId=%d error=%w", messageId, result.Error)
 		}
 	}
 	return events, nil
@@ -85,11 +92,11 @@ func (messageStatusRepository *WAMessageStatusRepository) encryptPayload(message
 	}
 	payload, err := json.Marshal(messageStatus.Payload)
 	if err != nil {
-		return err
+		return fmt.Errorf("MessageStatusRepository.encryptPayload index=0 messageStatusId=%d error=%w", messageStatus.Id, err)
 	}
 	encrypted, err := encryptSecret(string(payload), messageStatusRepository.messageStatusAAD(messageStatus, "payload"))
 	if err != nil {
-		return err
+		return fmt.Errorf("MessageStatusRepository.encryptPayload index=1 messageStatusId=%d error=%w", messageStatus.Id, err)
 	}
 	messageStatus.PayloadEncrypted = encrypted
 	messageStatus.Payload = nil
@@ -102,10 +109,13 @@ func (messageStatusRepository *WAMessageStatusRepository) decryptPayload(message
 	}
 	payload, err := decryptSecret(messageStatus.PayloadEncrypted, messageStatusRepository.messageStatusAAD(messageStatus, "payload"))
 	if err != nil {
-		messageStatusRepository.logger.ErrorFunction(err, "message_status", messageStatus.Id)
-		return err
+		return fmt.Errorf("MessageStatusRepository.decryptPayload index=0 messageStatusId=%d error=%w", messageStatus.Id, err)
 	}
-	return json.Unmarshal([]byte(payload), &messageStatus.Payload)
+	err = json.Unmarshal([]byte(payload), &messageStatus.Payload)
+	if err != nil {
+		return fmt.Errorf("MessageStatusRepository.decryptPayload index=1 messageStatusId=%d error=%w", messageStatus.Id, err)
+	}
+	return nil
 }
 
 func (messageStatusRepository *WAMessageStatusRepository) messageStatusAAD(messageStatus *dao_wa.MessageStatus, purpose string) string {
