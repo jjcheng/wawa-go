@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -202,6 +203,12 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 				return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete removed product")
 			}
 		}
+	}
+	// update products last synced at
+	website.ProductsLastSynedAt = time.Now()
+	if err := transaction.CommerceWebsiteRepository().Update(ctx, website); err != nil {
+		// no need to return error
+		dependencies.Logger.ErrorFunction(err, website.Id)
 	}
 	// commit
 	if err := transaction.CommitTransaction(); err != nil {

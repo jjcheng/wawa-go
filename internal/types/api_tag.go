@@ -9,4 +9,5 @@ const (
 	APITagWA       APITag = "WA"
 	APITagCommerce APITag = "Commerce"
 	APITagPublic   APITag = "Public"
+	APITagSite     APITag = "Site"
 )

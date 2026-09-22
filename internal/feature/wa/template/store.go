@@ -91,7 +91,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	// insert cache for template_id_user_id, expires in 48 hours
 	cacheKey := helper.GetTemplateStatusChangeCacheKey(template.ID)
 	cacheValue := fmt.Sprint(user.Id)
-	err = dependencies.Cache.Insert(ctx, cacheKey, cacheValue, time.Now().Add(time.Hour*48))
+	err = dependencies.Cache.Set(ctx, cacheKey, cacheValue, time.Now().Add(time.Hour*48))
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, cacheKey, cacheValue)
 	}

@@ -48,6 +48,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 			return c.ID == commerceCatalog.MetaId
 		}); metaCatalogIndex != nil {
 			catalogs[*metaCatalogIndex].WebsiteDomainName = commerceCatalog.WebsiteDomainName
+			catalogs[*metaCatalogIndex].WebsiteProductsLastSyncedAt = commerceCatalog.WebsiteProductsLastSyncedAt
 			catalogs[*metaCatalogIndex].WebsiteURL = helper.GetWebhsiteFullUrl(commerceCatalog.WebsiteDomainName, cfg.Default().Commerce.WebsiteDomain)
 			catalogs[*metaCatalogIndex].WebsiteStatus = string(commerceCatalog.WebsiteStatus)
 		}

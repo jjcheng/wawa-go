@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -114,9 +115,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}()
 	// create website
 	website := dao_commerce.Website{
-		BusinessAccountId: user.WA.BusinessAccount.Id,
-		DomainName:        create.Subdomain,
-		Status:            types.CommerceWebsiteStatusActive,
+		BusinessAccountId:   user.WA.BusinessAccount.Id,
+		DomainName:          create.Subdomain,
+		Status:              types.CommerceWebsiteStatusActive,
+		ProductsLastSynedAt: time.Now(),
 	}
 	if phoneNumberBusinessProfile != nil && len(phoneNumberBusinessProfile.Data) > 0 {
 		website.About = phoneNumberBusinessProfile.Data[0].About

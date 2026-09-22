@@ -6939,6 +6939,9 @@
                           "catalog_name": {
                             "type": "string"
                           },
+                          "contact_text": {
+                            "type": "string"
+                          },
                           "description": {
                             "type": "string"
                           },
@@ -6964,6 +6967,10 @@
                             "type": "string"
                           },
                           "meta_catalog_id": {
+                            "type": "string"
+                          },
+                          "products_last_synced_at": {
+                            "format": "date-time",
                             "type": "string"
                           },
                           "profile_picture_url": {
@@ -7278,6 +7285,9 @@
                         "catalog_name": {
                           "type": "string"
                         },
+                        "contact_text": {
+                          "type": "string"
+                        },
                         "description": {
                           "type": "string"
                         },
@@ -7303,6 +7313,10 @@
                           "type": "string"
                         },
                         "meta_catalog_id": {
+                          "type": "string"
+                        },
+                        "products_last_synced_at": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "profile_picture_url": {
@@ -7691,6 +7705,9 @@
                         "catalog_name": {
                           "type": "string"
                         },
+                        "contact_text": {
+                          "type": "string"
+                        },
                         "description": {
                           "type": "string"
                         },
@@ -7716,6 +7733,10 @@
                           "type": "string"
                         },
                         "meta_catalog_id": {
+                          "type": "string"
+                        },
+                        "products_last_synced_at": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "profile_picture_url": {
@@ -8368,6 +8389,9 @@
                         "catalog_name": {
                           "type": "string"
                         },
+                        "contact_text": {
+                          "type": "string"
+                        },
                         "description": {
                           "type": "string"
                         },
@@ -8393,6 +8417,10 @@
                           "type": "string"
                         },
                         "meta_catalog_id": {
+                          "type": "string"
+                        },
+                        "products_last_synced_at": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "profile_picture_url": {
@@ -8728,6 +8756,10 @@
                     "nullable": true,
                     "type": "string"
                   },
+                  "contact_text": {
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "description": {
                     "nullable": true,
                     "type": "string"
@@ -8769,6 +8801,9 @@
                         "catalog_name": {
                           "type": "string"
                         },
+                        "contact_text": {
+                          "type": "string"
+                        },
                         "description": {
                           "type": "string"
                         },
@@ -8794,6 +8829,10 @@
                           "type": "string"
                         },
                         "meta_catalog_id": {
+                          "type": "string"
+                        },
+                        "products_last_synced_at": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "profile_picture_url": {
@@ -13665,6 +13704,9 @@
                         "catalog_name": {
                           "type": "string"
                         },
+                        "contact_text": {
+                          "type": "string"
+                        },
                         "description": {
                           "type": "string"
                         },
@@ -13690,6 +13732,10 @@
                           "type": "string"
                         },
                         "meta_catalog_id": {
+                          "type": "string"
+                        },
+                        "products_last_synced_at": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "profile_picture_url": {
@@ -14650,6 +14696,310 @@
         ]
       }
     },
+    "/v1/site/feedback": {
+      "post": {
+        "description": "Creates feedback from the authenticated user.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "content": {
+                    "description": "content of the feedback",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "content"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "the actual API returned data, empty if not success",
+                      "properties": {
+                        "content": {
+                          "type": "string"
+                        },
+                        "entry_date": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "id": {
+                          "example": 1,
+                          "format": "int32",
+                          "type": "integer"
+                        },
+                        "last_update": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
+                        "user_id": {
+                          "format": "int32",
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "entry_date",
+                        "last_update"
+                      ],
+                      "type": "object"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 200,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": true,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "input_errors": {
+                      "description": "list of input violations with details if any",
+                      "items": {
+                        "properties": {
+                          "field": {
+                            "description": "name of the input field",
+                            "example": "name of the input field",
+                            "type": "string"
+                          },
+                          "message": {
+                            "description": "description of the error",
+                            "example": "description of the error",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "message"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "invalid input",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 400,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "invalid input"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "unauthorized access",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 401,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "unauthorized access"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "you are not authenticated",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 403,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "you are not authenticated"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "description": "error message if not success",
+                      "example": "Sorry, something is wrong with our server., internal server error",
+                      "type": "string"
+                    },
+                    "request_id": {
+                      "description": "request correlation id",
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "description": "http status code",
+                      "example": 500,
+                      "format": "int32",
+                      "type": "integer"
+                    },
+                    "success": {
+                      "description": "is request is success",
+                      "example": false,
+                      "type": "boolean"
+                    },
+                    "time_taken": {
+                      "description": "time taken in miliseconds",
+                      "example": 100,
+                      "format": "int64",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "status_code",
+                    "time_taken"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Sorry, something is wrong with our server., internal server error"
+          },
+          "default": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "summary": "Create site feedback",
+        "tags": [
+          "Site"
+        ]
+      }
+    },
     "/v1/wa/account/embedded-signup": {
       "post": {
         "description": "Create the Meta business portfolio, WhatsApp business account, phone number, user and activate with Meta from an embedded signup.",
@@ -15525,6 +15875,10 @@
                           "website_domain_name": {
                             "type": "string"
                           },
+                          "website_products_last_synced_at": {
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "website_status": {
                             "type": "string"
                           },
@@ -15876,6 +16230,10 @@
                           "type": "string"
                         },
                         "website_domain_name": {
+                          "type": "string"
+                        },
+                        "website_products_last_synced_at": {
+                          "format": "date-time",
                           "type": "string"
                         },
                         "website_status": {
@@ -27665,6 +28023,9 @@
     },
     {
       "name": "Commerce"
+    },
+    {
+      "name": "Site"
     },
     {
       "name": "Public"

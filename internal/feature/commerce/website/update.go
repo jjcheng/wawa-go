@@ -24,6 +24,8 @@ type Update struct {
 	ProfilePictureURL string `json:"profile_picture_url"`
 	Address           string `json:"address"`
 	Email             string `json:"email"`
+	// interal settings
+	ContactText string `json:"contact_text"`
 }
 
 func (update *Update) Validate() []exception.InputException {
@@ -32,6 +34,7 @@ func (update *Update) Validate() []exception.InputException {
 	update.ProfilePictureURL = strings.TrimSpace(update.ProfilePictureURL)
 	update.Address = strings.TrimSpace(update.Address)
 	update.Email = strings.TrimSpace(update.Email)
+	update.ContactText = strings.TrimSpace(update.ContactText)
 	var errors []exception.InputException
 	if update.Id <= 0 {
 		errors = append(errors, exception.NewInputException("id", "invalid website id"))
@@ -73,6 +76,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	website.ProfilePictureURL = update.ProfilePictureURL
 	website.Address = update.Address
 	website.Email = update.Email
+	website.ContactText = update.ContactText
 	if err := dependencies.UnitOfWork.CommerceWebsiteRepository().Update(ctx, website); err != nil {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
 	}

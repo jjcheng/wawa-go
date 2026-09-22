@@ -44,7 +44,7 @@ func (commerceCatalogRepository *CommerceCatalogRepository) ListByBusinessAccoun
 		Table("commerce.catalogs").
 		Joins("JOIN commerce.websites ON commerce.websites.id = commerce.catalogs.website_id").
 		Where("commerce.websites.business_account_id = ?", businessAccountId).
-		Select("commerce.catalogs.*, commerce.websites.domain_name AS website_domain_name, commerce.websites.status AS website_status").
+		Select("commerce.catalogs.*, commerce.websites.domain_name AS website_domain_name, commerce.websites.status AS website_status, commerce.websites.products_last_synced_at AS website_products_last_synced_at").
 		Order("commerce.catalogs.id").
 		Find(&catalogs)
 	if result.Error != nil {

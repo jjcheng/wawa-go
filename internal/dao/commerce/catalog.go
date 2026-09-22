@@ -1,6 +1,8 @@
 package dao_commerce
 
 import (
+	"time"
+
 	"github.com/jjcheng/wawa-go/internal/dao"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -13,8 +15,9 @@ type Catalog struct {
 	Vertical   string `gorm:"column:vertical"`
 	Subscribed bool   `gorm:"column:subscribed"` // to receive webhook for product_feed (not items_batch)
 	// from websites table
-	WebsiteDomainName string                      `gorm:"column:website_domain_name;->"`
-	WebsiteStatus     types.CommerceWebsiteStatus `gorm:"column:website_status;->"`
+	WebsiteDomainName           string                      `gorm:"column:website_domain_name;->"`
+	WebsiteStatus               types.CommerceWebsiteStatus `gorm:"column:website_status;->"`
+	WebsiteProductsLastSyncedAt time.Time                   `gorm:"column:website_products_last_synced_at;->"`
 }
 
 // adoptable_pets

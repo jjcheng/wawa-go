@@ -2,6 +2,8 @@ package dto_wa
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -39,6 +41,7 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 	return d
 }
 
-func (phoneNumber *PhoneNumber) WALink() string {
-	return fmt.Sprintf("https://wa.me/%s", phoneNumber.WAId)
+func (phoneNumber *PhoneNumber) WALink(text string) string {
+	text = strings.TrimSpace(text)
+	return fmt.Sprintf("https://wa.me/%s?text=%s", phoneNumber.WAId, url.QueryEscape(text))
 }

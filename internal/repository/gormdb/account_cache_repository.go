@@ -24,16 +24,16 @@ func NewAccountCacheRepository(db *gorm.DB, logger *service.Logger) repository.A
 	return &accountCacheRepository
 }
 
-func (accountCacheRepository *AccountCacheRepository) GetByKey(ctx context.Context, key string) (string, error) {
+func (accountCacheRepository *AccountCacheRepository) GetByKey(ctx context.Context, key string) (*dao_account.Cache, error) {
 	var cache dao_account.Cache
 	result := accountCacheRepository.db.WithContext(ctx).Where("key = ?", key).First(&cache)
 	if result.Error != nil {
 		if result.Error != gorm.ErrRecordNotFound {
 			accountCacheRepository.logger.ErrorFunction(result.Error, key)
 		}
-		return "", result.Error
+		return nil, result.Error
 	}
-	return cache.Value, nil
+	return &cache, nil
 }
 
 func (accountCacheRepository *AccountCacheRepository) DeleteByKey(ctx context.Context, key string) error {

@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
@@ -228,9 +229,10 @@ type WhatsAppProductCatalog struct {
 	ProductCount   int                     `json:"product_count,omitempty"`
 	SubscribedApps *WhatsAppSubscribedApps `json:"subscribed_apps,omitempty"`
 	// from commerce websites
-	WebsiteDomainName string `json:"website_domain_name"`
-	WebsiteURL        string `json:"website_url"`
-	WebsiteStatus     string `json:"website_status"`
+	WebsiteDomainName           string    `json:"website_domain_name"`
+	WebsiteURL                  string    `json:"website_url"`
+	WebsiteStatus               string    `json:"website_status"`
+	WebsiteProductsLastSyncedAt time.Time `json:"website_products_last_synced_at"`
 }
 
 type WhatsAppSubscribedApps struct {

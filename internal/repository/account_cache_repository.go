@@ -8,7 +8,7 @@ import (
 
 type AccountCacheRepository interface {
 	Repository[dao_account.Cache]
-	GetByKey(ctx context.Context, key string) (string, error)
+	GetByKey(ctx context.Context, key string) (*dao_account.Cache, error)
 	DeleteByKey(ctx context.Context, key string) error
 	DeleteExpired(ctx context.Context) error
 }
