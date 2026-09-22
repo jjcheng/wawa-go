@@ -18,9 +18,9 @@ type MessageStatus struct {
 func NewMessageStatus(messageStatusEvent dao_wa.MessageStatus) MessageStatus {
 	return MessageStatus{
 		DTOBase: dto.DTOBase{
-			Id:         messageStatusEvent.Id,
-			EntryDate:  messageStatusEvent.EntryDate,
-			LastUpdate: messageStatusEvent.LastUpdate,
+			Id:            messageStatusEvent.Id,
+			AddedAt:       messageStatusEvent.AddedAt,
+			LastUpdatedAt: messageStatusEvent.LastUpdatedAt,
 		},
 		WAMessageId:  messageStatusEvent.WAMessageId,
 		Status:       messageStatusEvent.Status,

@@ -16,9 +16,9 @@ type Catalog struct {
 func NewCatalog(catalog dao_commerce.Catalog) Catalog {
 	return Catalog{
 		DTOBase: dto.DTOBase{
-			Id:         catalog.Id,
-			EntryDate:  catalog.EntryDate,
-			LastUpdate: catalog.LastUpdate,
+			Id:            catalog.Id,
+			AddedAt:       catalog.AddedAt,
+			LastUpdatedAt: catalog.LastUpdatedAt,
 		},
 		WebsiteId: catalog.WebsiteId,
 		MetaId:    catalog.MetaId,

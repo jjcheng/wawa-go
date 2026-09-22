@@ -15,9 +15,9 @@ type Setting struct {
 func NewSetting(setting dao_account.Setting) Setting {
 	return Setting{
 		DTOBase: dto.DTOBase{
-			Id:         setting.Id,
-			EntryDate:  setting.EntryDate,
-			LastUpdate: setting.LastUpdate,
+			Id:            setting.Id,
+			AddedAt:       setting.AddedAt,
+			LastUpdatedAt: setting.LastUpdatedAt,
 		},
 		Name:  setting.Name,
 		Value: setting.Value,

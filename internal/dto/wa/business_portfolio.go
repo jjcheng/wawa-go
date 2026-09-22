@@ -15,9 +15,9 @@ type BusinessPortfolio struct {
 func NewBusinessPortfolio(businessPortfolio dao_wa.BusinessPortfolio, new bool) BusinessPortfolio {
 	return BusinessPortfolio{
 		DTOBase: dto.DTOBase{
-			Id:         businessPortfolio.Id,
-			EntryDate:  businessPortfolio.EntryDate,
-			LastUpdate: businessPortfolio.LastUpdate,
+			Id:            businessPortfolio.Id,
+			AddedAt:       businessPortfolio.AddedAt,
+			LastUpdatedAt: businessPortfolio.LastUpdatedAt,
 		},
 		MetaBusinessPortfolioId: businessPortfolio.MetaBusinessPortfolioId,
 		Name:                    businessPortfolio.Name,

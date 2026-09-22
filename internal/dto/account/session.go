@@ -19,9 +19,9 @@ type Session struct {
 func NewSession(session dao_account.Session) Session {
 	return Session{
 		DTOBase: dto.DTOBase{
-			Id:         session.Id,
-			EntryDate:  session.EntryDate,
-			LastUpdate: session.LastUpdate,
+			Id:            session.Id,
+			AddedAt:       session.AddedAt,
+			LastUpdatedAt: session.LastUpdatedAt,
 		},
 		ExpiresAt:  session.ExpiresAt,
 		RevokedAt:  session.RevokedAt,

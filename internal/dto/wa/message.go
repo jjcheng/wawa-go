@@ -35,9 +35,9 @@ type Message struct {
 func NewMessage(message dao_wa.Message) Message {
 	d := Message{
 		DTOBase: dto.DTOBase{
-			Id:         message.Id,
-			EntryDate:  message.EntryDate,
-			LastUpdate: message.LastUpdate,
+			Id:            message.Id,
+			AddedAt:       message.AddedAt,
+			LastUpdatedAt: message.LastUpdatedAt,
 		},
 		Sending:       message.Sending,
 		Timestamp:     message.Timestamp,

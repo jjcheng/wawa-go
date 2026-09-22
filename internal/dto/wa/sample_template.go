@@ -15,9 +15,9 @@ type SampleTemplate struct {
 func NewSampleTemplate(sampleTemplate dao_wa.SampleTemplate) (*SampleTemplate, error) {
 	d := SampleTemplate{
 		DTOBase: dto.DTOBase{
-			Id:         sampleTemplate.Id,
-			EntryDate:  sampleTemplate.EntryDate,
-			LastUpdate: sampleTemplate.LastUpdate,
+			Id:            sampleTemplate.Id,
+			AddedAt:       sampleTemplate.AddedAt,
+			LastUpdatedAt: sampleTemplate.LastUpdatedAt,
 		},
 		TemplateBase: TemplateBase{
 			Name:            sampleTemplate.Name,

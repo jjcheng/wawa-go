@@ -25,9 +25,9 @@ type PhoneNumber struct {
 func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 	d := PhoneNumber{
 		DTOBase: dto.DTOBase{
-			Id:         phoneNumber.Id,
-			EntryDate:  phoneNumber.EntryDate,
-			LastUpdate: phoneNumber.LastUpdate,
+			Id:            phoneNumber.Id,
+			AddedAt:       phoneNumber.AddedAt,
+			LastUpdatedAt: phoneNumber.LastUpdatedAt,
 		},
 		BusinessAccountId:  phoneNumber.BusinessAccountId,
 		MetaPhoneNumberId:  phoneNumber.MetaPhoneNumberId,

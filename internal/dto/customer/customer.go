@@ -25,9 +25,9 @@ type Customer struct {
 func NewCustomer(customer dao_customer.Customer) Customer {
 	return Customer{
 		DTOBase: dto.DTOBase{
-			Id:         customer.Id,
-			EntryDate:  customer.EntryDate,
-			LastUpdate: customer.LastUpdate,
+			Id:            customer.Id,
+			AddedAt:       customer.AddedAt,
+			LastUpdatedAt: customer.LastUpdatedAt,
 		},
 		DisplayName:         customer.DisplayName,
 		WADisplayName:       customer.WADisplayName,

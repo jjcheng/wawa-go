@@ -370,12 +370,12 @@
                         "items": {
                           "items": {
                             "properties": {
-                              "body": {
-                                "type": "string"
-                              },
-                              "entry_date": {
+                              "added_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
+                                "type": "string"
+                              },
+                              "body": {
                                 "type": "string"
                               },
                               "id": {
@@ -383,7 +383,7 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -403,8 +403,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -2209,6 +2209,11 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -2218,17 +2223,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -2258,8 +2258,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -2599,6 +2599,11 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -2608,17 +2613,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -2648,8 +2648,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -2941,6 +2941,11 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -2950,17 +2955,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -2990,8 +2990,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -3260,6 +3260,11 @@
                             "format": "date-time",
                             "type": "string"
                           },
+                          "added_at": {
+                            "example": "2025-10-01T08:08:00Z",
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "country_code": {
                             "type": "string"
                           },
@@ -3269,17 +3274,12 @@
                           "email": {
                             "type": "string"
                           },
-                          "entry_date": {
-                            "example": "2025-10-01T08:08:00Z",
-                            "format": "date-time",
-                            "type": "string"
-                          },
                           "id": {
                             "example": 1,
                             "format": "int32",
                             "type": "integer"
                           },
-                          "last_update": {
+                          "last_updated_at": {
                             "example": "2025-10-01T08:08:00Z",
                             "format": "date-time",
                             "type": "string"
@@ -3309,8 +3309,8 @@
                         },
                         "required": [
                           "id",
-                          "entry_date",
-                          "last_update"
+                          "added_at",
+                          "last_updated_at"
                         ],
                         "type": "object"
                       },
@@ -3611,6 +3611,11 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -3620,17 +3625,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -3660,8 +3660,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -3921,7 +3921,7 @@
                         "items": {
                           "items": {
                             "properties": {
-                              "entry_date": {
+                              "added_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -3931,7 +3931,7 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -3975,8 +3975,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -4467,7 +4467,7 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
-                        "entry_date": {
+                        "added_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -4477,7 +4477,7 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -4521,8 +4521,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -4841,6 +4841,11 @@
                         "items": {
                           "items": {
                             "properties": {
+                              "added_at": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
                               "broadcast_id": {
                                 "format": "int32",
                                 "type": "integer"
@@ -4852,23 +4857,23 @@
                               "customer_name": {
                                 "type": "string"
                               },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
                               "id": {
                                 "example": 1,
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
                               },
                               "message": {
                                 "properties": {
+                                  "added_at": {
+                                    "example": "2025-10-01T08:08:00Z",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
                                   "attachment_url": {
                                     "type": "string"
                                   },
@@ -4889,11 +4894,6 @@
                                     "format": "int32",
                                     "type": "integer"
                                   },
-                                  "entry_date": {
-                                    "example": "2025-10-01T08:08:00Z",
-                                    "format": "date-time",
-                                    "type": "string"
-                                  },
                                   "error_message": {
                                     "type": "string"
                                   },
@@ -4902,7 +4902,7 @@
                                     "format": "int32",
                                     "type": "integer"
                                   },
-                                  "last_update": {
+                                  "last_updated_at": {
                                     "example": "2025-10-01T08:08:00Z",
                                     "format": "date-time",
                                     "type": "string"
@@ -4936,7 +4936,7 @@
                                   "statuses": {
                                     "items": {
                                       "properties": {
-                                        "entry_date": {
+                                        "added_at": {
                                           "example": "2025-10-01T08:08:00Z",
                                           "format": "date-time",
                                           "type": "string"
@@ -4949,7 +4949,7 @@
                                           "format": "int32",
                                           "type": "integer"
                                         },
-                                        "last_update": {
+                                        "last_updated_at": {
                                           "example": "2025-10-01T08:08:00Z",
                                           "format": "date-time",
                                           "type": "string"
@@ -4967,8 +4967,8 @@
                                       },
                                       "required": [
                                         "id",
-                                        "entry_date",
-                                        "last_update"
+                                        "added_at",
+                                        "last_updated_at"
                                       ],
                                       "type": "object"
                                     },
@@ -4990,8 +4990,8 @@
                                 },
                                 "required": [
                                   "id",
-                                  "entry_date",
-                                  "last_update"
+                                  "added_at",
+                                  "last_updated_at"
                                 ],
                                 "type": "object"
                               },
@@ -5002,8 +5002,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -5597,7 +5597,7 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
-                        "entry_date": {
+                        "added_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -5607,7 +5607,7 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -5651,8 +5651,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -6591,7 +6591,7 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
-                        "entry_date": {
+                        "added_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -6601,7 +6601,7 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -6622,8 +6622,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -6929,6 +6929,11 @@
                           "about": {
                             "type": "string"
                           },
+                          "added_at": {
+                            "example": "2025-10-01T08:08:00Z",
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "address": {
                             "type": "string"
                           },
@@ -6960,17 +6965,12 @@
                           "email": {
                             "type": "string"
                           },
-                          "entry_date": {
-                            "example": "2025-10-01T08:08:00Z",
-                            "format": "date-time",
-                            "type": "string"
-                          },
                           "id": {
                             "example": 1,
                             "format": "int32",
                             "type": "integer"
                           },
-                          "last_update": {
+                          "last_updated_at": {
                             "example": "2025-10-01T08:08:00Z",
                             "format": "date-time",
                             "type": "string"
@@ -7008,8 +7008,8 @@
                         },
                         "required": [
                           "id",
-                          "entry_date",
-                          "last_update"
+                          "added_at",
+                          "last_updated_at"
                         ],
                         "type": "object"
                       },
@@ -7295,6 +7295,11 @@
                         "about": {
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "address": {
                           "type": "string"
                         },
@@ -7326,17 +7331,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -7374,8 +7374,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -7735,6 +7735,11 @@
                         "about": {
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "address": {
                           "type": "string"
                         },
@@ -7766,17 +7771,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -7814,8 +7814,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -8439,6 +8439,11 @@
                         "about": {
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "address": {
                           "type": "string"
                         },
@@ -8470,17 +8475,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -8518,8 +8518,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -8893,6 +8893,11 @@
                         "about": {
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "address": {
                           "type": "string"
                         },
@@ -8924,17 +8929,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -8972,8 +8972,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -10223,6 +10223,11 @@
                         "items": {
                           "items": {
                             "properties": {
+                              "added_at": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
                               "additional_data": {
                                 "additionalProperties": {
                                   "type": "object"
@@ -10235,11 +10240,6 @@
                               "display_name": {
                                 "type": "string"
                               },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
                               "id": {
                                 "example": 1,
                                 "format": "int32",
@@ -10248,7 +10248,7 @@
                               "imported_phone_number": {
                                 "type": "string"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -10283,8 +10283,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -10571,6 +10571,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "additional_data": {
                           "additionalProperties": {
                             "type": "object"
@@ -10583,11 +10588,6 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -10596,7 +10596,7 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -10631,8 +10631,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -11793,6 +11793,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "additional_data": {
                           "additionalProperties": {
                             "type": "object"
@@ -11805,11 +11810,6 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -11818,7 +11818,7 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -11853,8 +11853,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -12222,6 +12222,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "additional_data": {
                           "additionalProperties": {
                             "type": "object"
@@ -12234,11 +12239,6 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -12247,7 +12247,7 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -12282,8 +12282,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -12641,6 +12641,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "additional_data": {
                           "additionalProperties": {
                             "type": "object"
@@ -12653,11 +12658,6 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -12666,7 +12666,7 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -12701,8 +12701,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -13070,6 +13070,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "additional_data": {
                           "additionalProperties": {
                             "type": "object"
@@ -13082,11 +13087,6 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -13095,7 +13095,7 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -13130,8 +13130,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -13518,6 +13518,11 @@
                         "items": {
                           "items": {
                             "properties": {
+                              "added_at": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
                               "additional_image_urls": {
                                 "items": {
                                   "type": "string"
@@ -13536,11 +13541,6 @@
                               "description": {
                                 "type": "string"
                               },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
                               "fb_category": {
                                 "type": "string"
                               },
@@ -13555,7 +13555,7 @@
                               "image_url": {
                                 "type": "string"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -13585,8 +13585,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -13816,6 +13816,11 @@
                         "about": {
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "address": {
                           "type": "string"
                         },
@@ -13847,17 +13852,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -13895,8 +13895,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -14120,6 +14120,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "additional_image_urls": {
                           "items": {
                             "type": "string"
@@ -14138,11 +14143,6 @@
                         "description": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "fb_category": {
                           "type": "string"
                         },
@@ -14157,7 +14157,7 @@
                         "image_url": {
                           "type": "string"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -14187,8 +14187,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -14400,21 +14400,21 @@
                       "description": "the actual API returned data, empty if not success",
                       "items": {
                         "properties": {
-                          "catalog_id": {
-                            "format": "int32",
-                            "type": "integer"
-                          },
-                          "entry_date": {
+                          "added_at": {
                             "example": "2025-10-01T08:08:00Z",
                             "format": "date-time",
                             "type": "string"
+                          },
+                          "catalog_id": {
+                            "format": "int32",
+                            "type": "integer"
                           },
                           "id": {
                             "example": 1,
                             "format": "int32",
                             "type": "integer"
                           },
-                          "last_update": {
+                          "last_updated_at": {
                             "example": "2025-10-01T08:08:00Z",
                             "format": "date-time",
                             "type": "string"
@@ -14428,8 +14428,8 @@
                         },
                         "required": [
                           "id",
-                          "entry_date",
-                          "last_update"
+                          "added_at",
+                          "last_updated_at"
                         ],
                         "type": "object"
                       },
@@ -14869,12 +14869,12 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
-                        "content": {
-                          "type": "string"
-                        },
-                        "entry_date": {
+                        "added_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
+                          "type": "string"
+                        },
+                        "content": {
                           "type": "string"
                         },
                         "id": {
@@ -14882,7 +14882,7 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -14894,8 +14894,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -15218,6 +15218,11 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "country_code": {
                           "type": "string"
                         },
@@ -15227,17 +15232,12 @@
                         "email": {
                           "type": "string"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -15267,8 +15267,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -18233,6 +18233,11 @@
                         "items": {
                           "items": {
                             "properties": {
+                              "added_at": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
                               "attachment_url": {
                                 "type": "string"
                               },
@@ -18253,11 +18258,6 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
                               "error_message": {
                                 "type": "string"
                               },
@@ -18266,7 +18266,7 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -18300,7 +18300,7 @@
                               "statuses": {
                                 "items": {
                                   "properties": {
-                                    "entry_date": {
+                                    "added_at": {
                                       "example": "2025-10-01T08:08:00Z",
                                       "format": "date-time",
                                       "type": "string"
@@ -18313,7 +18313,7 @@
                                       "format": "int32",
                                       "type": "integer"
                                     },
-                                    "last_update": {
+                                    "last_updated_at": {
                                       "example": "2025-10-01T08:08:00Z",
                                       "format": "date-time",
                                       "type": "string"
@@ -18331,8 +18331,8 @@
                                   },
                                   "required": [
                                     "id",
-                                    "entry_date",
-                                    "last_update"
+                                    "added_at",
+                                    "last_updated_at"
                                   ],
                                   "type": "object"
                                 },
@@ -18354,8 +18354,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -19046,6 +19046,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "attachment_url": {
                           "type": "string"
                         },
@@ -19066,11 +19071,6 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "error_message": {
                           "type": "string"
                         },
@@ -19079,7 +19079,7 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -19113,7 +19113,7 @@
                         "statuses": {
                           "items": {
                             "properties": {
-                              "entry_date": {
+                              "added_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -19126,7 +19126,7 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -19144,8 +19144,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -19167,8 +19167,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -19909,6 +19909,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "attachment_url": {
                           "type": "string"
                         },
@@ -19929,11 +19934,6 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "error_message": {
                           "type": "string"
                         },
@@ -19942,7 +19942,7 @@
                           "format": "int32",
                           "type": "integer"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -19976,7 +19976,7 @@
                         "statuses": {
                           "items": {
                             "properties": {
-                              "entry_date": {
+                              "added_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -19989,7 +19989,7 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -20007,8 +20007,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },
@@ -20030,8 +20030,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -22169,6 +22169,11 @@
                       "description": "the actual API returned data, empty if not success",
                       "items": {
                         "properties": {
+                          "added_at": {
+                            "example": "2025-10-01T08:08:00Z",
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "category": {
                             "type": "string"
                           },
@@ -22327,11 +22332,6 @@
                             },
                             "type": "array"
                           },
-                          "entry_date": {
-                            "example": "2025-10-01T08:08:00Z",
-                            "format": "date-time",
-                            "type": "string"
-                          },
                           "id": {
                             "example": 1,
                             "format": "int32",
@@ -22340,7 +22340,7 @@
                           "language": {
                             "type": "string"
                           },
-                          "last_update": {
+                          "last_updated_at": {
                             "example": "2025-10-01T08:08:00Z",
                             "format": "date-time",
                             "type": "string"
@@ -22544,8 +22544,8 @@
                         },
                         "required": [
                           "id",
-                          "entry_date",
-                          "last_update"
+                          "added_at",
+                          "last_updated_at"
                         ],
                         "type": "object"
                       },
@@ -23140,6 +23140,11 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "added_at": {
+                          "example": "2025-10-01T08:08:00Z",
+                          "format": "date-time",
+                          "type": "string"
+                        },
                         "category": {
                           "type": "string"
                         },
@@ -23298,11 +23303,6 @@
                           },
                           "type": "array"
                         },
-                        "entry_date": {
-                          "example": "2025-10-01T08:08:00Z",
-                          "format": "date-time",
-                          "type": "string"
-                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -23311,7 +23311,7 @@
                         "language": {
                           "type": "string"
                         },
-                        "last_update": {
+                        "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
@@ -23515,8 +23515,8 @@
                       },
                       "required": [
                         "id",
-                        "entry_date",
-                        "last_update"
+                        "added_at",
+                        "last_updated_at"
                       ],
                       "type": "object"
                     },
@@ -27835,6 +27835,11 @@
                         "items": {
                           "items": {
                             "properties": {
+                              "added_at": {
+                                "example": "2025-10-01T08:08:00Z",
+                                "format": "date-time",
+                                "type": "string"
+                              },
                               "business_account_id": {
                                 "format": "int32",
                                 "type": "integer"
@@ -27842,17 +27847,12 @@
                               "display_phone_number": {
                                 "type": "string"
                               },
-                              "entry_date": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
                               "id": {
                                 "example": 1,
                                 "format": "int32",
                                 "type": "integer"
                               },
-                              "last_update": {
+                              "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
                                 "type": "string"
@@ -27879,8 +27879,8 @@
                             },
                             "required": [
                               "id",
-                              "entry_date",
-                              "last_update"
+                              "added_at",
+                              "last_updated_at"
                             ],
                             "type": "object"
                           },

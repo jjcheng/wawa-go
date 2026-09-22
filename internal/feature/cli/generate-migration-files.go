@@ -187,9 +187,7 @@ func migrateTableData[T dao.DAO](ctx context.Context, migrationDB *gorm.DB, loca
 			if len(migrationDBItems) > 0 {
 				if existing := helper.First(migrationDBItems, func(e T) bool {
 					return e.Base().Id == newItem.Base().Id
-				}); existing != nil && helper.GetTimeStamp((*existing).Base().LastUpdate) != helper.GetTimeStamp((newItem.Base().LastUpdate)) {
-					// log.Println(helper.GetTimeStamp((*existing).Base().LastUpdate))
-					// log.Println(helper.GetTimeStamp((newItem.Base().LastUpdate)))
+				}); existing != nil && helper.GetTimeStamp((*existing).Base().LastUpdatedAt) != helper.GetTimeStamp((newItem.Base().LastUpdatedAt)) {
 					up := generateUpdateSQL(localDB, newItem)
 					ups = append(ups, up)
 					down := generateUpdateSQL(migrationDB, *existing)

@@ -15,9 +15,9 @@ type Set struct {
 func NewProductSet(set dao_commerce.Set) Set {
 	return Set{
 		DTOBase: dto.DTOBase{
-			Id:         set.Id,
-			EntryDate:  set.EntryDate,
-			LastUpdate: set.LastUpdate,
+			Id:            set.Id,
+			AddedAt:       set.AddedAt,
+			LastUpdatedAt: set.LastUpdatedAt,
 		},
 		CatalogId: set.CatalogId,
 		MetaId:    set.MetaId,

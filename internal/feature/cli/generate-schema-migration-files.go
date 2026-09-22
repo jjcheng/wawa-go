@@ -196,11 +196,11 @@ BEGIN
     IF TG_OP = 'UPDATE' THEN
         -- Only consider when the row data actually changed
         IF (NEW.* IS DISTINCT FROM OLD.*) THEN
-            -- If caller did not explicitly set last_update (NULL)
+            -- If caller did not explicitly set last_updated_at (NULL)
             -- or left it equal to the old value, then set it to now().
-            -- If caller set a different last_update, respect that value.
-            IF NEW.last_update IS NULL OR NEW.last_update = OLD.last_update THEN
-                NEW.last_update = now();
+            -- If caller set a different last_updated_at, respect that value.
+            IF NEW.last_updated_at IS NULL OR NEW.last_updated_at = OLD.last_updated_at THEN
+                NEW.last_updated_at = now();
             END IF;
         END IF;
     END IF;

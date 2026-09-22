@@ -18,9 +18,9 @@ type Notification struct {
 func NewNotification(notification dao_account.Notification) Notification {
 	return Notification{
 		DTOBase: dto.DTOBase{
-			Id:         notification.Id,
-			EntryDate:  notification.EntryDate,
-			LastUpdate: notification.LastUpdate,
+			Id:            notification.Id,
+			AddedAt:       notification.AddedAt,
+			LastUpdatedAt: notification.LastUpdatedAt,
 		},
 		Title: notification.Title,
 		Body:  notification.Body,

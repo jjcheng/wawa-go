@@ -14,9 +14,9 @@ type Feedback struct {
 func NewFeedback(feedback dao_site.Feedback) Feedback {
 	return Feedback{
 		DTOBase: dto.DTOBase{
-			Id:         feedback.Id,
-			EntryDate:  feedback.EntryDate,
-			LastUpdate: feedback.LastUpdate,
+			Id:            feedback.Id,
+			AddedAt:       feedback.AddedAt,
+			LastUpdatedAt: feedback.LastUpdatedAt,
 		},
 		UserId:  feedback.UserId,
 		Content: feedback.Content,

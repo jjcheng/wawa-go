@@ -139,7 +139,7 @@ func ValidateChatMessages(messages *[]ChatMessage) []exception.InputException {
 // 		"identifier": chatMessage.Identifier,
 // 		"role":       chatMessage.Role,
 // 		"content":    chatMessage.Content,
-// 		"entryDate":  chatMessage.DateTime,
+// 		"addedAt":  chatMessage.DateTime,
 // 	}
 // 	if chatMessage.Attachment != nil {
 // 		dic["attachment"] = chatMessage.Attachment.Payload()

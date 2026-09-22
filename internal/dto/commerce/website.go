@@ -41,9 +41,9 @@ type Website struct {
 func NewWebsite(website dao_commerce.Website) Website {
 	w := Website{
 		DTOBase: dto.DTOBase{
-			Id:         website.Id,
-			EntryDate:  website.EntryDate,
-			LastUpdate: website.LastUpdate,
+			Id:            website.Id,
+			AddedAt:       website.AddedAt,
+			LastUpdatedAt: website.LastUpdatedAt,
 		},
 		Status:               website.Status,
 		ProductsLastSyncedAt: website.ProductsLastSynedAt,

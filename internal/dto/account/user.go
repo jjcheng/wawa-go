@@ -41,9 +41,9 @@ type UserWA struct {
 func NewUser(user dao_account.User) User {
 	d := User{
 		DTOBase: dto.DTOBase{
-			Id:         user.Id,
-			EntryDate:  user.EntryDate,
-			LastUpdate: user.LastUpdate,
+			Id:            user.Id,
+			AddedAt:       user.AddedAt,
+			LastUpdatedAt: user.LastUpdatedAt,
 		},
 		Name:        user.Name,
 		CountryCode: user.CountryCode,

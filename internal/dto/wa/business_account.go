@@ -19,9 +19,9 @@ type BusinessAccount struct {
 func NewBusinessAccount(businessAccount dao_wa.BusinessAccount, metaBusinessPortfolioId string, metaBusinessPortfolioName string) BusinessAccount {
 	return BusinessAccount{
 		DTOBase: dto.DTOBase{
-			Id:         businessAccount.Id,
-			EntryDate:  businessAccount.EntryDate,
-			LastUpdate: businessAccount.LastUpdate,
+			Id:            businessAccount.Id,
+			AddedAt:       businessAccount.AddedAt,
+			LastUpdatedAt: businessAccount.LastUpdatedAt,
 		},
 		WABAId:                    businessAccount.WABAId,
 		Name:                      businessAccount.Name,

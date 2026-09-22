@@ -21,9 +21,9 @@ type BroadcastRecipient struct {
 func NewBroadcastRecipient(broadcastRecipient dao_customer.BroadcastRecipient) BroadcastRecipient {
 	cr := BroadcastRecipient{
 		DTOBase: dto.DTOBase{
-			Id:         broadcastRecipient.Id,
-			EntryDate:  broadcastRecipient.EntryDate,
-			LastUpdate: broadcastRecipient.LastUpdate,
+			Id:            broadcastRecipient.Id,
+			AddedAt:       broadcastRecipient.AddedAt,
+			LastUpdatedAt: broadcastRecipient.LastUpdatedAt,
 		},
 		BroadcastId:  broadcastRecipient.BroadcastId,
 		CustomerId:   broadcastRecipient.CustomerId,

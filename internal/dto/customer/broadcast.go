@@ -24,9 +24,9 @@ type Broadcast struct {
 func NewBroadcast(broadcast dao_customer.Broadcast) Broadcast {
 	c := Broadcast{
 		DTOBase: dto.DTOBase{
-			Id:         broadcast.Id,
-			EntryDate:  broadcast.EntryDate,
-			LastUpdate: broadcast.LastUpdate,
+			Id:            broadcast.Id,
+			AddedAt:       broadcast.AddedAt,
+			LastUpdatedAt: broadcast.LastUpdatedAt,
 		},
 		Name:                broadcast.Name,
 		WATemplateId:        broadcast.WATemplateId,

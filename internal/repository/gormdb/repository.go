@@ -57,8 +57,8 @@ func (repository *Repository[T]) ListAll(ctx context.Context) ([]T, error) {
 // WRITE
 func (repository *Repository[T]) Insert(ctx context.Context, entity *T) error {
 	now := time.Now()
-	repository.setField(entity, "EntryDate", now)
-	repository.setField(entity, "LastUpdate", now)
+	repository.setField(entity, "AddedAt", now)
+	repository.setField(entity, "LastUpdatedAt", now)
 	// Always set Id to 0 to let PostgreSQL auto-generate it
 	repository.setField(entity, "Id", int32(0))
 	result := repository.db.WithContext(ctx).Omit("id").Create(entity)
@@ -78,8 +78,8 @@ func (repository *Repository[T]) InsertBulk(ctx context.Context, entities []T) e
 	}
 	now := time.Now()
 	for i := range entities {
-		repository.setField(&entities[i], "EntryDate", now)
-		repository.setField(&entities[i], "LastUpdate", now)
+		repository.setField(&entities[i], "AddedAt", now)
+		repository.setField(&entities[i], "LastUpdatedAt", now)
 		// Ensure Id is 0 to let PostgreSQL generate it automatically
 		repository.setField(&entities[i], "Id", int32(0))
 	}
@@ -95,7 +95,7 @@ func (repository *Repository[T]) InsertBulk(ctx context.Context, entities []T) e
 
 func (repository *Repository[T]) Update(ctx context.Context, entity *T) error {
 	now := time.Now()
-	repository.setField(entity, "LastUpdate", now)
+	repository.setField(entity, "LastUpdatedAt", now)
 	result := repository.db.WithContext(ctx).Select("*").Where("id = ?", (*entity).Base().Id).Updates(entity) //need to select * first, otherwise zero (default) values won't update
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -108,7 +108,7 @@ func (repository *Repository[T]) Update(ctx context.Context, entity *T) error {
 
 func (repository *Repository[T]) UpdateFields(ctx context.Context, id int32, fields map[string]any) error {
 	var entity T
-	fields["last_update"] = time.Now()
+	fields["last_updated_at"] = time.Now()
 	result := repository.db.WithContext(ctx).Model(&entity).Where("id = ?", id).Updates(fields)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {

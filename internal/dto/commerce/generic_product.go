@@ -28,9 +28,9 @@ type GenericProduct struct {
 func NewProduct(product dao_commerce.GenericProduct) GenericProduct {
 	return GenericProduct{
 		DTOBase: dto.DTOBase{
-			Id:         product.Id,
-			EntryDate:  product.EntryDate,
-			LastUpdate: product.LastUpdate,
+			Id:            product.Id,
+			AddedAt:       product.AddedAt,
+			LastUpdatedAt: product.LastUpdatedAt,
 		},
 		SetId:               product.SetId,
 		MetaId:              product.MetaId,
