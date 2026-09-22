@@ -53,6 +53,12 @@ func (getWebsiteByDomain GetWebsiteByDomain) Handle(ctx context.Context, _ *dto_
 	result := dto_commerce.NewWebsite(*website)
 	// hide some sensitive fields
 	result.MetaCatalogId = ""
+	// load some data
+	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, website.BusinessAccountId)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, "failed to get business account")
+	}
+	result.BusinessName = businessAccount.Name
 	return dto.NewSuccessResponse(&result)
 }
 

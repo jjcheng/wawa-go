@@ -14,6 +14,12 @@ type Website struct {
 	DomainName          string                      `gorm:"column:domain_name"`
 	Status              types.CommerceWebsiteStatus `gorm:"column:status"`
 	ProductsLastSynedAt time.Time                   `gorm:"column:products_last_synced_at"`
+	// our fieds
+	Tagline       string  `gorm:"column:tagline"`
+	CoverImageUrl string  `gorm:"column:cover_image_url"`
+	Latitude      float32 `gorm:"column:latitude"`
+	Longitude     float32 `gorm:"column:longitude"`
+	CopyrightText string  `gorm:"column:copyright_text"`
 	// phone number profile
 	About             string `gorm:"column:about"`
 	Description       string `gorm:"column:description"`

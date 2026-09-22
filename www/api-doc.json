@@ -6936,10 +6936,19 @@
                             "format": "int32",
                             "type": "integer"
                           },
+                          "business_name": {
+                            "type": "string"
+                          },
                           "catalog_name": {
                             "type": "string"
                           },
                           "contact_text": {
+                            "type": "string"
+                          },
+                          "copyright_text": {
+                            "type": "string"
+                          },
+                          "cover_image_url": {
                             "type": "string"
                           },
                           "description": {
@@ -6966,6 +6975,14 @@
                             "format": "date-time",
                             "type": "string"
                           },
+                          "latitude": {
+                            "format": "float",
+                            "type": "number"
+                          },
+                          "longitude": {
+                            "format": "float",
+                            "type": "number"
+                          },
                           "meta_catalog_id": {
                             "type": "string"
                           },
@@ -6977,6 +6994,9 @@
                             "type": "string"
                           },
                           "status": {
+                            "type": "string"
+                          },
+                          "tagline": {
                             "type": "string"
                           },
                           "url": {
@@ -7282,10 +7302,19 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "business_name": {
+                          "type": "string"
+                        },
                         "catalog_name": {
                           "type": "string"
                         },
                         "contact_text": {
+                          "type": "string"
+                        },
+                        "copyright_text": {
+                          "type": "string"
+                        },
+                        "cover_image_url": {
                           "type": "string"
                         },
                         "description": {
@@ -7312,6 +7341,14 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "latitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
                         "meta_catalog_id": {
                           "type": "string"
                         },
@@ -7323,6 +7360,9 @@
                           "type": "string"
                         },
                         "status": {
+                          "type": "string"
+                        },
+                        "tagline": {
                           "type": "string"
                         },
                         "url": {
@@ -7702,10 +7742,19 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "business_name": {
+                          "type": "string"
+                        },
                         "catalog_name": {
                           "type": "string"
                         },
                         "contact_text": {
+                          "type": "string"
+                        },
+                        "copyright_text": {
+                          "type": "string"
+                        },
+                        "cover_image_url": {
                           "type": "string"
                         },
                         "description": {
@@ -7732,6 +7781,14 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "latitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
                         "meta_catalog_id": {
                           "type": "string"
                         },
@@ -7743,6 +7800,9 @@
                           "type": "string"
                         },
                         "status": {
+                          "type": "string"
+                        },
+                        "tagline": {
                           "type": "string"
                         },
                         "url": {
@@ -8386,10 +8446,19 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "business_name": {
+                          "type": "string"
+                        },
                         "catalog_name": {
                           "type": "string"
                         },
                         "contact_text": {
+                          "type": "string"
+                        },
+                        "copyright_text": {
+                          "type": "string"
+                        },
+                        "cover_image_url": {
                           "type": "string"
                         },
                         "description": {
@@ -8416,6 +8485,14 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "latitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
                         "meta_catalog_id": {
                           "type": "string"
                         },
@@ -8427,6 +8504,9 @@
                           "type": "string"
                         },
                         "status": {
+                          "type": "string"
+                        },
+                        "tagline": {
                           "type": "string"
                         },
                         "url": {
@@ -8760,6 +8840,14 @@
                     "nullable": true,
                     "type": "string"
                   },
+                  "copyright_text": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "cover_image_url": {
+                    "nullable": true,
+                    "type": "string"
+                  },
                   "description": {
                     "nullable": true,
                     "type": "string"
@@ -8768,7 +8856,21 @@
                     "nullable": true,
                     "type": "string"
                   },
+                  "latitude": {
+                    "format": "float",
+                    "nullable": true,
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "format": "float",
+                    "nullable": true,
+                    "type": "number"
+                  },
                   "profile_picture_url": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "tagline": {
                     "nullable": true,
                     "type": "string"
                   }
@@ -8798,10 +8900,19 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "business_name": {
+                          "type": "string"
+                        },
                         "catalog_name": {
                           "type": "string"
                         },
                         "contact_text": {
+                          "type": "string"
+                        },
+                        "copyright_text": {
+                          "type": "string"
+                        },
+                        "cover_image_url": {
                           "type": "string"
                         },
                         "description": {
@@ -8828,6 +8939,14 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "latitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
                         "meta_catalog_id": {
                           "type": "string"
                         },
@@ -8839,6 +8958,9 @@
                           "type": "string"
                         },
                         "status": {
+                          "type": "string"
+                        },
+                        "tagline": {
                           "type": "string"
                         },
                         "url": {
@@ -13701,10 +13823,19 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "business_name": {
+                          "type": "string"
+                        },
                         "catalog_name": {
                           "type": "string"
                         },
                         "contact_text": {
+                          "type": "string"
+                        },
+                        "copyright_text": {
+                          "type": "string"
+                        },
+                        "cover_image_url": {
                           "type": "string"
                         },
                         "description": {
@@ -13731,6 +13862,14 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "latitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
+                        "longitude": {
+                          "format": "float",
+                          "type": "number"
+                        },
                         "meta_catalog_id": {
                           "type": "string"
                         },
@@ -13742,6 +13881,9 @@
                           "type": "string"
                         },
                         "status": {
+                          "type": "string"
+                        },
+                        "tagline": {
                           "type": "string"
                         },
                         "url": {

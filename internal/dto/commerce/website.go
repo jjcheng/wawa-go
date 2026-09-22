@@ -17,6 +17,12 @@ type Website struct {
 	Status               types.CommerceWebsiteStatus `json:"status"`
 	URL                  string                      `json:"url"`
 	ProductsLastSyncedAt time.Time                   `json:"products_last_synced_at"`
+	// our fields
+	CoverImageUrl string  `json:"cover_image_url"`
+	Tagline       string  `json:"tagline"`
+	Latitude      float32 `json:"latitude"`
+	Longitude     float32 `json:"longitude"`
+	CopyrightText string  `json:"copyright_text"`
 	// from phone number business profile
 	About             string `json:"about"`
 	Description       string `json:"description"`
@@ -28,6 +34,8 @@ type Website struct {
 	// from catalogs table
 	MetaCatalogId string `json:"meta_catalog_id,omitempty"` // hide when serving custom website
 	CatalogName   string `json:"catalog_name"`
+	// lazy loaded
+	BusinessName string `json:"business_name"`
 }
 
 func NewWebsite(website dao_commerce.Website) Website {
@@ -50,6 +58,11 @@ func NewWebsite(website dao_commerce.Website) Website {
 		Email:                website.Email,
 		Vertical:             website.Vertical,
 		ContactText:          website.ContactText,
+		CoverImageUrl:        website.CoverImageUrl,
+		Tagline:              website.Tagline,
+		Latitude:             website.Latitude,
+		Longitude:            website.Longitude,
+		CopyrightText:        website.CopyrightText,
 	}
 	w.URL = helper.GetWebhsiteFullUrl(w.DomainName, cfg.Default().Commerce.WebsiteDomain)
 	return w
