@@ -45,7 +45,7 @@ func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	}
 	existing, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetByMetaBusinessPortfolioId(ctx, store.MetaBusinessPortfolioId)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	businessName := store.Name
 	if existing != nil {
@@ -54,7 +54,7 @@ func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies
 			existing.AccessToken = store.AccessToken
 			// need to return error here becuase if access token is not stored, everything does not work
 			if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Update(ctx, existing); err != nil {
-				return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+				return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 		}
 		d := dto_wa.NewBusinessPortfolio(*existing, false)
@@ -66,7 +66,7 @@ func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies
 		AccessToken:             store.AccessToken,
 	}
 	if err := dependencies.UnitOfWork.WABusinessPortfolioRepository().Insert(ctx, &businessPortfolio); err != nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.BusinessPortfolio](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	d := dto_wa.NewBusinessPortfolio(businessPortfolio, true)
 	return dto.NewSuccessResponse(&d)

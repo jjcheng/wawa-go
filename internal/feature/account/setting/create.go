@@ -36,8 +36,7 @@ package feature_account_setting
 // 	//new.AppId = user.App.Id
 // 	err := dependencies.UnitOfWork.AccountSettingRepository().Insert(ctx, &new)
 // 	if err != nil {
-// 		dependencies.Logger.ErrorFunction(err, user.Id, create)
-// 		return dto.NewFailedResponse[*dto_ai.Setting](http.StatusInternalServerError, "error inserting setting")
+// 		return dto.NewFailedResponse[*dto_ai.Setting](http.StatusInternalServerError, "error inserting setting", err)
 // 	}
 // 	d := dto_ai.NewSetting(new)
 // 	return dto.NewSuccessResponse(&d)

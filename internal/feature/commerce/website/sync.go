@@ -45,7 +45,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "website not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// get catalog from db
 	catalog, err := dependencies.UnitOfWork.CommerceCatalogRepository().GetByWebsiteId(ctx, website.Id)

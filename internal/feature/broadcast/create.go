@@ -76,7 +76,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	exist, err := dependencies.UnitOfWork.BroadcastRepository().CheckNameExist(ctx, user.Id, create.Name)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if exist {
 		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "this broadcast name is already used", nil)
@@ -188,7 +188,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	committed = true
 	// process after commit because this is like a process of event which happens in fc task
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
-		err := Process(ctx, broadcast.Id, 1, dependencies)
+		err := Start(ctx, broadcast.Id, 1, dependencies)
 		if err != nil {
 			dependencies.Logger.Warnf("failed to run broadcast worker locally: broadcast_id=%d err=%v", broadcast.Id, err)
 		}

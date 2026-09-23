@@ -105,7 +105,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Token:               uuid.NewString(),
 	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := dto_customer.NewCustomer(customer)
 	return dto.NewSuccessResponse(&result)

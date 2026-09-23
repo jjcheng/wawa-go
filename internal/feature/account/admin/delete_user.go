@@ -31,8 +31,7 @@ package feature_account_admin
 // 	}
 // 	err := dependencies.UnitOfWork.AIUserRepository().DeleteById(ctx, existingUser.Id)
 // 	if err != nil {
-// 		dependencies.Logger.ErrorFunction(err, user.Id, delete)
-// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, "error deleting user")
+// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, "error deleting user", err)
 // 	}
 // 	return dto.NewEmptyResponse(true, http.StatusOK)
 // }

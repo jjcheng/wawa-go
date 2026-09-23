@@ -17,7 +17,6 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	feature_broadcast "github.com/jjcheng/wawa-go/internal/feature/broadcast"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
-	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/setup"
 )
@@ -100,28 +99,29 @@ func handleEvent(ctx context.Context, raw []byte) {
 func processMessage(ctx context.Context, raw []byte) {
 	message, err := handleMessage(ctx, raw)
 	if err != nil {
+		dependencies.Logger.ErrorFunction(err)
 		return
 	}
 	// if no error when processing the message, delete the queue from SMQ; otherwise SMQ will re-send
-	deleteMessage(message)
+	if err := deleteMessage(message); err != nil {
+		dependencies.Logger.ErrorFunction(err)
+	}
 }
 
 // Process one SMQ message envelope.
 func handleMessage(ctx context.Context, raw []byte) (*service.MessageQueueMessage, error) {
-	rawStr := string(raw)
 	var message service.MessageQueueMessage
 	if err := json.Unmarshal(raw, &message); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("handle_message failed to unmarshal raw to message: %w", err)
 	}
 	body := []byte(strings.TrimSpace(message.MessageBody))
 	// in case it's base64 encoded
 	if decodedBody, err := base64.StdEncoding.DecodeString(message.MessageBody); err == nil && json.Valid(decodedBody) {
 		body = decodedBody
 	}
-	queueJob, err := helper.DeserializeJSON[service.MessageQueueJob](string(body))
-	if err != nil {
-		logWorkerError(err, message.MessageID)
-		return &message, err
+	var queueJob service.MessageQueueJob
+	if err := json.Unmarshal(body, &queueJob); err != nil {
+		return &message, fmt.Errorf("handle_message failed to decode message body: %w", err)
 	}
 	// process job
 	switch queueJob.Type {
@@ -134,49 +134,50 @@ func handleMessage(ctx context.Context, raw []byte) (*service.MessageQueueMessag
 		if err := json.Unmarshal([]byte(rawBody), &incoming); err != nil {
 			return &message, fmt.Errorf("invalid handle_wa_incoming payload: %w", err)
 		}
-		return &message, feature_wa_message.ProcessIncoming(ctx, incoming, dependencies)
+		err := feature_wa_message.ProcessIncoming(ctx, incoming, dependencies)
+		if err != nil {
+			return nil, fmt.Errorf("failed to handle_wa_incoming: %w", err)
+		}
+		return &message, nil
 	case "retry_send_message":
 		var messageId int32
 		if err := json.Unmarshal(queueJob.Data, &messageId); err != nil {
-			return &message, fmt.Errorf("invalid retry_send_message data: %w", err)
+			return &message, fmt.Errorf("invalid retry_send_message data %v: %w", queueJob.Data, err)
 		}
 		err := feature_wa_message.RetrySendingMessage(ctx, messageId, dependencies)
-		return &message, err
+		if err != nil {
+			return nil, fmt.Errorf("failed to retry_send_message: %w", err)
+		}
+		return &message, nil
 	case "start_broadcast":
 		var broadcastId int32
 		if err := json.Unmarshal(queueJob.Data, &broadcastId); err != nil {
-			return &message, fmt.Errorf("invalid start_broadcast data: %w", err)
+			return &message, fmt.Errorf("invalid start_broadcast data %v: %w", queueJob.Data, err)
 		}
-		err := feature_broadcast.Process(ctx, broadcastId, int(message.DequeueCount), dependencies)
-		return &message, err
+		err := feature_broadcast.Start(ctx, broadcastId, int(message.DequeueCount), dependencies)
+		if err != nil {
+			return nil, fmt.Errorf("failed to start_broadcast: %w", err)
+		}
+		return &message, nil
 	}
-	err = fmt.Errorf("unidentified type: %s", rawStr)
-	dependencies.Logger.ErrorFunction(err, rawStr)
+	err := fmt.Errorf("unidentified handle_message queue job type: %s", queueJob.Type)
 	return &message, err
 }
 
-func deleteMessage(message *service.MessageQueueMessage) {
+func deleteMessage(message *service.MessageQueueMessage) error {
 	if dependencies == nil || dependencies.MessageQueue == nil {
 		log.Printf("worker message queue is not initialized")
-		return
+		return nil
 	}
 	if message == nil {
-		return
+		return nil
 	}
 	if strings.TrimSpace(message.ReceiptHandle) == "" {
-		dependencies.Logger.ErrorFunction(fmt.Errorf("SMQ message %s has no receipt handle", message.MessageID))
-		return
+		return fmt.Errorf("queue message %s has no receipt handle", message.MessageID)
 	}
 	err := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, message.ReceiptHandle)
+		return fmt.Errorf("failed to delete queue message %s: %w", message.ReceiptHandle, err)
 	}
-}
-
-func logWorkerError(err error, args ...any) {
-	if dependencies != nil && dependencies.Logger != nil {
-		dependencies.Logger.ErrorFunction(err, args...)
-		return
-	}
-	log.Printf("worker error: %v args=%v", err, args)
+	return nil
 }

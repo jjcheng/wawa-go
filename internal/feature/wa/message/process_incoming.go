@@ -33,8 +33,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 			if change.Field == "messages" {
 				var incomingValue dto_wa.IncomingValue
 				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
-					dependencies.Logger.ErrorFunction(err)
-					return fmt.Errorf("invalid messages change value")
+					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
 				}
 				// process incoming messages
 				for _, incomingMessage := range incomingValue.Messages {
@@ -55,24 +54,26 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 			} else if change.Field == "message_template_status_update" {
 				var templateStatus dto_wa.IncomingTemplateStatusChange
 				if err := json.Unmarshal(change.Value, &templateStatus); err != nil {
-					dependencies.Logger.ErrorFunction(err)
-					return fmt.Errorf("invalid message template status change value: %w", err)
+					return fmt.Errorf("invalid message template status change value value=%v error=%w", change.Value, err)
 				}
 				// do not store it into db, create a notification to inform user
 				key := helper.GetTemplateStatusChangeCacheKey(fmt.Sprint(templateStatus.MessageTemplateId))
 				cachedValue, err := dependencies.Cache.Get(ctx, key)
 				if err != nil {
+					// no need to return error, just skip
 					dependencies.Logger.Error(err)
 					return nil
 				}
 				userId, err := strconv.Atoi(cachedValue)
 				if err != nil {
-					dependencies.Logger.ErrorWithFields(err, "userId", userId)
+					// no need to return error, just skip
+					dependencies.Logger.ErrorFunction(err, cachedValue)
 					return nil
 				}
 				user, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, int32(userId))
 				if err != nil {
-					dependencies.Logger.Error(err)
+					// no need to return error, just skip
+					dependencies.Logger.ErrorFunction(err, userId)
 				}
 				var title, body, url string
 				var notificationType types.NotificationType
@@ -101,8 +102,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 			} else if change.Field == "product_feed" {
 				var productFeed dto_wa.IncomingProductFeed
 				if err := json.Unmarshal(change.Value, &productFeed); err != nil {
-					dependencies.Logger.ErrorFunction(err)
-					return fmt.Errorf("invalid message template status change value: %w", err)
+					return fmt.Errorf("invalid message template status change.Value=%s: %w", change.Value, err)
 				}
 				if productFeed.Status == "finished" {
 					// TODO: sync catalog db
@@ -116,8 +116,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status) error {
 	timestamp, err := strconv.ParseInt(status.Timestamp, 10, 64)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, status.Timestamp)
-		return fmt.Errorf("message status timestamp invalid: %s", status.Timestamp)
+		return fmt.Errorf("insert message status timestamp invalid timestamp=%s error=%w", status.Timestamp, err)
 	}
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	committed := false
@@ -137,8 +136,7 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("message not found")
 			}
-			dependencies.Logger.ErrorFunction(err, status.ID)
-			return fmt.Errorf("failed to get message from status")
+			return fmt.Errorf("failed to get message from status messageId=%s error=%w", status.ID, err)
 		}
 	}
 	event := dao_wa.MessageStatus{
@@ -158,8 +156,7 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 		event.ErrorMessage = strings.Join(errors, "\n\n")
 	}
 	if err := transaction.WAMessageStatusRepository().Insert(ctx, &event); err != nil {
-		dependencies.Logger.ErrorFunction(err, status.ID, message.Id, messageStatus, timestamp)
-		return fmt.Errorf("failed to insert message status")
+		return fmt.Errorf("failed to insert message status waMessageId=%s messageId=%d status=%s timestamp=%v error=%w", event.WAMessageId, event.MessageId, event.Status, event.Timestamp, err)
 	}
 	// Persist every callback for audit, but only advance the current status. Meta may
 	// deliver callbacks out of order or omit delivered when a message is read directly.
@@ -174,18 +171,16 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 			message.Category = status.Pricing.Category
 		}
 		if err := transaction.WAMessageRepository().Update(ctx, message); err != nil {
-			dependencies.Logger.ErrorFunction(err, messageStatus, status.ID, event.ErrorMessage)
-			return fmt.Errorf("failed to update message")
+			return fmt.Errorf("failed to update message status=%s waMessageId=%s errorMessage=%s billable=%v billingType=%s category=%s error=%w", message.Status, message.WAMessageId, message.ErrorMessage, message.Billable, message.BillingType, message.Category, err)
 		}
 	}
 	// get customer
 	customer, err := transaction.CustomerRepository().GetById(ctx, message.CustomerId)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			dependencies.Logger.ErrorFunction(err, message.CustomerId)
-			return fmt.Errorf("customer not found")
+			return fmt.Errorf("failed to get customer customerId=%d error=%w", message.CustomerId, err)
 		}
-		return fmt.Errorf("failed to get customer from message")
+		return fmt.Errorf("customer not found %d", message.CustomerId)
 	}
 	// update customer if needed
 	var customerHasChange bool
@@ -199,23 +194,20 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 	}
 	if customerHasChange {
 		if err := transaction.CustomerRepository().Update(ctx, customer); err != nil {
-			dependencies.Logger.ErrorFunction(err, customer.Id)
-			return fmt.Errorf("failed update customer Meta user id or WA id")
+			return fmt.Errorf("failed update customer Meta user id or WA id customerId=%d error=%w", customer.Id, err)
 		}
 	}
 	// get phone number
 	phoneNumber, err := transaction.WAPhoneNumberRepository().GetById(ctx, message.PhoneNumberId)
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			dependencies.Logger.ErrorFunction(err, message.PhoneNumberId)
-			return fmt.Errorf("phone number not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("phone number not found phoneNumberId=%d", message.PhoneNumberId)
 		}
-		return fmt.Errorf("failed to get phone number")
+		return fmt.Errorf("failed to get phone number phoneNumberId=%d error=%w", message.PhoneNumberId, err)
 	}
 	// now commit the transaction
 	if err := transaction.CommitTransaction(); err != nil {
-		dependencies.Logger.ErrorFunction(err, status)
-		return fmt.Errorf("failed to commit transaction")
+		return fmt.Errorf("failed to commit transaction error=%w", err)
 	}
 	committed = true
 	// Publish outside the transaction because Ably cannot participate in the database commit.
@@ -230,15 +222,13 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 func insertIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
 	timestamp, err := strconv.ParseInt(incomingMessage.Timestamp, 10, 64)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, incomingMessage.Timestamp)
 		return fmt.Errorf("incoming message timestamp invalid: %s", incomingMessage.Timestamp)
 	}
 	contact := helper.First(contacts, func(c dto_wa.IncomingContact) bool {
 		return c.UserID == incomingMessage.FromUserID
 	})
 	if contact == nil {
-		dependencies.Logger.ErrorFunction(fmt.Errorf("missing contact in WA incoming message: %s", incomingMessage.ID))
-		return fmt.Errorf("missing contact in WA incoming message")
+		return fmt.Errorf("missing contact in WA incoming message: %s", incomingMessage.FromUserID)
 	}
 	// skip whatsapp offical message
 	if contact.Profile.Name == "WhatsApp Business" {
@@ -256,10 +246,9 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 	userPhoneNumber, err := transaction.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, metadata.PhoneNumberID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("user's phone number not found")
+			return fmt.Errorf("user's phone number not found %s", metadata.PhoneNumberID)
 		}
-		dependencies.Logger.ErrorFunction(err, metadata.PhoneNumberID)
-		return fmt.Errorf("failed to get user's phone number")
+		return fmt.Errorf("failed to get user's phone number %s: %w", metadata.PhoneNumberID, err)
 	}
 	// check customer exists based on waId or metaUserId
 	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.UserId, contact.WaID, incomingMessage.FromUserID)
@@ -267,8 +256,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("customer not found")
 		}
-		dependencies.Logger.ErrorFunction(err, userPhoneNumber.UserId, incomingMessage.FromUserID)
-		return fmt.Errorf("failed to get customer")
+		return fmt.Errorf("failed to get customer userId=%d fromUserId=%s: %w", userPhoneNumber.UserId, incomingMessage.FromUserID, err)
 	}
 	// if no existing customer, create new
 	var customerDTO dto_customer.Customer
@@ -277,7 +265,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 		if incomingMessage.From != "" {
 			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessage.From)
 			if err != nil {
-				dependencies.Logger.ErrorFunction(err, metadata.DisplayPhoneNumber)
+				dependencies.Logger.ErrorFunction(err)
 				cc = "."
 				pn = incomingMessage.From
 			}
@@ -297,7 +285,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			Id: userPhoneNumber.UserId,
 		}}, &transactionDependencies)
 		if !createCustomerResponse.Success {
-			return errors.New(createCustomerResponse.Message)
+			return createCustomerResponse.Error
 		}
 		customerDTO = *createCustomerResponse.Data
 	} else { // update metaUserId if not exist
@@ -316,8 +304,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 		}
 		if hasChange {
 			if err := transaction.CustomerRepository().Update(ctx, existingCustomer); err != nil {
-				dependencies.Logger.ErrorFunction(err)
-				return fmt.Errorf("failed update existing customer")
+				return fmt.Errorf("failed update existing customer %d: %w", existingCustomer.Id, err)
 			}
 		}
 		customerDTO = dto_customer.NewCustomer(*existingCustomer)
@@ -336,12 +323,10 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return errors.New("duplicate message entry")
 		}
-		dependencies.Logger.ErrorFunction(err, message.CustomerId, message.PhoneNumberId, message.WAMessageId)
-		return fmt.Errorf("failed to insert message")
+		return fmt.Errorf("failed to insert message customerId=%d phoneNumberId=%d waMessageId=%s timestamp=%v error=%w", message.CustomerId, userPhoneNumber.Id, message.WAMessageId, message.Timestamp, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		dependencies.Logger.ErrorFunction(err)
-		return fmt.Errorf("failed to commit transaction")
+		return fmt.Errorf("failed to commit transaction error=%w", err)
 	}
 	committed = true
 	messageDTO := dto_wa.NewMessage(message)
@@ -368,8 +353,7 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("message not found")
 		}
-		dependencies.Logger.ErrorFunction(err, messageId)
-		return fmt.Errorf("failed to get message")
+		return fmt.Errorf("failed to get message messageId=%d error=%w", messageId, err)
 	}
 	// if already exhausted retries, return
 	if message.Attempts >= int32(cfg.Default().AliyunSMQ.MaxDequeueCount) {
@@ -382,10 +366,10 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 	}
 	// quickly update next_attempt_at to 10 min later so other worker won't pick it up
 	// don't retry here, if failed, return
-	updated, err := dependencies.UnitOfWork.WAMessageRepository().UpdateNextAttemptAt(ctx, message.Id, now.Add(10*time.Minute))
+	nextAttemptAt := now.Add(10 * time.Minute)
+	updated, err := dependencies.UnitOfWork.WAMessageRepository().UpdateNextAttemptAt(ctx, message.Id, nextAttemptAt)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, message.Id, now.Add(10*time.Minute))
-		return fmt.Errorf("failed to update message next attempt at")
+		return fmt.Errorf("failed to update message next attempt at nextAttemptAt=%v messageId=%d error=%w", nextAttemptAt, message.Id, err)
 	}
 	if !updated {
 		return nil
@@ -403,10 +387,9 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("phone number not found")
+			return fmt.Errorf("phone number not found phoneNumberId=%d error=%w", message.PhoneNumberId, err)
 		}
-		dependencies.Logger.ErrorFunction(err, message.PhoneNumberId)
-		return fmt.Errorf("failed to get phone number")
+		return fmt.Errorf("failed to get phone number phoneNumberId=%d error=%w", message.PhoneNumberId, err)
 	}
 	// take a snapshot of errorMessages, so we know if there are new errors
 	errorMessages := strings.Split(strings.TrimSpace(message.ErrorMessage), "\n")
@@ -443,7 +426,6 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 			err = retry(ctx, 3, func() error {
 				u, e := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, phoneNumber.UserId)
 				if e != nil {
-					dependencies.Logger.ErrorFunction(err, phoneNumber.UserId)
 					return e
 				}
 				user = u
@@ -473,30 +455,25 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 			return fmt.Errorf("business portfolio not found")
 		} else {
 			errorMessages = append(errorMessages, "failed to get business portfolio")
-			dependencies.Logger.ErrorFunction(err, phoneNumber.UserId)
-			return fmt.Errorf("failed to get business portfolio")
+			return fmt.Errorf("failed to get business portfolio userId=%d error=%w", phoneNumber.UserId, err)
 		}
 	}
 	// send message using WhatsApp API
 	response, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumber.MetaPhoneNumberId, message.Payload, businessPortfolio.AccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, phoneNumber.MetaPhoneNumberId)
 		// WA errors are for user to see
 		errorMessages = append(errorMessages, err.Error())
 		return err
 	} else if response == nil {
 		err = fmt.Errorf("WhatsApp HTTP response is nil")
-		dependencies.Logger.ErrorFunction(err, phoneNumber.MetaPhoneNumberId)
 		errorMessages = append(errorMessages, err.Error())
 		return err
 	} else if len(response.Messages) == 0 {
 		err = fmt.Errorf("no WhatsApp HTTP response messages")
-		dependencies.Logger.ErrorFunction(err, phoneNumber.MetaPhoneNumberId)
 		errorMessages = append(errorMessages, err.Error())
 		return err
 	} else if response.Messages[0].ID == "" {
 		err = fmt.Errorf("message ID not returned by Meta")
-		dependencies.Logger.ErrorFunction(err, phoneNumber.MetaPhoneNumberId)
 		errorMessages = append(errorMessages, err.Error())
 		return err
 	}
@@ -509,8 +486,7 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 		return e
 	})
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, message.WAMessageId, message.Attempts, message.Status)
-		return fmt.Errorf("failed to update message status")
+		return fmt.Errorf("failed to update message status waMessageId=%s attempts=%d status=%s error=%w", message.WAMessageId, message.Attempts, message.Status, err)
 	}
 	return nil
 }

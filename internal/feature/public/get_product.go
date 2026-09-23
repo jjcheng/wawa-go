@@ -45,7 +45,6 @@ func (getProduct GetProduct) Handle(ctx context.Context, _ *dto_account.User, de
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusNotFound, "product not found", nil)
 		}
-		dependencies.Logger.ErrorFunction(err, getProduct.Id)
 		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// get set

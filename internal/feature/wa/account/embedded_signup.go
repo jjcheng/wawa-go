@@ -165,9 +165,9 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	// Step 5 - if new user is not User himself/herself, send notification to the masters
 	if storeUserResponse.Data.New && hasMasterUser {
 		// get all masters
-		masterUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, storeBusinessPortfolioResponse.Data.Id, helper.ConvertToPointer(types.UserTypeMaster), true)
+		masterUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, storeBusinessAccountResponse.Data.Id, helper.ConvertToPointer(types.UserTypeMaster), true)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err)
+			dependencies.Logger.ErrorFunction(err, storeBusinessAccountResponse.Data.Id)
 		} else {
 			// send notifications
 			for _, master := range masterUsers {

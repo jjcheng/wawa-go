@@ -62,7 +62,7 @@ func (listProducts ListProducts) Handle(ctx context.Context, _ *dto_account.User
 	}
 	products, totalItems, totalPages, err := dependencies.UnitOfWork.CommerceGenericProductRepository().List(ctx, set.CatalogId, listProducts.SetId, "", "id", true, int(listProducts.Page), int(listProducts.PageSize))
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_commerce.GenericProduct]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_commerce.GenericProduct]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	items := make([]dto_commerce.GenericProduct, 0, len(products))
 	for _, product := range products {

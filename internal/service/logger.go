@@ -55,15 +55,18 @@ func (logger *Logger) Error(err error) {
 	logger.err.Error(err.Error())
 }
 
-func (logger *Logger) ErrorWithFields(err error, fields ...any) {
+func (logger *Logger) ErrorWithFields(err error, event string, fields ...any) {
+	attrs := []any{"event", event}
+	attrs = append(attrs, fields...)
+
 	if err == nil {
-		logger.err.Error("<nil>", fields...)
+		logger.err.Error("<nil>", attrs...)
 		return
 	}
-	logger.err.Error(err.Error(), fields...)
+	logger.err.Error(err.Error(), attrs...)
 }
 
-// function name is auto captured
+// // function name is auto captured
 func (logger *Logger) ErrorFunction(err error, values ...any) {
 	funcName := getFunctionName(2)
 	if err == nil {
@@ -93,9 +96,9 @@ func (logger *Logger) Warnf(message string, v ...any) {
 	logger.err.Warn(fmt.Sprintf(message, v...))
 }
 
-// Access logs a one-line structured summary for a completed HTTP request.
+// LogHTTPRequest logs a one-line structured summary for a completed HTTP request.
 // requestJSON is only attached in the develop environment to avoid logging request payloads in prod.
-func (logger *Logger) Access(method string, path string, statusCode int, duration time.Duration, userId int32, remoteAddress string, requestId string, requestJSON string) {
+func (logger *Logger) LogHTTPRequest(method string, path string, statusCode int, duration time.Duration, userId int32, remoteAddress string, requestId string, requestJSON string) {
 	attrs := []any{
 		"method", method,
 		"path", path,

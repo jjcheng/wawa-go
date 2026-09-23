@@ -57,7 +57,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}
 	recipients, totalCount, totalPages, err := dependencies.UnitOfWork.BroadcastRecipientRepository().ListByBroadcastId(ctx, list.BroadcastId, list.Name, list.Status, false, list.Page, list.PageSize)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	items := make([]dto_customer.BroadcastRecipient, 0, len(recipients))
 	for _, recipient := range recipients {

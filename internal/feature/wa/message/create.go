@@ -297,7 +297,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	channelName := helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token)
 	err = dependencies.Ably.Publish("message", channelName, result)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, channelName)
+		dependencies.Logger.ErrorFunction(err, channelName, result.Id)
 	}
 	return dto.NewSuccessResponse(&result)
 }

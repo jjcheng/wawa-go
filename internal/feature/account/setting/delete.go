@@ -25,8 +25,7 @@ package feature_account_setting
 // 	}
 // 	err := dependencies.UnitOfWork.AISettingRepository().DeleteById(ctx, existing.Id)
 // 	if err != nil {
-// 		dependencies.Logger.ErrorFunction(err, user.Id, delete)
-// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, "error deleting setting")
+// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, "error deleting setting", err)
 // 	}
 // 	return dto.NewEmptyResponse(true, http.StatusOK)
 // }

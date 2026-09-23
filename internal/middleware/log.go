@@ -50,7 +50,7 @@ func Log(logger *service.Logger) gin.HandlerFunc {
 }
 
 func logRaw(c *gin.Context, startAt time.Time, userId int32, requestJSON string, logger *service.Logger) {
-	logger.Access(
+	logger.LogHTTPRequest(
 		c.Request.Method,
 		c.Request.URL.Path,
 		c.Writer.Status(),

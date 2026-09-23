@@ -93,7 +93,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	cacheValue := fmt.Sprint(user.Id)
 	err = dependencies.Cache.Set(ctx, cacheKey, cacheValue, time.Now().Add(time.Hour*48))
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, cacheKey, cacheValue)
+		dependencies.Logger.ErrorFunction(err, store.Id)
 	}
 	return dto.NewSuccessResponse(template)
 }

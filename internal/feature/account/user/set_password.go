@@ -53,16 +53,16 @@ func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.Use
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	passwordHash, err := helper.HashPassword(setPassword.NewPassword)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	existing.PasswordHash = passwordHash
 	existing.Status = types.UserStatusActive
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	d := dto_account.NewUser(*existing)
 	return dto.NewSuccessResponse(&d)

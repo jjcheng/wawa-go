@@ -23,7 +23,7 @@ import (
 
 // will call CreateMessage for each recipient, whether it's successful or failed, the broadcast will be marked completed
 // if error occurred before completed and dequeueCount >= max dequeue count, send user notification
-func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependencies *service.Dependencies) (processErr error) {
+func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencies *service.Dependencies) (processErr error) {
 	log.Printf("processing broadcast ID: %d", broadcastId)
 	var broadcast *dao_customer.Broadcast
 	// just return if we can't event get the broadcast
@@ -55,7 +55,6 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 			return dependencies.UnitOfWork.BroadcastRepository().Update(ctx, broadcast)
 		})
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, broadcast.Id)
 			errorMessages = append(errorMessages, "failed to set broadcast status to sending")
 			return fmt.Errorf("failed to set broadcast %d status to sending", broadcast.Id)
 		}
@@ -68,8 +67,9 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 		return e
 	})
 	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			dependencies.Logger.ErrorFunction(err, broadcast.UserId)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			errorMessages = append(errorMessages, "user not found")
+			return fmt.Errorf("user %d for broadcast %d not found", broadcast.UserId, broadcastId)
 		}
 		errorMessages = append(errorMessages, "failed to get user")
 		return fmt.Errorf("failed to get user %d for broadcast %d: %w", broadcast.UserId, broadcast.Id, err)
@@ -93,8 +93,7 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 			broadcast.ErrorMessage = strings.Join(errorMessages, "\n")
 			return dependencies.UnitOfWork.BroadcastRepository().Update(ctx, broadcast)
 		}); err != nil {
-			dependencies.Logger.ErrorFunction(err, broadcast.Id, errorMessages)
-			log.Printf("failed to update broadcast %d error message: %v", broadcast.Id, err)
+			dependencies.Logger.ErrorFunction(fmt.Errorf("failed to update broadcast %d error message: %v error=%w", broadcast.Id, broadcast.ErrorMessage, err))
 		}
 	}()
 	// get wa assets
@@ -107,7 +106,6 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 		return e
 	})
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
 		errorMessages = append(errorMessages, "failed to get user's WhatsApp assets")
 		return fmt.Errorf("failed to get WA assets for user %d: %w", user.Id, err)
 	}
@@ -142,7 +140,6 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 			return e
 		})
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, broadcast.Id, page)
 			errorMessages = append(errorMessages, fmt.Sprintf("error listing recipients page %d", page))
 			return fmt.Errorf("failed to list recipients for broadcast %d page %d: %w", broadcast.Id, page, err)
 		}
@@ -174,8 +171,8 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 			if err := try(ctx, func() error {
 				return dependencies.UnitOfWork.BroadcastRecipientRepository().Update(ctx, &recipient)
 			}); err != nil {
-				dependencies.Logger.ErrorFunction(err, broadcast.Id, recipient.Id, response.Data.Id)
-				failedRecipientErrorMessages = append(failedRecipientErrorMessages, fmt.Sprintf("failed to link recipient %d to message id %d", recipient.Id, response.Data.Id))
+				dependencies.Logger.ErrorFunction(fmt.Errorf("failed to link recipient %d to message %d: %w", recipient.Id, response.Data.Id, err))
+				failedRecipientErrorMessages = append(failedRecipientErrorMessages, fmt.Sprintf("failed to link recipient %d to message %d", recipient.Id, response.Data.Id))
 			}
 			// we don't care if the message is successfully sent or not, that's handled by another task
 		}

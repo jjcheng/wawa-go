@@ -46,7 +46,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if err := dependencies.UnitOfWork.CommerceWebsiteRepository().DeleteById(ctx, delete.Id); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }

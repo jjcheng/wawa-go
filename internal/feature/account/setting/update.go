@@ -32,8 +32,7 @@ package feature_account_setting
 // 	existing.Value = update.Value
 // 	err := dependencies.UnitOfWork.AISettingRepository().Update(ctx, existing)
 // 	if err != nil {
-// 		dependencies.Logger.ErrorFunction(err, user.Id, update)
-// 		return dto.NewFailedResponse[*dto_ai.Setting](http.StatusInternalServerError, "error updating setting")
+// 		return dto.NewFailedResponse[*dto_ai.Setting](http.StatusInternalServerError, "error updating setting", err)
 // 	}
 // 	d := dto_ai.NewSetting(*existing)
 // 	return dto.NewSuccessResponse(&d)

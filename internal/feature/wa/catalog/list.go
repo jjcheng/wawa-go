@@ -80,7 +80,7 @@ func (List) APISettings() feature.APISettings {
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 		},
 	)
