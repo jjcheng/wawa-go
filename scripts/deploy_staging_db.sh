@@ -59,7 +59,7 @@ run() {
     # Run migration
     migrate -source file://migration -database "$DSN" up
 
-    print_step "Granting application role access to all application schemas..."
+    # print_step "Granting application role access to all application schemas..."
     PGPASSWORD="$MIGRATION_DB_PASSWORD" psql \
         "host=$MIGRATION_DB_HOST port=$MIGRATION_DB_PORT user=$MIGRATION_DB_USER dbname=$MIGRATION_DB_NAME sslmode=$MIGRATION_DB_SSLMODE" \
         -v ON_ERROR_STOP=1 \

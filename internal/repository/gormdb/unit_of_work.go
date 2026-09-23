@@ -35,6 +35,7 @@ type UnitOfWork struct {
 	commerceSetRepository            repository.CommerceSetRepository
 	commerceGenericProductRepository repository.CommerceGenericProductRepository
 	commerceWebsiteRepository        repository.CommerceWebsiteRepository
+	commercePageRepository           repository.CommercePageRepository
 	// site
 	siteFeedbackRepository repository.SiteFeedbackRepository
 }
@@ -67,6 +68,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.commerceSetRepository = NewCommerceSetRepository(db, logger)
 	unitOfWork.commerceGenericProductRepository = NewCommericeGenericProductRepository(db, logger)
 	unitOfWork.commerceWebsiteRepository = NewCommerceWebsiteRepository(db, logger)
+	unitOfWork.commercePageRepository = NewCommercePageRepository(db, logger)
 	// site
 	unitOfWork.siteFeedbackRepository = NewSiteFeedbackRepository(db, logger)
 	return &unitOfWork
@@ -154,6 +156,10 @@ func (unitOfWork *UnitOfWork) CommerceGenericProductRepository() repository.Comm
 
 func (unitOfWork *UnitOfWork) CommerceWebsiteRepository() repository.CommerceWebsiteRepository {
 	return unitOfWork.commerceWebsiteRepository
+}
+
+func (unitOfWork *UnitOfWork) CommercePageRepository() repository.CommercePageRepository {
+	return unitOfWork.commercePageRepository
 }
 
 // site

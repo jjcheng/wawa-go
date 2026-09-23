@@ -34,7 +34,7 @@ func (create *Create) Validate() []exception.InputException {
 	} else if len(create.Subdomain) > 60 || !regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$`).MatchString(create.Subdomain) {
 		inputErrors = append(inputErrors, exception.NewInputException("subdomain", "invalid subdomain"))
 	} else {
-		reservedSubdomains := []string{"admin", "portal", "hello", "public", "private", "reserved", "panel", "api", "web", "app", "website", "application", "gateway", "gate", "mobile", "mobile-web", "mobileweb", "system", "llm", "model", "open", "closed", "wwww", "wwwww", "ww", "www", "xyz"}
+		reservedSubdomains := []string{"admin", "portal", "hello", "public", "private", "reserved", "panel", "api", "web", "app", "website", "application", "gateway", "gate", "mobile", "mobile-web", "mobileweb", "system", "llm", "model", "open", "closed", "wwww", "wwwww", "ww", "www", "xyz", "preview", "production"}
 		if helper.Any(reservedSubdomains, func(s string) bool {
 			return s == create.Subdomain
 		}) {

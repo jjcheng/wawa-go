@@ -32,6 +32,7 @@ type UnitOfWork interface {
 	CommerceSetRepository() CommerceSetRepository
 	CommerceGenericProductRepository() CommerceGenericProductRepository
 	CommerceWebsiteRepository() CommerceWebsiteRepository
+	CommercePageRepository() CommercePageRepository
 	// site
 	SiteFeedbackRepository() SiteFeedbackRepository
 }
