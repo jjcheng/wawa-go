@@ -216,31 +216,28 @@ func (create *Create) Validate() []exception.InputException {
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Message] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessPortfolioAccessToken == "" {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Message](inputErrors)
-	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
-	}
-	if strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
 	}
 	// get customer by customer id
 	customer, err := dependencies.UnitOfWork.CustomerRepository().GetByIdAndUserId(ctx, create.CustomerId, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "customer not found")
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "customer not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if customer.WAId == "" && customer.MetaUserId == "" {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID or Meta user ID, please edit the details")
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID or Meta user ID, please edit the details", nil)
 	}
 	payload, err := messagePayload(create)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	payload["messaging_product"] = "whatsapp"
 	payload["recipient_type"] = "individual"
@@ -292,7 +289,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		message.WAMessageId = strings.TrimSpace(response.Messages[0].ID)
 	}
 	if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := dto_wa.NewMessage(message)
 	// publish the message even if it has error, so user is aware, this applies to broadcast messages as well
@@ -328,7 +325,7 @@ func (Create) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 		},

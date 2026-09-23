@@ -95,12 +95,6 @@ func (accountNotificationRepository *AccountNotificationRepository) ListByUserId
 		return nil, 0, 0, fmt.Errorf("AccountNotificationRepository.ListByUserId index=0 userId=%d typ=%s read=%v page=%d pageSize=%d error=%w", userId, typ, read, page, pageSize, err)
 	}
 	totalCount = int(count)
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 1
-	}
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	if err = query.Order("id DESC").Offset((page - 1) * pageSize).Limit(pageSize).Find(&notifications).Error; err != nil {
 		return nil, 0, 0, fmt.Errorf("AccountNotificationRepository.ListByUserId index=1 userId=%d typ=%s read=%v page=%d pageSize=%d error=%w", userId, typ, read, page, pageSize, err)

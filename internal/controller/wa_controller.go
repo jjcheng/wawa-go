@@ -85,11 +85,11 @@ func registerWebhookReceiveRoute(routerGroup *gin.RouterGroup, dependencies *ser
 	routerGroup.POST(feature_wa_webhook.Receive{}.APISettings().Path, func(ctx *gin.Context) {
 		rawBody, err := ctx.GetRawData()
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, dto.NewFailedResponse[any](http.StatusUnauthorized, "failed to read raw body"))
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, dto.NewFailedResponse[any](http.StatusBadRequest, "failed to read raw body", err))
 			return
 		}
 		if !helper.VerifyWhatsAppWebhookSignature(ctx.GetHeader("X-Hub-Signature-256"), rawBody, cfg.Default().WhatsApp.AppSecret) {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid WhatsApp webhook signature"))
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid WhatsApp webhook signature", nil))
 			return
 		}
 		requestObject := feature_wa_webhook.Receive{RawBody: string(rawBody)}
@@ -108,7 +108,7 @@ func registerTemplateSampleUploadRoute(routerGroup *gin.RouterGroup, dependencie
 	routerGroup.POST(settings.Path, func(ctx *gin.Context) {
 		content, err := ctx.GetRawData()
 		if err != nil {
-			response := dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusBadRequest, "failed to read sample content")
+			response := dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusBadRequest, "failed to read sample content", err)
 			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return
 		}

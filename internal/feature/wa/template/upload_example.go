@@ -42,17 +42,17 @@ func (upload *UploadExample) Validate() []exception.InputException {
 
 func (upload UploadExample) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.WhatsAppTemplateHeaderSampleUploadResponse] {
 	if user == nil {
-		return dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.BusinessPortfolio == nil || user.WA.BusinessPortfolioAccessToken == "" {
+		return dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := upload.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](inputErrors)
 	}
-	if user.WA == nil || user.WA.BusinessPortfolio == nil || strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
-		return dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusUnauthorized, "you are not authorized to access this business portfolio")
-	}
 	handle, err := dependencies.Whatsapp.UploadTemplateHeaderSample(ctx, upload.Filename, upload.ContentType, upload.Content, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusBadGateway, err.Error(), err)
 	}
 	return dto.NewSuccessResponse(&service.WhatsAppTemplateHeaderSampleUploadResponse{Handle: handle})
 }
@@ -68,7 +68,7 @@ func (UploadExample) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this business portfolio", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 		},

@@ -58,22 +58,22 @@ func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	existing, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, store.MetaPhoneNumberId)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	// update existing
 	if existing != nil {
 		if existing.BusinessAccountId != store.BusinessAccountId {
-			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "existing phone number does not match the business account id")
+			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
 		if existing.UserId != store.UserId {
-			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusBadRequest, "existing phone number does not belong to the user")
+			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
 		existing.DisplayPhoneNumber = store.DisplayPhoneNumber
 		existing.WAId = helper.NormalizeWAId(existing.DisplayPhoneNumber)
 		existing.Name = store.Name
 		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, existing); err != nil {
-			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		d := dto_wa.NewPhoneNumber(*existing)
 		return dto.NewSuccessResponse(&d)
@@ -87,7 +87,7 @@ func (store Store) Handle(ctx context.Context, _ *dto_account.User, dependencies
 		WAId:               helper.NormalizeWAId(store.DisplayPhoneNumber),
 	}
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Insert(ctx, &phoneNumber); err != nil {
-		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	d := dto_wa.NewPhoneNumber(phoneNumber)
 	return dto.NewSuccessResponse(&d)

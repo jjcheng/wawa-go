@@ -52,12 +52,12 @@ func registerCommonRoutes(router *gin.Engine) {
 		ctx.JSON(healthResponseObject.StatusCode, healthResponseObject)
 	})
 	router.NoRoute(func(ctx *gin.Context) {
-		responseObject := dto.NewFailedResponse[any](http.StatusBadRequest, "route not found")
+		responseObject := dto.NewFailedResponse[any](http.StatusBadRequest, "route not found", nil)
 		responseObject.RequestId = middleware.GetRequestID(ctx)
 		ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 	})
 	router.NoMethod(func(ctx *gin.Context) {
-		responseObject := dto.NewFailedResponse[any](http.StatusMethodNotAllowed, "method not allowed")
+		responseObject := dto.NewFailedResponse[any](http.StatusMethodNotAllowed, "method not allowed", nil)
 		responseObject.RequestId = middleware.GetRequestID(ctx)
 		ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 	})
@@ -90,6 +90,16 @@ func registerRoute[R any, T feature.Request[R]](server *gin.RouterGroup, depende
 		responseObject.EndAt = endAt
 		responseObject.TimeTaken = helper.GetTimeDifferenceInMS(endAt, startAt)
 		responseObject.RequestId = middleware.GetRequestID(ctx)
+		if responseObject.Error != nil {
+			dependencies.Logger.ErrorWithFields(responseObject.Error,
+				"request_id", responseObject.RequestId,
+				"status", responseObject.StatusCode,
+				"method", ctx.Request.Method,
+				"path", ctx.Request.URL.Path,
+				"started_at", responseObject.StartAt,
+				"time_taken", responseObject.TimeTaken,
+			)
+		}
 		if !responseObject.Success {
 			ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 			return

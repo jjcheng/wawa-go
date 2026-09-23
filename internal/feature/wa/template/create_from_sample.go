@@ -36,30 +36,33 @@ func (createFromSample *CreateFromSample) Validate() []exception.InputException 
 }
 
 func (createFromSample CreateFromSample) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Template] {
-	if inputErrors := createFromSample.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[*dto_wa.Template](inputErrors)
+	if user == nil {
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized to access this WABA")
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if inputErrors := createFromSample.Validate(); len(inputErrors) > 0 {
+		return dto.NewInvalidInputResponse[*dto_wa.Template](inputErrors)
 	}
 	sampleTemplate, err := dependencies.UnitOfWork.WASampleTemplateRepository().GetById(ctx, int32(createFromSample.SampleTemplateId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.Template](http.StatusNotFound, "sample template not found")
+			return dto.NewFailedResponse[*dto_wa.Template](http.StatusNotFound, "sample template not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	templateBase, err := dto_wa.NewSampleTemplate(*sampleTemplate)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	templateBase.Name = createFromSample.Name
 	if err := createFromSample.uploadHeaderMediaSamples(ctx, &templateBase.TemplateBase, dependencies, user.WA.BusinessPortfolioAccessToken); err != nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error(), err)
 	}
 	template, err := dependencies.Whatsapp.CreateTemplate(ctx, user.WA.BusinessAccount.WABAId, templateBase.Payload(), user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error(), err)
 	}
 	// set meta edit template url
 	template.ByAPI = true

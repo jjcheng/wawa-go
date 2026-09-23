@@ -27,7 +27,7 @@ func (getStatistics *GetStatistics) Validate() []exception.InputException {
 
 func (getStatistics GetStatistics) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*map[types.WAMessageStatus]int] {
 	if user == nil {
-		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := getStatistics.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*map[types.WAMessageStatus]int](inputErrors)
@@ -35,16 +35,16 @@ func (getStatistics GetStatistics) Handle(ctx context.Context, user *dto_account
 	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, getStatistics.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusNotFound, "broadcast not found")
+			return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusNotFound, "broadcast not found", nil)
 		}
-		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if broadcast.UserId != user.Id {
-		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusNotFound, "broadcast not found")
+		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	statistics, err := dependencies.UnitOfWork.BroadcastRecipientRepository().CountMessageStatusesByBroadcastId(ctx, broadcast.Id)
 	if err != nil {
-		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*map[types.WAMessageStatus]int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	processedCount := 0
 	for _, count := range statistics {
@@ -67,7 +67,7 @@ func (GetStatistics) APISettings() feature.APISettings {
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

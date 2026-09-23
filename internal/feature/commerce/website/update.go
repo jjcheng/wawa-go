@@ -61,10 +61,10 @@ func (update *Update) Validate() []exception.InputException {
 
 func (update Update) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_commerce.Website] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := update.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_commerce.Website](inputErrors)
@@ -72,12 +72,12 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	website, err := dependencies.UnitOfWork.CommerceWebsiteRepository().GetById(ctx, update.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found")
+			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	website.About = update.About
 	website.Description = update.Description
@@ -91,7 +91,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	website.Longitude = update.Longitude
 	website.CopyrightText = update.CopyrightText
 	if err := dependencies.UnitOfWork.CommerceWebsiteRepository().Update(ctx, website); err != nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := dto_commerce.NewWebsite(*website)
 	return dto.NewSuccessResponse(&result)
@@ -108,8 +108,8 @@ func (Update) APISettings() feature.APISettings {
 		true,
 		types.APITagCommerce,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("website not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

@@ -23,25 +23,25 @@ func (list *List) Validate() []exception.InputException {
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]service.WhatsAppProductCatalog] {
 	if user == nil {
-		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if user.WA == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]service.WhatsAppProductCatalog](inputErrors)
 	}
-	if user.WA == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusUnauthorized, "you are not authorized")
-	}
 	catalogs, err := dependencies.Whatsapp.ListCatalogs(ctx, user.WA.BusinessPortfolio.MetaBusinessPortfolioId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusBadGateway, err.Error(), err)
 	}
 	// retrive catalogs in our db, not every Meta catalog is in db, only those need to create website
 	commerceCatalogs, err := dependencies.UnitOfWork.CommerceCatalogRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
 	if err != nil {
-		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusInternalServerError, "failed to get catalogs")
+		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	for _, commerceCatalog := range commerceCatalogs {
 		if metaCatalogIndex := helper.IndexOf(catalogs, func(c service.WhatsAppProductCatalog) bool {
@@ -79,8 +79,8 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 		},
 	)

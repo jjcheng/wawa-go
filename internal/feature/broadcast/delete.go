@@ -27,7 +27,7 @@ func (delete *Delete) Validate() []exception.InputException {
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
@@ -35,22 +35,22 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, delete.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if broadcast.UserId != user.Id {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if broadcast.Status != types.BroadcastStatusCancelled {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "only cancelled broadcasts can be deleted")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "only cancelled broadcasts can be deleted", nil)
 	}
 	// delete any attachementurl
 	if broadcast.AttachmentURL != "" {
 		dependencies.File.DeleteFile(broadcast.AttachmentURL)
 	}
 	if err := dependencies.UnitOfWork.BroadcastRepository().DeleteById(ctx, broadcast.Id); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
@@ -68,7 +68,7 @@ func (Delete) APISettings() feature.APISettings {
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("only cancelled broadcasts can be deleted", http.StatusBadRequest)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

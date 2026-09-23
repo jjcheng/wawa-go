@@ -53,24 +53,23 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	user, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, login.CountryCode, login.PhoneNumber)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "invalid phone number or password")
+			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "invalid phone number or password", nil)
 		}
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if !helper.VerifyPassword(login.Password, user.PasswordHash) {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid phone number or password")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid phone number or password", nil)
 	}
 	switch user.Status {
 	case types.UserStatusInactive:
-		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "user is inactive")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "user is inactive", nil)
 	case types.UserStatusClosed:
-		return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "invalid phone number of password")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "invalid phone number of password", nil)
 	}
 	// create user session
 	accessToken, err := helper.GenerateRandomString(64)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, 64)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
 	session := dao_account.Session{
@@ -87,7 +86,7 @@ func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies
 	}
 	err = dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// return user
 	result := dto_account.NewUser(*user)

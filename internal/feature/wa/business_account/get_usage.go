@@ -39,20 +39,17 @@ func (getAnalytics *GetUsage) Validate() []exception.InputException {
 
 func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.MessageAnalytics] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusForbidden, "your are not authenticated")
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "your are not master")
+	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := getUsage.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.MessageAnalytics](errors)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "you are not authorized to view this")
-	}
 	usage, err := dependencies.Whatsapp.GetWABAUsage(ctx, user.WA.BusinessAccount.WABAId, getUsage.Start, getUsage.End, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error(), err)
 	}
 	return dto.NewSuccessResponse(usage)
 }
@@ -68,7 +65,7 @@ func (GetUsage) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),

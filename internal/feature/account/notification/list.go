@@ -31,14 +31,14 @@ func (list *List) Validate() []exception.InputException {
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_account.Notification]] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_account.Notification]](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_account.Notification]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_account.Notification]](inputErrors)
 	}
 	notifications, totalCount, totalPages, err := dependencies.UnitOfWork.AccountNotificationRepository().ListByUserId(ctx, user.Id, list.Type, list.Read, list.Page, list.PageSize)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_account.Notification]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_account.Notification]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	items := make([]dto_account.Notification, 0, len(notifications))
 	for _, notification := range notifications {
@@ -59,7 +59,7 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagAccount,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

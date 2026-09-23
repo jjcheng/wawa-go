@@ -20,12 +20,15 @@ func (listTags *ListTags) Validate() []exception.InputException {
 }
 
 func (listTags ListTags) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]string] {
+	if user == nil {
+		return dto.NewFailedResponse[[]string](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
 	if inputErrors := listTags.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]string](inputErrors)
 	}
 	tags, err := dependencies.UnitOfWork.CustomerRepository().GetDistinctTags(ctx, user.Id)
 	if err != nil {
-		return dto.NewFailedResponse[[]string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[[]string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewSuccessResponse(tags)
 }

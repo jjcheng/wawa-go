@@ -34,23 +34,23 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 			session, err := dependencies.UnitOfWork.AccountSessionRepository().GetByAccessTokenHash(ctx.Request.Context(), tokenHash)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")
+					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 					ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 					return
 				}
-				responseObject := dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+				responseObject := dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}
 			// if expired, return
 			if !session.ExpiresAt.After(time.Now()) {
-				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "session expired, please login again")
+				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "session expired, please login again", nil)
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}
 			// if revoked, return
 			if session.RevokedAt != nil {
-				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "session revoked, please login again")
+				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "session revoked, please login again", nil)
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}
@@ -60,17 +60,17 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 			user, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx.Request.Context(), session.UserId)
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
-					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")
+					responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 					ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 					return
 				}
-				responseObject := dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+				responseObject := dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}
 			// check user status
 			if user.Status == types.UserStatusInactive || user.Status == types.UserStatusClosed {
-				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid user")
+				responseObject := dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 				return
 			}

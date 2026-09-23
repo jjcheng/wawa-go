@@ -31,10 +31,10 @@ func (getByMetaCatalogId *GetByMetaCatalogId) Validate() []exception.InputExcept
 
 func (getByMetaCatalogId GetByMetaCatalogId) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_commerce.Website] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := getByMetaCatalogId.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_commerce.Website](inputErrors)
@@ -42,14 +42,13 @@ func (getByMetaCatalogId GetByMetaCatalogId) Handle(ctx context.Context, user *d
 	website, err := dependencies.UnitOfWork.CommerceWebsiteRepository().GetByMetaCatalogId(ctx, getByMetaCatalogId.MetaCatalogId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found")
+			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found", nil)
 		}
-		dependencies.Logger.ErrorFunction(err, getByMetaCatalogId.MetaCatalogId)
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// check this website belongs to the user
 	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, "you are not unauthorized")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	result := dto_commerce.NewWebsite(*website)
 	return dto.NewSuccessResponse(&result)
@@ -66,8 +65,8 @@ func (GetByMetaCatalogId) APISettings() feature.APISettings {
 		true,
 		types.APITagCommerce,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("website not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

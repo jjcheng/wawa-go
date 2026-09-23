@@ -17,6 +17,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 // do a rotation of user to be featured as the whatsapp contact
@@ -33,11 +34,14 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 	}
 	website := getWebsiteFromContext(ctx)
 	if website == nil {
-		return dto.NewFailedResponse[string](http.StatusNotFound, "website not found")
+		return dto.NewFailedResponse[string](http.StatusNotFound, "website not found", nil)
 	}
 	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, website.BusinessAccountId)
 	if err != nil {
-		return dto.NewFailedResponse[string](http.StatusInternalServerError, "business account not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[string](http.StatusNotFound, "business account not found", nil)
+		}
+		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// get cached website last whatsapp contact
 	cacheKey := helper.GetWebsiteLastWhatsAppContactUserIdCacheKey(website.Id)
@@ -45,14 +49,18 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 	if err != nil {
 		if !errors.Is(err, service.CacheNotFoundError) {
 			// don't return error
-			dependencies.Logger.ErrorFunction(err, website.Id)
+			dependencies.Logger.Error(err)
+
 		}
 	}
 	var user dao_account.User
 	if cache == "" { // if no cache, use the first active user
 		u, err := getWebsiteWALink.getFirstActiveUser(ctx, businessAccount.Id, dependencies)
 		if err != nil {
-			return dto.NewFailedResponse[string](http.StatusInternalServerError, err.Error())
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[string](http.StatusNotFound, "no active user", nil)
+			}
+			return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		user = *u
 	} else {
@@ -63,7 +71,10 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 		}
 		nextActiveUser, err := getWebsiteWALink.getNextActiveUser(ctx, businessAccount.Id, int32(userId), dependencies)
 		if err != nil {
-			return dto.NewFailedResponse[string](http.StatusInternalServerError, err.Error())
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[string](http.StatusNotFound, "no next active user", nil)
+			}
+			return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		user = *nextActiveUser
 	}
@@ -72,7 +83,10 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 	// get phone number
 	phoneNumber, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
 	if err != nil {
-		return dto.NewFailedResponse[string](http.StatusInternalServerError, "failed to get phone number")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[string](http.StatusNotFound, "no phone number found", nil)
+		}
+		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	phoneNumberDTO := dto_wa.NewPhoneNumber(*phoneNumber)
 	waLink := phoneNumberDTO.WALink(website.ContactText)
@@ -82,13 +96,13 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 func (getWebsiteWALink *GetWebsiteWALink) getFirstActiveUser(ctx context.Context, businessAccountId int32, dependencies *service.Dependencies) (*dao_account.User, error) {
 	allUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, businessAccountId, nil, true)
 	if err != nil {
-		return nil, errors.New("failed to get users")
+		return nil, fmt.Errorf("GetWebsiteWALink.getFirstActiveUser businessAccountId=%d error=%w", businessAccountId, err)
 	}
 	activeUsers := helper.Filter(allUsers, func(u dao_account.User) bool {
 		return u.Status == types.UserStatusActive
 	})
 	if len(activeUsers) == 0 {
-		return nil, errors.New("no active user")
+		return nil, gorm.ErrRecordNotFound
 	}
 	// if only 1 active user, use him
 	if len(activeUsers) == 1 {
@@ -102,9 +116,6 @@ func (getWebsiteWALink *GetWebsiteWALink) getFirstActiveUser(ctx context.Context
 		}
 		return 0
 	})
-	if len(activeUsers) == 0 {
-		return nil, errors.New("failed to get active user")
-	}
 	user := activeUsers[0]
 	return &user, nil
 }
@@ -112,13 +123,13 @@ func (getWebsiteWALink *GetWebsiteWALink) getFirstActiveUser(ctx context.Context
 func (getWebsiteWALink *GetWebsiteWALink) getNextActiveUser(ctx context.Context, businessAccountId int32, currentUserId int32, dependencies *service.Dependencies) (*dao_account.User, error) {
 	allUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, businessAccountId, nil, true)
 	if err != nil {
-		return nil, errors.New("failed to get users")
+		return nil, fmt.Errorf("GetWebsiteWALink.getNextActiveUser businessAccountId=%d currentUserId=%d error=%w", businessAccountId, currentUserId, err)
 	}
 	activeUsers := helper.Filter(allUsers, func(u dao_account.User) bool {
 		return u.Status == types.UserStatusActive
 	})
 	if len(activeUsers) == 0 {
-		return nil, errors.New("no active user")
+		return nil, gorm.ErrRecordNotFound
 	}
 	// if only 1 active user, use him
 	if len(activeUsers) == 1 {
@@ -132,9 +143,6 @@ func (getWebsiteWALink *GetWebsiteWALink) getNextActiveUser(ctx context.Context,
 		}
 		return 0
 	})
-	if len(activeUsers) == 0 {
-		return nil, errors.New("failed to get active user")
-	}
 	for i := range activeUsers {
 		if activeUsers[i].Id != currentUserId {
 			continue

@@ -29,7 +29,7 @@ func (closeAccount *CloseAccount) Validate() []exception.InputException {
 
 func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := closeAccount.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
@@ -38,7 +38,7 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 	if user.WA != nil && user.WA.BusinessAccount != nil && user.Type == types.UserTypeMaster {
 		users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
 		if err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		// if there is more than 1 user, and current user is master, and business account only has 1 master, ask user to assign another master first
 		if len(users) > 1 {
@@ -46,7 +46,7 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 				return u.Type == types.UserTypeMaster
 			})
 			if numberOfMasters == 1 { // has to be the current user
-				return dto.NewFailedResponse[any](http.StatusBadRequest, "You are the only MASTER user in your business account, please assign a new MASTER user before closing your account in Settings / Users.")
+				return dto.NewFailedResponse[any](http.StatusBadRequest, "You are the only MASTER user in your business account, please assign a new MASTER user before closing your account in Settings / Users.", nil)
 			}
 		}
 	}
@@ -61,7 +61,7 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 	// set user to closed
 	userDAO, err := transaction.AccountUserRepository().GetById(ctx, user.Id)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to get user")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	userDAO.CloseReason = closeAccount.Reason
 	userDAO.CloseReasonTypes = make([]string, len(closeAccount.ReasonTypes))
@@ -71,16 +71,14 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 	userDAO.Status = types.UserStatusClosed
 	userDAO.PasswordHash = uuid.NewString()
 	if err := transaction.AccountUserRepository().Update(ctx, userDAO); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to update close account reason")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// delete login sessions, no need to return error
 	if err := transaction.AccountSessionRepository().DeleteByUserId(ctx, user.Id); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed clear user login sessions")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		dependencies.Logger.ErrorFunction(err)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to committed transaction")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	// invalidate the auth_cache
@@ -102,51 +100,46 @@ func (closeAccount *CloseAccount) _(ctx context.Context, user *dto_account.User,
 	}()
 	// broadcasts, will also delete broadcast_recipients using FK
 	if err := transaction.BroadcastRepository().DeleteByUserId(ctx, user.Id); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete broadcasts")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// messages, will delete message_status using FK
 	if user.WA != nil && user.WA.PhoneNumber_ != nil {
 		if err := transaction.WAMessageRepository().DeleteByPhoneNumberId(ctx, user.WA.PhoneNumber_.Id); err != nil {
-			dependencies.Logger.ErrorFunction(err, user.WA.PhoneNumber_.Id)
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete messages")
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		// delete phone number
 		if err := transaction.WAPhoneNumberRepository().DeleteById(ctx, user.WA.PhoneNumber_.Id); err != nil {
-			dependencies.Logger.ErrorFunction(err, user.WA.PhoneNumber_.Id)
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete phone number")
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	// customers
 	if err := transaction.CustomerRepository().DeleteByUserId(ctx, user.Id); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete customers")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// user
 	if err := transaction.AccountUserRepository().DeleteById(ctx, user.Id); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed delete user")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// check how many users left in business account
 	if user.WA != nil && user.WA.BusinessAccount != nil {
 		users, err := transaction.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
 		if err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to check business account users")
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		if len(users) == 0 {
 			// if no more user, delete business account
 			if err := transaction.WABusinessAccountRepository().DeleteById(ctx, user.WA.BusinessAccount.Id); err != nil {
-				return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete business account")
+				return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 			// if only business portfolio has no business account, delete it
 			if user.WA.BusinessPortfolio != nil {
 				businessAccounts, err := transaction.WABusinessAccountRepository().ListByBusinessPortfolioId(ctx, user.WA.BusinessPortfolio.Id)
 				if err != nil {
-					return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete business account")
+					return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 				}
 				if len(businessAccounts) == 0 {
 					if err := transaction.WABusinessPortfolioRepository().DeleteById(ctx, user.WA.BusinessPortfolio.Id); err != nil {
-						return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete business portfolio")
+						return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 					}
 				}
 			}
@@ -155,8 +148,7 @@ func (closeAccount *CloseAccount) _(ctx context.Context, user *dto_account.User,
 	}
 	// commit
 	if err := transaction.CommitTransaction(); err != nil {
-		dependencies.Logger.ErrorFunction(err)
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to commit transaction")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	return dto.NewEmptyResponse(true, http.StatusOK)
@@ -173,7 +165,7 @@ func (CloseAccount) APISettings() feature.APISettings {
 		true,
 		types.APITagAccount,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

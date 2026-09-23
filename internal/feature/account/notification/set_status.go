@@ -27,21 +27,21 @@ func (setStatus *SetStatus) Validate() []exception.InputException {
 
 func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := setStatus.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
 	notifications, err := dependencies.UnitOfWork.AccountNotificationRepository().ListByIds(ctx, setStatus.Ids, user.Id)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if len(notifications) != len(setStatus.Ids) {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "some notifications are no longer available")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "some notifications are no longer available", nil)
 	}
 	err = dependencies.UnitOfWork.AccountNotificationRepository().SetStatusByIds(ctx, user.Id, setStatus.Ids, setStatus.Read)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
@@ -57,7 +57,7 @@ func (SetStatus) APISettings() feature.APISettings {
 		true,
 		types.APITagAccount,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("notification not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

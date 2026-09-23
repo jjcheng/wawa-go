@@ -42,20 +42,20 @@ func (list *ListBySet) Validate() []exception.InputException {
 
 func (list ListBySet) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[service.WhatsAppProduct]] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if user.WA == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[service.WhatsAppProduct]](inputErrors)
 	}
-	if user.WA == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusUnauthorized, "you are not authorized")
-	}
 	products, paging, err := dependencies.Whatsapp.ListProductsBySetID(ctx, list.SetID, list.Before, list.After, list.Limit, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto.ListResponse[service.WhatsAppProduct]](http.StatusBadGateway, err.Error(), err)
 	}
 	additionalData := map[string]any{}
 	if paging != nil {
@@ -83,8 +83,8 @@ func (ListBySet) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 		},
 	)

@@ -809,7 +809,7 @@ func Insert[T any](slice []T, element T, index int) []T {
 func GenerateKey(byteLength int) (string, error) {
 	bytes := make([]byte, byteLength)
 	if _, err := rand.Read(bytes); err != nil {
-		return "", err
+		return "", fmt.Errorf("utils.GenerateKey byteLength=%d error=%w", byteLength, err)
 	}
 	return base64.RawURLEncoding.EncodeToString(bytes), nil
 }
@@ -817,7 +817,7 @@ func GenerateKey(byteLength int) (string, error) {
 func ConvertStringToTime(dateString string) (*time.Time, error) {
 	date, err := time.Parse(time.RFC3339, dateString)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("utils.ConvertStringToTime dateString=%s error=%w", dateString, err)
 	}
 	return &date, nil
 }
@@ -827,30 +827,30 @@ func GetValue(a any, fieldName string) (any, error) {
 	// If it's an interface, unwrap it
 	if v.Kind() == reflect.Interface {
 		if v.IsNil() {
-			return nil, errors.New("cannot get field from nil interface")
+			return nil, errors.New("utils.GetValue error=cannot get field from nil interface")
 		}
 		v = v.Elem()
 	}
 	// If it's a pointer, dereference it
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
-			return nil, errors.New("cannot get field from nil pointer")
+			return nil, errors.New("utils.GetValue error=cannot get field from nil pointer")
 		}
 		v = v.Elem()
 	}
 	// Now ensure we're working with a struct
 	if v.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected a struct or pointer to struct, got %s", v.Kind())
+		return nil, fmt.Errorf("utils.GetValue error=expected a struct or pointer to struct, got %s", v.Kind())
 	}
 	// Access the field by name
 	field := v.FieldByName(fieldName)
 	if !field.IsValid() {
-		return nil, fmt.Errorf("no such field: %s", fieldName)
+		return nil, fmt.Errorf("utils.GetValue error=no such field: %s", fieldName)
 	}
 	// If the field is a pointer, optionally dereference to actual value
 	if field.Kind() == reflect.Pointer {
 		if field.IsNil() {
-			return nil, fmt.Errorf("field %s is nil pointer", fieldName)
+			return nil, fmt.Errorf("utils.GetValue error=field %s is nil pointer", fieldName)
 		}
 		return field.Elem().Interface(), nil
 	}
@@ -861,25 +861,25 @@ func GetValue(a any, fieldName string) (any, error) {
 func SetValue(a any, fieldName string, value any) error {
 	v := reflect.ValueOf(a)
 	if v.Kind() != reflect.Pointer || v.IsNil() {
-		return errors.New("input must be a non-nil pointer to a struct")
+		return errors.New("utils.SetValue error=input must be a non-nil pointer to a struct")
 	}
 
 	v = reflect.ValueOf(a).Elem()
 	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("expected a pointer to a struct, got pointer to %s", v.Kind())
+		return fmt.Errorf("utils.SetValue error=expected a pointer to a struct, got pointer to %s", v.Kind())
 	}
 
 	field := v.FieldByName(fieldName)
 	if !field.IsValid() {
-		return fmt.Errorf("no such field: %s", fieldName)
+		return fmt.Errorf("utils.SetValue error=no such field: %s", fieldName)
 	}
 	if !field.CanSet() {
-		return fmt.Errorf("cannot set field %s: unexported or unaddressable", fieldName)
+		return fmt.Errorf("utils.SetValue error=cannot set field %s: unexported or unaddressable", fieldName)
 	}
 
 	val := reflect.ValueOf(value)
 	if !val.Type().AssignableTo(field.Type()) {
-		return fmt.Errorf("provided value type (%s) doesn't match field type (%s)", val.Type(), field.Type())
+		return fmt.Errorf("utils.SetValue error=provided value type (%s) doesn't match field type (%s)", val.Type(), field.Type())
 	}
 
 	field.Set(val)
@@ -1027,7 +1027,7 @@ func GenerateRandomString(length int) (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("utils.GenerateRandomString length=%d error=%w", length, err)
 	}
 	for i := range b {
 		b[i] = charset[int(b[i])%len(charset)]

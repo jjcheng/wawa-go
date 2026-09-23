@@ -43,7 +43,7 @@ func (setStatus *SetStatus) Validate() []exception.InputException {
 
 func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := setStatus.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
@@ -57,18 +57,18 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 	}()
 	customerCount, err := transaction.CustomerRepository().CountByIds(ctx, user.Id, setStatus.Ids)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if customerCount != len(setStatus.Ids) {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to update one or more customers")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	for _, id := range setStatus.Ids {
 		if err := transaction.CustomerRepository().UpdateFields(ctx, id, map[string]any{"status": setStatus.Status}); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	return dto.NewEmptyResponse(true, http.StatusOK)
@@ -85,7 +85,7 @@ func (SetStatus) APISettings() feature.APISettings {
 		true,
 		types.APITagCustomer,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to update one or more customers", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

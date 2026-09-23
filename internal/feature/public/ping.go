@@ -27,7 +27,7 @@ func (ping Ping) Handle(ctx context.Context, _ *dto_account.User, dependencies *
 	if website := getWebsiteFromContext(ctx); website != nil {
 		return dto.NewSuccessResponse(website)
 	}
-	return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found")
+	return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found", nil)
 }
 
 func (Ping) APISettings() feature.APISettings {

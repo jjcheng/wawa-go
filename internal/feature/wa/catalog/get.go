@@ -27,20 +27,20 @@ func (get *Get) Validate() []exception.InputException {
 
 func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.WhatsAppProductCatalog] {
 	if user == nil {
-		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if user.WA == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.WhatsAppProductCatalog](inputErrors)
 	}
-	if user.WA == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusUnauthorized, "you are not authorized")
-	}
 	catalog, err := dependencies.Whatsapp.GetCatalog(ctx, get.Id, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*service.WhatsAppProductCatalog](http.StatusBadGateway, err.Error(), err)
 	}
 	return dto.NewSuccessResponse(catalog)
 }
@@ -56,8 +56,8 @@ func (Get) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("catalog not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 		},

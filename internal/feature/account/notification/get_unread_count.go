@@ -21,14 +21,14 @@ func (getUnreadCount *GetUnreadCount) Validate() []exception.InputException {
 
 func (getUnreadCount GetUnreadCount) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[int] {
 	if user == nil {
-		return dto.NewFailedResponse[int](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[int](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := getUnreadCount.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[int](inputErrors)
 	}
 	count, err := dependencies.UnitOfWork.AccountNotificationRepository().GetUnreadCount(ctx, user.Id)
 	if err != nil {
-		return dto.NewFailedResponse[int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[int](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewSuccessResponse(count)
 }
@@ -44,7 +44,7 @@ func (GetUnreadCount) APISettings() feature.APISettings {
 		true,
 		types.APITagAccount,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

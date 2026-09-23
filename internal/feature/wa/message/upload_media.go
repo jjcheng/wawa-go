@@ -42,29 +42,25 @@ func (upload *UploadMedia) Validate() []exception.InputException {
 
 func (upload UploadMedia) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*Media] {
 	if user == nil {
-		return dto.NewFailedResponse[*Media](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*Media](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := upload.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*Media](inputErrors)
 	}
 	filename := strings.ReplaceAll(uuid.NewString(), "-", "") + filepath.Ext(upload.Filename)
 	if upload.ToMeta {
-		if user.WA == nil || user.WA.PhoneNumber_ == nil {
-			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use a WhatsApp phone number")
-		}
-		if strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
-			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to use this WhatsApp phone number")
+		if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessPortfolioAccessToken == "" {
+			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
 		mediaID, err := dependencies.Whatsapp.UploadMedia(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, filename, upload.ContentType, upload.Content, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
-			return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error())
+			return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error(), err)
 		}
 		return dto.NewSuccessResponse(&Media{ID: mediaID})
 	}
 	url, err := dependencies.File.UploadFile(upload.Content, "media", filename, types.StorageClassCool)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, upload.Filename, upload.ContentType)
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewSuccessResponse(&Media{URL: url})
 }
@@ -80,7 +76,7 @@ func (UploadMedia) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to use a WhatsApp phone number", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

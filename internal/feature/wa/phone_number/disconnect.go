@@ -27,10 +27,10 @@ func (deregister *Disconnect) Validate() []exception.InputException {
 
 func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := deregister.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
@@ -38,32 +38,32 @@ func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User,
 	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, deregister.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil || phoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to deregister this phone number")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	phoneDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 	}
 	if phoneDetails.IsOnBizApp {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "This number is co-existed on WhatsApp Business App, please re-register in the app instead.")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "This number is co-existed on WhatsApp Business App, please re-register in the app instead.", nil)
 	}
 	if phoneDetails.Status != "CONNECTED" {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "This number is not connected")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "This number is not connected", nil)
 	}
 	previousStatus := phoneNumber.Status
 	phoneNumber.Status = types.WAPhoneNumberStatusDisconnected
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	if err := transaction.WAPhoneNumberRepository().Update(ctx, phoneNumber); err != nil {
 		transaction.Rollback()
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := dependencies.Whatsapp.DisconnectPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken); err != nil {
 		phoneNumber.Status = previousStatus
@@ -74,7 +74,7 @@ func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User,
 		} else if rollbackErr := rollbackTransaction.CommitTransaction(); rollbackErr != nil {
 			dependencies.Logger.ErrorFunction(rollbackErr, phoneNumber.Id)
 		}
-		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
@@ -90,7 +90,7 @@ func (Disconnect) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("This number is co-existed on WhatsApp Business App, please re-register in the app instead.", http.StatusBadRequest)),

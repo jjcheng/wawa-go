@@ -45,7 +45,7 @@ func (getUsage *GetUsage) Validate() []exception.InputException {
 
 func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.MessageAnalytics] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
 		// in case user supplied WAIds which don't belong to him, use this to filter
@@ -55,11 +55,11 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 		// assign back to WAIds
 		getUsage.Id = user.WA.PhoneNumber_.Id
 	}
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if validationErrors := getUsage.Validate(); len(validationErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.MessageAnalytics](validationErrors)
-	}
-	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, "you are not authorized to view this")
 	}
 	// get waIds by ids
 	var waId string
@@ -67,12 +67,12 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 		phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, getUsage.Id)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusNotFound, "phone number not found")
+				return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusNotFound, "phone number not found", nil)
 			}
-			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		if phoneNumber.BusinessAccountId != user.WA.PhoneNumber_.BusinessAccountId {
-			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusNotFound, "phone number not found")
+			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
 		waId = phoneNumber.WAId
 	} else {
@@ -80,7 +80,7 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	}
 	analytics, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, []string{waId}, getUsage.Start, getUsage.End, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusBadGateway, err.Error(), err)
 	}
 	return dto.NewSuccessResponse(analytics)
 }
@@ -96,7 +96,7 @@ func (GetUsage) APISettings() feature.APISettings {
 		false,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to view this", http.StatusUnauthorized)),

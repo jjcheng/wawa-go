@@ -28,17 +28,17 @@ func (get *Get) Validate() []exception.InputException {
 
 func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Template] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil || user.WA.BusinessPortfolioAccessToken == "" {
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Template](inputErrors)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil || strings.TrimSpace(user.WA.BusinessPortfolioAccessToken) == "" {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusUnauthorized, "you are not authorized")
-	}
 	template, err := dependencies.Whatsapp.GetTemplate(ctx, get.Id, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error(), err)
 	}
 	template.ByAPI = template.TemplateBase.ByAPI()
 	template.MetaEditTemplateUrl = template.GetMetaEditTemplateUrl(user.WA.BusinessPortfolio.MetaBusinessPortfolioId, user.WA.BusinessAccount.WABAId)
@@ -56,8 +56,8 @@ func (Get) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 		},
 	)

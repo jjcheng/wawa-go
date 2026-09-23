@@ -39,10 +39,10 @@ func (getMedia *GetMedia) Validate() []exception.InputException {
 
 func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*Media] {
 	if user == nil {
-		return dto.NewFailedResponse[*Media](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*Media](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil {
-		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "you are not authorized to access this message")
+		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := getMedia.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*Media](inputErrors)
@@ -50,25 +50,25 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	message, err := dependencies.UnitOfWork.WAMessageRepository().GetById(ctx, getMedia.MessageId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*Media](http.StatusNotFound, "message not found")
+			return dto.NewFailedResponse[*Media](http.StatusNotFound, "message not found", nil)
 		}
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// check message belongs to user
 	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, message.PhoneNumberId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*Media](http.StatusNotFound, "phone number not found")
+			return dto.NewFailedResponse[*Media](http.StatusNotFound, "phone number not found", nil)
 		}
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if phoneNumber.UserId != user.Id {
-		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, "not your media")
+		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// download from Meta
 	content, contentType, err := dependencies.Whatsapp.DownloadMedia(ctx, getMedia.WAMediaID, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error(), err)
 	}
 	filename := getMedia.WAMediaID
 	if contentTypeParts := strings.SplitN(contentType, "/", 2); len(contentTypeParts) == 2 && contentTypeParts[1] != "" {
@@ -77,7 +77,7 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 	// upload to OSS
 	attachmentURL, err := dependencies.File.UploadFile(content, "media", filename, types.StorageClassCool)
 	if err != nil {
-		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	message.AttachmentURL = attachmentURL
 	// ignore error
@@ -96,7 +96,7 @@ func (GetMedia) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to use a WhatsApp phone number", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

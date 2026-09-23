@@ -53,12 +53,15 @@ func (list *List) Validate() []exception.InputException {
 }
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_customer.Customer]] {
+	if user == nil {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.Customer]](inputErrors)
 	}
 	customers, totalItems, totalPages, err := dependencies.UnitOfWork.CustomerRepository().List(ctx, user.Id, list.Name, list.PhoneNumber, list.Order, list.Status, list.Tags, list.Page, list.PageSize)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	items := make([]dto_customer.Customer, 0, len(customers))
 	for _, customer := range customers {

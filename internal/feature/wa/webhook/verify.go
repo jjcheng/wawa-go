@@ -45,8 +45,7 @@ func (verify Verify) Handle(ctx context.Context, _ *dto_account.User, dependenci
 	if verify.Mode == "subscribe" && verifyToken != "" && verify.VerifyToken == verifyToken {
 		return dto.NewSuccessResponse(verify.Challenge)
 	}
-	dependencies.Logger.Warnf("whatsapp webhook verification failed: mode=%s", verify.Mode)
-	return dto.NewFailedResponse[string](http.StatusForbidden, "forbidden")
+	return dto.NewFailedResponse[string](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 }
 
 func (Verify) APISettings() feature.APISettings {

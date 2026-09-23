@@ -33,7 +33,7 @@ func (update *UpdateProfile) Validate() []exception.InputException {
 
 func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
@@ -41,14 +41,14 @@ func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, 
 	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")
+			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	existing.Email = update.Email
 	existing.Description = update.Description
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	d := dto_account.NewUser(*existing)
 	return dto.NewSuccessResponse(&d)

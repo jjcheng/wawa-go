@@ -23,4 +23,6 @@ const (
 const (
 	ExceptionMessageInternalServerError string = "Sorry, something is wrong with our server."
 	ExceptionMessageBadGateway          string = "Sorry, an error occured at the vendor."
+	ExceptionMessageForbidden           string = "You are not authenticated."
+	ExceptionMessageUnauthorized        string = "You are not authorized."
 )

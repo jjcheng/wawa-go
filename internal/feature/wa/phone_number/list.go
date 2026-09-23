@@ -35,10 +35,10 @@ func (list *List) Validate() []exception.InputException {
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_wa.PhoneNumber]] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusUnauthorized, "you are not authorized to access a WhatsApp business portfolio")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.PhoneNumber]](inputErrors)
@@ -48,7 +48,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if user.Type == types.UserTypeMaster {
 		phoneNumbers, count, pages, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, list.Status, list.Page, list.PageSize)
 		if err != nil {
-			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		totalCount = count
 		totalPages = pages
@@ -76,7 +76,7 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access a WhatsApp business portfolio", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

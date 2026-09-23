@@ -31,10 +31,10 @@ func (sync *Sync) Validate() []exception.InputException {
 
 func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil || user.WA.BusinessPortfolio == nil {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorizeds")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := sync.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
@@ -43,33 +43,31 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 	website, err := dependencies.UnitOfWork.CommerceWebsiteRepository().GetById(ctx, sync.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "website not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "website not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to get website")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	// get catalog from db
 	catalog, err := dependencies.UnitOfWork.CommerceCatalogRepository().GetByWebsiteId(ctx, website.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "catalog not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "catalog not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to get catalog")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// get meta catalog and make sure this catalog exist and belong to the business portfolio
 	metaCatalog, err := dependencies.Whatsapp.GetCatalog(ctx, catalog.MetaId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, catalog.MetaId)
-		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 	}
 	// currently only support commerce catalog
 	if metaCatalog.Vertical != "commerce" {
-		return dto.NewFailedResponse[any](http.StatusNotImplemented, "currently only commerce catalog type is supported")
+		return dto.NewFailedResponse[any](http.StatusNotImplemented, "currently only commerce catalog type is supported", nil)
 	}
 	// get meta sets
 	metaSets, _, err := dependencies.Whatsapp.ListProductSets(ctx, catalog.MetaId, "", "", 999, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, catalog.MetaId)
-		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 	}
 	// begin transaction
 	transaction := dependencies.UnitOfWork.BeginTransaction()
@@ -82,13 +80,13 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 	// update catalog
 	if metaCatalog.Name != catalog.Name {
 		if err := transaction.CommerceCatalogRepository().UpdateFields(ctx, catalog.Id, map[string]any{"name": metaCatalog.Name}); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to update catalog")
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	// get existing sets
 	sets, err := dependencies.UnitOfWork.CommerceSetRepository().ListByCatalogId(ctx, catalog.Id)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to get sets")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// update sets
 	for _, metaSet := range metaSets {
@@ -102,7 +100,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 			sets[*existingSetIndex].Name = metaSet.Name
 			if metaSet.Name != existingSet.Name {
 				if err := transaction.CommerceSetRepository().UpdateFields(ctx, existingSet.Id, map[string]any{"name": metaSet.Name}); err != nil {
-					return dto.NewFailedResponse[any](http.StatusInternalServerError, "error updating existing set")
+					return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 				}
 			}
 		} else {
@@ -113,7 +111,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 				Processed: true,
 			}
 			if err := transaction.CommerceSetRepository().Insert(ctx, &newSet); err != nil {
-				return dto.NewFailedResponse[any](http.StatusInternalServerError, "error inserting new set")
+				return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 			sets = append(sets, newSet)
 		}
@@ -124,7 +122,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 	})
 	for _, set := range setsToDelete {
 		if err := transaction.CommerceSetRepository().DeleteById(ctx, set.Id); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete removed set")
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	// reload the sets
@@ -137,13 +135,12 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 		// get meta products
 		metaProducts, _, err := dependencies.Whatsapp.ListProductsBySetID(ctx, set.MetaId, "", "", 999, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, set.MetaId)
-			return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+			return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 		}
 		// get products
 		products, _, _, err := dependencies.UnitOfWork.CommerceGenericProductRepository().List(ctx, set.CatalogId, set.Id, "", "", false, 1, 999)
 		if err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to get products")
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		for _, metaProduct := range metaProducts {
 			if existingProduct := helper.First(products, func(p dao_commerce.GenericProduct) bool {
@@ -164,7 +161,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 				existingProduct.Url = metaProduct.URL
 				existingProduct.Processed = true
 				if err := transaction.CommerceGenericProductRepository().Update(ctx, existingProduct); err != nil {
-					return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to update product")
+					return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 				}
 			} else {
 				newProduct := dao_commerce.GenericProduct{
@@ -189,8 +186,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 					if errors.Is(err, gorm.ErrDuplicatedKey) {
 						continue
 					}
-					dependencies.Logger.ErrorFunction(err, newProduct)
-					return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to create product")
+					return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 				}
 			}
 		}
@@ -200,7 +196,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 		})
 		for _, product := range productsToDelete {
 			if err := transaction.CommerceGenericProductRepository().DeleteById(ctx, product.Id); err != nil {
-				return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to delete removed product")
+				return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 		}
 	}
@@ -212,7 +208,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}
 	// commit
 	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, "failed to commit transaction")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	return dto.NewEmptyResponse(true, http.StatusOK)
@@ -229,8 +225,8 @@ func (Sync) APISettings() feature.APISettings {
 		true,
 		types.APITagCommerce,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("website not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("catalog not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),

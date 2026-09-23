@@ -46,33 +46,33 @@ func (list *List) Validate() []exception.InputException {
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_wa.Message]] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.PhoneNumber_ == nil {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_wa.Message]](inputErrors)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, "you are not authorized")
-	}
 	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, list.CustomerId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusNotFound, "customer not found")
+			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusNotFound, "customer not found", nil)
 		}
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if customer.UserId != user.Id {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusNotFound, "customer not found")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, user.WA.PhoneNumber_.Id, customer.Id, true, list.Page, list.PageSize)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	messageIds := helper.Map(messages, func(message dao_wa.Message) int32 { return message.Id })
 	// get the broadcasts
 	broadcasts, err := dependencies.UnitOfWork.BroadcastRepository().ListByMessageIds(ctx, messageIds)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// bind the html for the messages
 	page := make([]dto_wa.Message, 0, len(messages))
@@ -129,7 +129,7 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WhatsApp phone number", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

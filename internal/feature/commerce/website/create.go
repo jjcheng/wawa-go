@@ -49,10 +49,10 @@ func (create *Create) Validate() []exception.InputException {
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_commerce.Website] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil || user.WA.PhoneNumber_ == nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_commerce.Website](inputErrors)
@@ -60,48 +60,44 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	// make sure no existing website for this catalog
 	existingWebsite, err := dependencies.UnitOfWork.CommerceWebsiteRepository().GetByMetaCatalogId(ctx, create.MetaCatalogId)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if existingWebsite != nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadRequest, "there is already an existing website for this catalog")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadRequest, "there is already an existing website for this catalog", nil)
 	}
 	// check existing domain name
 	existingWebsite, err = dependencies.UnitOfWork.CommerceWebsiteRepository().GetByDomainName(ctx, create.Subdomain)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if existingWebsite != nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusConflict, "subdomain is already in use")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusConflict, "subdomain is already in use", nil)
 	}
 	// get metaCatalog and make sure this catalog exist and belong to the business portfolio
 	metaCatalog, err := dependencies.Whatsapp.GetCatalog(ctx, create.MetaCatalogId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, create.MetaCatalogId)
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error(), err)
 	}
 	// currently only support commerce catalog
 	if metaCatalog.Vertical != "commerce" {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotImplemented, "currently only commerce catalog type is supported")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotImplemented, "currently only commerce catalog type is supported", nil)
 	}
 	// get phone number business profile
 	phoneNumberBusinessProfile, err := dependencies.Whatsapp.GetPhoneNumberBusinessProfile(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, user.WA.PhoneNumber_)
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error(), err)
 	}
 	// get metaSets
 	metaSets, _, err := dependencies.Whatsapp.ListProductSets(ctx, create.MetaCatalogId, "", "", 999, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, create.MetaCatalogId)
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error(), err)
 	}
 	// get products for each set
 	var metaProducts [][]service.WhatsAppProduct
 	for _, metaSet := range metaSets {
 		products, _, err := dependencies.Whatsapp.ListProductsBySetID(ctx, metaSet.ID, "", "", 999, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, metaSet.ID)
-			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error())
+			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error(), err)
 		}
 		metaProducts = append(metaProducts, products)
 	}
@@ -129,7 +125,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		website.Vertical = phoneNumberBusinessProfile.Data[0].Vertical
 	}
 	if err := transaction.CommerceWebsiteRepository().Insert(ctx, &website); err != nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// create a catalog
 	newCatalog := dao_commerce.Catalog{
@@ -140,8 +136,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	err = transaction.CommerceCatalogRepository().Insert(ctx, &newCatalog)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, newCatalog)
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, "failed to create catalog")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// create sets
 	for i, metaSet := range metaSets {
@@ -153,8 +148,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		err = transaction.CommerceSetRepository().Insert(ctx, &newSet)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, newSet)
-			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, "failed to create set")
+			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		// insert products
 		for _, metaProduct := range metaProducts[i] {
@@ -180,14 +174,12 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 				if errors.Is(err, gorm.ErrDuplicatedKey) {
 					continue
 				}
-				dependencies.Logger.ErrorFunction(err, newProduct)
-				return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, "failed to create product")
+				return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 		}
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		dependencies.Logger.ErrorFunction(err)
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, "failed to commit transaction")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	result := dto_commerce.NewWebsite(website)
@@ -207,8 +199,8 @@ func (Create) APISettings() feature.APISettings {
 		true,
 		types.APITagCommerce,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("catalog not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("website already exists", http.StatusConflict)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

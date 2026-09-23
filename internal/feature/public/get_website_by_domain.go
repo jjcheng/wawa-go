@@ -40,15 +40,14 @@ func (getWebsiteByDomain GetWebsiteByDomain) Handle(ctx context.Context, _ *dto_
 	website, err := dependencies.UnitOfWork.CommerceWebsiteRepository().GetByDomainName(ctx, domain)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			dependencies.Logger.ErrorFunction(err, getWebsiteByDomain.Domain)
-			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, "failed to get website by subdomain")
+			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	if website == nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found", nil)
 	}
 	if website.Status == types.CommerceWebsiteStatusInactive {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotFound, "website not found", nil)
 	}
 	result := dto_commerce.NewWebsite(*website)
 	// hide some sensitive fields
@@ -56,7 +55,7 @@ func (getWebsiteByDomain GetWebsiteByDomain) Handle(ctx context.Context, _ *dto_
 	// load some data
 	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, website.BusinessAccountId)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, "failed to get business account")
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result.BusinessName = businessAccount.Name
 	return dto.NewSuccessResponse(&result)

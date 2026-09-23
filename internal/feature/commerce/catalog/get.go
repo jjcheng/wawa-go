@@ -28,10 +28,10 @@ func (get *Get) Validate() []exception.InputException {
 
 func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_commerce.Catalog] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_commerce.Catalog](inputErrors)
@@ -39,17 +39,16 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	catalog, err := dependencies.UnitOfWork.CommerceCatalogRepository().GetById(ctx, get.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusNotFound, "catalog not found")
+			return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusNotFound, "catalog not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	website, err := dependencies.UnitOfWork.CommerceWebsiteRepository().GetById(ctx, catalog.WebsiteId)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, catalog.WebsiteId)
-		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusInternalServerError, "failed to get website")
+		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
-		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusNotFound, "catalog not found")
+		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	result := dto_commerce.NewCatalog(*catalog)
 	return dto.NewSuccessResponse(&result)
@@ -66,8 +65,8 @@ func (Get) APISettings() feature.APISettings {
 		true,
 		types.APITagCommerce,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("catalog not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

@@ -24,13 +24,13 @@ func (get *Get) Validate() []exception.InputException {
 
 func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.WhatsAppPhoneNumberDetailsResponse] {
 	if user == nil {
-		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessPortfolioAccessToken == "" {
+		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.WhatsAppPhoneNumberDetailsResponse](inputErrors)
-	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessPortfolioAccessToken == "" {
-		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
 	}
 	if user.Type != types.UserTypeMaster {
 		get.Id = user.WA.PhoneNumber_.Id
@@ -38,17 +38,17 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	storedPhoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, get.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusNotFound, "phone number not found")
+			return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusNotFound, "phone number not found", nil)
 		}
-		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if storedPhoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
-		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
+		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// get phone number from meta
 	metaPhoneNumber, err := dependencies.Whatsapp.GetPhoneNumber(ctx, storedPhoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusBadGateway, err.Error(), err)
 	}
 	// update status in db if needed
 	var newStatus types.WAPhoneNumberStatus
@@ -76,7 +76,7 @@ func (Get) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WhatsApp phone number", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),

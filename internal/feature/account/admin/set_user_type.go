@@ -32,44 +32,41 @@ func (setUserType *SetUserType) Validate() []exception.InputException {
 
 func (setUserType SetUserType) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
-	}
-	if user.WA == nil {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "user's WhatsApp not found")
+	if user.Type != types.UserTypeMaster || user.WA == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := setUserType.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
 	if user.Id == int32(setUserType.UserId) {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot update status of yourself")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot set type of yourself", nil)
 	}
 	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, int32(setUserType.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "user not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "user not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if existingUser.Type == types.UserTypeMaster {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you cannot set user type of a master user", nil)
 	}
 	targetBusinessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(setUserType.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if user.WA.BusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to update this user")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	existingUser.Type = setUserType.Type
 	err = dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existingUser)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }

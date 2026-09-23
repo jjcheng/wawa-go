@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -35,10 +36,11 @@ func CustomRecovery(recovery gin.RecoveryFunc, logger *service.Logger) gin.Handl
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				panicErr := errorFromPanic(err)
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.
 				var brokenPipe bool
-				if ne, ok := err.(*net.OpError); ok {
+				if ne, ok := panicErr.(*net.OpError); ok {
 					if se, ok := ne.Err.(*os.SyscallError); ok {
 						if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") {
 							brokenPipe = true
@@ -47,7 +49,7 @@ func CustomRecovery(recovery gin.RecoveryFunc, logger *service.Logger) gin.Handl
 				}
 				if brokenPipe {
 					// If the connection is dead, we can't write a status to it.
-					c.Error(err.(error)) // nolint: errcheck
+					c.Error(panicErr) // nolint: errcheck
 					c.Abort()
 					return
 				}
@@ -55,7 +57,7 @@ func CustomRecovery(recovery gin.RecoveryFunc, logger *service.Logger) gin.Handl
 				requestUser, exist := c.Get(cfg.Default().Site.HTTPRequestUserKey)
 				var userId int32
 				if exist {
-					user := requestUser.(dto_account.User)
+					user := requestUser.(*dto_account.User)
 					userId = user.Id
 				}
 				requestItem, exist := c.Get(cfg.Default().Site.HTTPRequestItemKey)
@@ -71,10 +73,20 @@ func CustomRecovery(recovery gin.RecoveryFunc, logger *service.Logger) gin.Handl
 						}
 					}
 				}
-				logger.Fatal(err.(error), c.Request.URL.Path, c.Request.URL.RawQuery, c.Request.Method, c.Request.UserAgent(), c.ClientIP(), string(httpRequest), string(debug.Stack()), userId, requestJSON, http.StatusInternalServerError, GetRequestID(c))
+				logger.Fatal(panicErr, c.Request.URL.Path, c.Request.URL.RawQuery, c.Request.Method, c.Request.UserAgent(), c.ClientIP(), string(httpRequest), string(debug.Stack()), userId, requestJSON, http.StatusInternalServerError, GetRequestID(c))
 				recovery(c, err)
 			}
 		}()
 		c.Next()
 	}
+}
+
+func errorFromPanic(err any) error {
+	if err == nil {
+		return fmt.Errorf("panic: <nil>")
+	}
+	if e, ok := err.(error); ok {
+		return e
+	}
+	return fmt.Errorf("panic: %v", err)
 }

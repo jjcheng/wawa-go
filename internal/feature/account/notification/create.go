@@ -41,7 +41,7 @@ func (create *Create) Validate() []exception.InputException {
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.Notification] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_account.Notification](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_account.Notification](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.Notification](inputErrors)
@@ -54,13 +54,12 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		URL:    create.URL,
 	}
 	if err := dependencies.UnitOfWork.AccountNotificationRepository().Insert(ctx, &notification); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id, create.Type)
-		return dto.NewFailedResponse[*dto_account.Notification](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.Notification](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := dto_account.NewNotification(notification)
 	channelName := helper.GetNotificationChannelName(user.Id)
 	if err := dependencies.Ably.Publish("notification", channelName, result); err != nil {
-		dependencies.Logger.ErrorFunction(err, channelName, result)
+		dependencies.Logger.Error(err)
 	}
 	return dto.NewSuccessResponse(&result)
 }
@@ -77,7 +76,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 // 		true,
 // 		types.APITagAccount,
 // 		[]feature.APIError{
-// 			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+// 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 // 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 // 		},
 // 	)

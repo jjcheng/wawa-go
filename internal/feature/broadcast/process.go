@@ -37,7 +37,6 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("broadcast %d not found", broadcastId)
 		}
-		dependencies.Logger.ErrorFunction(err, broadcastId)
 		return fmt.Errorf("failed to get broadcast %d: %w", broadcastId, err)
 	}
 	// only process if the status is PENIDNG or SENDING
@@ -199,7 +198,6 @@ func Process(ctx context.Context, broadcastId int32, dequeueCount int, dependenc
 		return dependencies.UnitOfWork.BroadcastRepository().Update(ctx, broadcast)
 	})
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, broadcast.Id)
 		errorMessages = append(errorMessages, "failed to set broadcast status to COMPLETED")
 		return fmt.Errorf("failed to set broadcast %d status to COMPLETED: %w", broadcast.Id, err)
 	}

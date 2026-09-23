@@ -61,6 +61,9 @@ func (create *Create) Validate() []exception.InputException {
 }
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Customer] {
+	if user == nil {
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
 	}
@@ -68,18 +71,18 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if create.CountryCode != "" {
 		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByCountryCodePhoneNumber(ctx, user.Id, create.CountryCode, create.PhoneNumber)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		if existing != nil {
-			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists")
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists", nil)
 		}
 	} else if create.MetaUserId != "" {
 		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByMetaUserId(ctx, user.Id, create.MetaUserId)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		if existing != nil {
-			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists")
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists", nil)
 		}
 	}
 	// if a WAId already provided, use it, otherwise derive from countryCode+phoneNumber
@@ -102,7 +105,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Token:               uuid.NewString(),
 	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	result := dto_customer.NewCustomer(customer)
 	return dto.NewSuccessResponse(&result)

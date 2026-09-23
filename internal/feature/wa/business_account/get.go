@@ -22,13 +22,13 @@ func (get *Get) Validate() []exception.InputException {
 
 func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.BusinessAccount] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
-	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found")
 	}
 	result := *user.WA.BusinessAccount
 	result.MetaBusinessPortfolioId = user.WA.BusinessPortfolio.MetaBusinessPortfolioId
@@ -48,7 +48,7 @@ func (Get) APISettings() feature.APISettings {
 		types.APITagAccount,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

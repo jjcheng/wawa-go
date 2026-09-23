@@ -34,14 +34,14 @@ func (list *List) Validate() []exception.InputException {
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_customer.Broadcast]] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Broadcast]](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Broadcast]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if errors := list.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.Broadcast]](errors)
 	}
 	broadcasts, err := dependencies.UnitOfWork.BroadcastRepository().ListByUserId(ctx, user.Id, list.Name, list.Status, list.Page, list.PageSize)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Broadcast]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Broadcast]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	items := make([]dto_customer.Broadcast, 0, len(broadcasts.Items))
 	for _, broadcast := range broadcasts.Items {
@@ -62,7 +62,7 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

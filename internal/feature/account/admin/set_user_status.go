@@ -38,44 +38,44 @@ func (setUserStatus *SetUserStatus) Validate() []exception.InputException {
 
 func (setUserStatus SetUserStatus) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if user.WA == nil {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "user's WhatsApp not found")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := setUserStatus.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
 	if user.Id == int32(setUserStatus.UserId) {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot update status of yourself")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "you cannot update status of yourself", nil)
 	}
 	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, int32(setUserStatus.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "user not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "user not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if existingUser.Type == types.UserTypeMaster {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you cannot update status of a master user", nil)
 	}
 	targetBusinessPortfolio, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, int32(setUserStatus.UserId))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "Meta business portfolio not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if user.WA.BusinessPortfolio.MetaBusinessPortfolioId != targetBusinessPortfolio.MetaBusinessPortfolioId {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to update this user")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	existingUser.Status = setUserStatus.Status
 	err = dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existingUser)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
@@ -85,7 +85,7 @@ func (SetUserStatus) APISettings() feature.APISettings {
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("you cannot update status of yourself", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
-		feature.NewAPIError(*exception.NewCustomException("you are not authorized to update this user", http.StatusUnauthorized)),
+		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("Meta business portfolio not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})

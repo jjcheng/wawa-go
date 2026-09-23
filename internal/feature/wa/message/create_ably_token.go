@@ -30,25 +30,25 @@ func (createAblyToken *CreateAblyToken) Validate() []exception.InputException {
 
 func (createAblyToken CreateAblyToken) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.AblyTokenRequest] {
 	if user == nil {
-		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.PhoneNumber_ == nil {
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := createAblyToken.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.AblyTokenRequest](inputErrors)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil {
-		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, "you are not authorized to access this WhatsApp phone number")
-	}
 	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, createAblyToken.CustomerId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusBadRequest, "customer not found")
+			return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusBadRequest, "customer not found", nil)
 		}
-		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	channelName := helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token)
 	tokenRequest, err := dependencies.Ably.CreateConversationTokenRequest(channelName, fmt.Sprintf("user:%d", user.Id))
 	if err != nil {
-		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusServiceUnavailable, "realtime chat is unavailable")
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusServiceUnavailable, "realtime chat is unavailable", err)
 	}
 	return dto.NewSuccessResponse(tokenRequest)
 }
@@ -65,7 +65,7 @@ func (CreateAblyToken) APISettings() feature.APISettings {
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("customer not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this WhatsApp phone number", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("realtime chat is unavailable", http.StatusServiceUnavailable)),
 		},

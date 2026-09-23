@@ -22,17 +22,17 @@ func (List) Validate() []exception.InputException {
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_commerce.Website] {
 	if user == nil {
-		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_commerce.Website](inputErrors)
 	}
 	websites, err := dependencies.UnitOfWork.CommerceWebsiteRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
 	if err != nil {
-		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	items := make([]dto_commerce.Website, 0, len(websites))
 	for _, website := range websites {
@@ -52,8 +52,8 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagCommerce,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authorized", http.StatusUnauthorized)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

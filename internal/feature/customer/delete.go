@@ -37,6 +37,9 @@ func (delete *Delete) Validate() []exception.InputException {
 }
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+	if user == nil {
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
 	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
@@ -49,18 +52,18 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	}()
 	customerCount, err := transaction.CustomerRepository().CountByIds(ctx, user.Id, delete.Ids)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if customerCount != len(delete.Ids) {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized to delete one or more customers")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	for _, id := range delete.Ids {
 		if err := transaction.CustomerRepository().DeleteById(ctx, id); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	return dto.NewEmptyResponse(true, http.StatusOK)

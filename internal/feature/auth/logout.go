@@ -15,7 +15,7 @@ type Logout struct{}
 
 func (logout Logout) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "authentication required")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Session == nil {
 		return dto.NewEmptyResponse(true, http.StatusNoContent)

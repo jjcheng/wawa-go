@@ -32,7 +32,7 @@ func (create *Create) Validate() []exception.InputException {
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_site.Feedback] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_site.Feedback](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_site.Feedback](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_site.Feedback](inputErrors)
@@ -42,8 +42,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Content: create.Content,
 	}
 	if err := dependencies.UnitOfWork.SiteFeedbackRepository().Insert(ctx, &feedback); err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[*dto_site.Feedback](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_site.Feedback](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := dto_site.NewFeedback(feedback)
 	return dto.NewSuccessResponse(&result)
@@ -60,7 +59,7 @@ func (Create) APISettings() feature.APISettings {
 		true,
 		types.APITagSite,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

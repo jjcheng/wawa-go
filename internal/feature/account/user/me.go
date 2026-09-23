@@ -15,7 +15,7 @@ type Me struct{}
 
 func (me Me) Handle(_ context.Context, user *dto_account.User, _ *service.Dependencies) dto.Response[*dto_account.User] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	return dto.NewSuccessResponse(user)
 }

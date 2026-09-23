@@ -27,7 +27,7 @@ func (cancel *Cancel) Validate() []exception.InputException {
 
 func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
-		return dto.NewFailedResponse[any](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if errors := cancel.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
@@ -35,15 +35,15 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, cancel.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if broadcast.UserId != user.Id {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found")
+		return dto.NewFailedResponse[any](http.StatusNotFound, "broadcast not found", nil)
 	}
 	if broadcast.Status != types.BroadcastStatusPending {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "only pending broadcasts can be cancelled")
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "only pending broadcasts can be cancelled", nil)
 	}
 	// start a transaction to also cancel all broadcast_recipients
 	transaction := dependencies.UnitOfWork.BeginTransaction()
@@ -56,10 +56,10 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 	if err := transaction.BroadcastRepository().UpdateFields(ctx, broadcast.Id, map[string]any{
 		"status": types.BroadcastStatusCancelled,
 	}); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	return dto.NewEmptyResponse(true, http.StatusOK)
@@ -78,7 +78,7 @@ func (Cancel) APISettings() feature.APISettings {
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("only pending broadcasts can be cancelled", http.StatusBadRequest)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

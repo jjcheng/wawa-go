@@ -29,7 +29,7 @@ func (get *Get) Validate() []exception.InputException {
 
 func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Customer] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
@@ -37,12 +37,12 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, get.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found")
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if customer.UserId != user.Id {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found")
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	d := dto_customer.NewCustomer(*customer)
 	return dto.NewSuccessResponse(&d)
@@ -60,7 +60,7 @@ func (Get) APISettings() feature.APISettings {
 		types.APITagCustomer,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("customer not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

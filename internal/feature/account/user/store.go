@@ -68,8 +68,11 @@ func (store *Store) Validate() []exception.InputException {
 }
 
 func (store Store) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
-	if user != nil && user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusBadRequest, "you are not master")
+	if user == nil {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := store.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
@@ -78,14 +81,13 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, store.CountryCode, store.PhoneNumber)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	// create access token and access token expiry
 	accessToken, err := helper.GenerateKey(32)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, "failed to generate access token")
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
 	var u dto_account.User
@@ -99,8 +101,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		// generate password hash
 		passwordHash, err := helper.HashPassword(store.Password)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, store.PhoneNumber)
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		newUser := dao_account.User{
 			Name:         store.Name,
@@ -115,7 +116,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		}
 		// Insert will do all the encryption/hashing
 		if err := dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser); err != nil {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		u = dto_account.NewUser(newUser)
 		u.New = true
@@ -135,7 +136,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 			session.UserAgent = *userAgent
 		}
 		if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session); err != nil {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		// after embedded signup completed, return access token to auto login
 		u.AccessToken = accessToken

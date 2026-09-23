@@ -58,15 +58,18 @@ func (getUsage *GetUsage) Validate() []exception.InputException {
 }
 
 func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_wa.TemplateAnalytics] {
+	if user == nil {
+		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.WA == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if validationErrors := getUsage.Validate(); len(validationErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_wa.TemplateAnalytics](validationErrors)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusUnauthorized, "you are not authorized to access this WABA")
-	}
 	analytics, err := dependencies.Whatsapp.GetTemplateUsage(ctx, user.WA.BusinessAccount.WABAId, getUsage.Start, getUsage.End, getUsage.TemplateIds, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[[]dto_wa.TemplateAnalytics](http.StatusBadGateway, err.Error(), err)
 	}
 	return dto.NewSuccessResponse(analytics)
 }

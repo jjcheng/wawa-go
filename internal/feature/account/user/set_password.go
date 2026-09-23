@@ -39,31 +39,30 @@ func (setPassword *SetPassword) Validate() []exception.InputException {
 
 func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if errors := setPassword.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
 	// once a password is set this path must not be reusable, otherwise a stolen session could reset it without the current password
 	if user.Status != types.UserStatusPendingPassword {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "password is already set, use change password instead")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "password is already set, use change password instead", nil)
 	}
 	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")
+			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	passwordHash, err := helper.HashPassword(setPassword.NewPassword)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	existing.PasswordHash = passwordHash
 	existing.Status = types.UserStatusActive
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	d := dto_account.NewUser(*existing)
 	return dto.NewSuccessResponse(&d)

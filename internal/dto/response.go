@@ -9,7 +9,8 @@ import (
 
 type Response[T any] struct {
 	ResponseBase
-	Data T `json:"data,omitempty" description:"the actual API returned data, empty if not success"`
+	Error error `json:"-"`
+	Data  T     `json:"data,omitempty" description:"the actual API returned data, empty if not success"`
 }
 
 type ResponseBase struct {
@@ -44,8 +45,9 @@ func NewSuccessResponseWithMessage[T any](data T, message string) Response[T] {
 	}
 }
 
-func NewFailedResponse[T any](statusCode int, message string) Response[T] {
+func NewFailedResponse[T any](statusCode int, message string, err error) Response[T] {
 	return Response[T]{
+		Error: err,
 		ResponseBase: ResponseBase{
 			Success:    false,
 			StatusCode: statusCode,

@@ -32,29 +32,29 @@ func (getProduct GetProduct) Handle(ctx context.Context, _ *dto_account.User, de
 	}
 	website := getWebsiteFromContext(ctx)
 	if website == nil {
-		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusNotFound, "website not found")
+		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusNotFound, "website not found", nil)
 	}
 	// get catalog
 	catalog, err := dependencies.UnitOfWork.CommerceCatalogRepository().GetByWebsiteId(ctx, website.Id)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusInternalServerError, "failed to get catalog")
+		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// get product
 	product, err := dependencies.UnitOfWork.CommerceGenericProductRepository().GetById(ctx, getProduct.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusNotFound, "product not found")
+			return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusNotFound, "product not found", nil)
 		}
 		dependencies.Logger.ErrorFunction(err, getProduct.Id)
-		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// get set
 	set, err := dependencies.UnitOfWork.CommerceSetRepository().GetById(ctx, product.SetId)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusInternalServerError, "failed to get set")
+		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if set.CatalogId != catalog.Id {
-		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusNotFound, "product not found")
+		return dto.NewFailedResponse[*dto_commerce.GenericProduct](http.StatusNotFound, "product not found", nil)
 	}
 	result := dto_commerce.NewProduct(*product)
 	return dto.NewSuccessResponse(&result)

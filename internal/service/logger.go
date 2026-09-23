@@ -23,7 +23,7 @@ func NewLogger() *Logger {
 	}
 	return &Logger{
 		out: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: outLevel})),
-		err: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})),
+		err: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn, AddSource: true})),
 	}
 }
 
@@ -48,12 +48,28 @@ func (logger *Logger) Debugf(message string, v ...any) {
 }
 
 func (logger *Logger) Error(err error) {
+	if err == nil {
+		logger.err.Error("<nil>")
+		return
+	}
 	logger.err.Error(err.Error())
+}
+
+func (logger *Logger) ErrorWithFields(err error, fields ...any) {
+	if err == nil {
+		logger.err.Error("<nil>", fields...)
+		return
+	}
+	logger.err.Error(err.Error(), fields...)
 }
 
 // function name is auto captured
 func (logger *Logger) ErrorFunction(err error, values ...any) {
 	funcName := getFunctionName(2)
+	if err == nil {
+		logger.err.Error("<nil>", "func", funcName, "args", values)
+		return
+	}
 	logger.err.Error(err.Error(), "func", funcName, "args", values)
 }
 
@@ -89,15 +105,19 @@ func (logger *Logger) Access(method string, path string, statusCode int, duratio
 		"ip", remoteAddress,
 		"request_id", requestId,
 	}
-	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop && requestJSON != "" {
 		attrs = append(attrs, "request_json", requestJSON)
 	}
-	logger.out.Info("request", attrs...)
+	logger.out.Info("HTTP_REQUEST", attrs...)
 }
 
 // Fatal logs an unrecovered panic with the request context needed to correlate it via requestId.
 func (logger *Logger) Fatal(err error, path string, query string, method string, userAgent string, remoteAddress string, requestBody string, stack string, userId int32, requestJSON string, statusCode int, requestId string) {
-	logger.err.Error(err.Error(),
+	message := "<nil>"
+	if err != nil {
+		message = err.Error()
+	}
+	attrs := []any{
 		"method", method,
 		"path", path,
 		"query", query,
@@ -107,5 +127,14 @@ func (logger *Logger) Fatal(err error, path string, query string, method string,
 		"user_agent", userAgent,
 		"request_id", requestId,
 		"stack", stack,
-	)
+	}
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		if requestBody != "" {
+			attrs = append(attrs, "request_body", requestBody)
+		}
+		if requestJSON != "" {
+			attrs = append(attrs, "request_json", requestJSON)
+		}
+	}
+	logger.err.Error(message, attrs...)
 }

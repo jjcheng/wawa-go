@@ -66,40 +66,40 @@ func (create *Create) Validate() []exception.InputException {
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Broadcast] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.WA == nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusUnauthorized, "you do not have a connected WhatsApp number")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Broadcast](inputErrors)
 	}
 	exist, err := dependencies.UnitOfWork.BroadcastRepository().CheckNameExist(ctx, user.Id, create.Name)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	if exist {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "this broadcast name is already used")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "this broadcast name is already used", nil)
 	}
 	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, create.CustomerIds)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if len(customers) != len(create.CustomerIds) {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "one or more customers were not found")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "one or more customers were not found", nil)
 	}
 	// check each customer, they all must have WAId
 	for _, customer := range customers {
 		if strings.TrimSpace(customer.WAId) == "" {
-			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "one or more customers do not have a valid country code and phone number, please edit them")
+			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "one or more customers do not have a valid country code and phone number, please edit them", nil)
 		}
 	}
 	template, err := dependencies.Whatsapp.GetTemplate(ctx, create.WATemplateId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "whatsapp template not found")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "whatsapp template not found", nil)
 	}
 	if template.Status != types.WATemplateStatusApproved {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "whatsapp template is not approved")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "whatsapp template is not approved", nil)
 	}
 	// convert create.SendTemplate to map
 	sendTemplatePayload := map[string]any{
@@ -113,13 +113,11 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		// make deep copy of create.SendTemplate
 		sendTemplate, err := helper.DeepCopy(create.SendTemplate)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, create)
-			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		payload, err := sendTemplate.FinalPayload(template, customer, broadcastToken)
 		if err != nil {
-			dependencies.Logger.ErrorFunction(err, create)
-			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		payloads = append(payloads, payload)
 	}
@@ -169,7 +167,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		broadcast.SendDate = time.Now().UTC().Add(1 * time.Minute)
 	}
 	if err := transaction.BroadcastRepository().Insert(ctx, &broadcast); err != nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// store each payload as a BroadcastRecipient, use bulk insert
 	recipients := make([]dao_customer.BroadcastRecipient, 0, len(customers))
@@ -182,10 +180,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		})
 	}
 	if err := transaction.BroadcastRecipientRepository().InsertBulk(ctx, recipients); err != nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	// process after commit because this is like a process of event which happens in fc task
@@ -217,7 +215,7 @@ func (Create) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException("whatsapp broadcast not found", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("whatsapp broadcast is not approved", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("you are not authorized to access this business account", http.StatusUnauthorized)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

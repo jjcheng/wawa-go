@@ -2,6 +2,7 @@ package gormdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
@@ -29,7 +30,7 @@ func (accountCacheRepository *AccountCacheRepository) GetByKey(ctx context.Conte
 	var cache dao_account.Cache
 	result := accountCacheRepository.db.WithContext(ctx).Where("key = ?", key).First(&cache)
 	if result.Error != nil {
-		if result.Error != gorm.ErrRecordNotFound {
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("AccountCacheRepository.GetByKey key=%s error=%w", key, result.Error)
 		}
 		return nil, result.Error

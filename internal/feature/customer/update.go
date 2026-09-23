@@ -51,7 +51,7 @@ func (update *Update) Validate() []exception.InputException {
 
 func (update Update) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Customer] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := update.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
@@ -59,21 +59,21 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, update.CustomerId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found")
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if customer.UserId != user.Id {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusNotFound, "customer not found")
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if update.CountryCode != "" {
 		if customer.CountryCode != update.CountryCode || customer.PhoneNumber != update.PhoneNumber {
 			existing, err := dependencies.UnitOfWork.CustomerRepository().GetByCountryCodePhoneNumber(ctx, user.Id, update.CountryCode, update.PhoneNumber)
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-				return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+				return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 			if existing != nil && existing.Id != customer.Id {
-				return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists")
+				return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists", nil)
 			}
 			customer.CountryCode = update.CountryCode
 			customer.PhoneNumber = update.PhoneNumber
@@ -86,7 +86,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	customer.WAId = customer.CountryCode + customer.PhoneNumber
 	customer.AdditionalData = update.AdditionalData
 	if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, customer); err != nil {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := dto_customer.NewCustomer(*customer)
 	return dto.NewSuccessResponse(&result)
@@ -103,7 +103,7 @@ func (Update) APISettings() feature.APISettings {
 		true,
 		types.APITagCustomer,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("customer not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("customer already exists", http.StatusConflict)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

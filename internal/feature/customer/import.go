@@ -81,7 +81,7 @@ func (importCustomers *Import) Validate() []exception.InputException {
 
 func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*ImportResult] {
 	if user == nil {
-		return dto.NewFailedResponse[*ImportResult](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*ImportResult](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := importCustomers.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*ImportResult](inputErrors)
@@ -104,7 +104,7 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 		existing, err := transaction.CustomerRepository().GetByImportedPhoneNumber(ctx, user.Id, contact.ImportedPhoneNumber)
 		if err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return dto.NewFailedResponse[*ImportResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+				return dto.NewFailedResponse[*ImportResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 		}
 		if existing != nil {
@@ -139,10 +139,10 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 		result.ImportedCount++
 	}
 	if err := transaction.CustomerRepository().InsertBulk(ctx, customers); err != nil {
-		return dto.NewFailedResponse[*ImportResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*ImportResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[*ImportResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*ImportResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	result.Message = fmt.Sprintf("%d contacts successfully imported, %d skipped. Some contacts may miss country code, please amend accordingly.", result.ImportedCount, len(result.Skipped))
@@ -226,7 +226,7 @@ func (Import) APISettings() feature.APISettings {
 		true,
 		types.APITagCustomer,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

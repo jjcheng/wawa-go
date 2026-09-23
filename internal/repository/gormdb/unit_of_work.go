@@ -1,6 +1,8 @@
 package gormdb
 
 import (
+	"fmt"
+
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
 
@@ -172,8 +174,7 @@ func (transaction *UnitOfWork) Rollback() {
 
 func (transaction *UnitOfWork) CommitTransaction() error {
 	if err := transaction.db.Commit().Error; err != nil {
-		transaction.logger.ErrorFunction(err)
-		return err
+		return fmt.Errorf("UnitOfWork.CommitTransaction error=%w", err)
 	}
 	return nil
 }

@@ -62,17 +62,17 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				key := helper.GetTemplateStatusChangeCacheKey(fmt.Sprint(templateStatus.MessageTemplateId))
 				cachedValue, err := dependencies.Cache.Get(ctx, key)
 				if err != nil {
-					dependencies.Logger.ErrorFunction(err, key)
+					dependencies.Logger.Error(err)
 					return nil
 				}
 				userId, err := strconv.Atoi(cachedValue)
 				if err != nil {
-					dependencies.Logger.ErrorFunction(err, userId)
+					dependencies.Logger.ErrorWithFields(err, "userId", userId)
 					return nil
 				}
 				user, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, int32(userId))
 				if err != nil {
-					dependencies.Logger.ErrorFunction(err, userId)
+					dependencies.Logger.Error(err)
 				}
 				var title, body, url string
 				var notificationType types.NotificationType

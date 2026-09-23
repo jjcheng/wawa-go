@@ -46,7 +46,7 @@ func (changePassword *ChangePassword) Validate() []exception.InputException {
 
 func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if errors := changePassword.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
@@ -54,21 +54,20 @@ func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_accou
 	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found")
+			return dto.NewFailedResponse[*dto_account.User](http.StatusNotFound, "user not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if !helper.VerifyPassword(changePassword.OldPassword, existing.PasswordHash) {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid old password")
+		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "invalid old password", nil)
 	}
 	passwordHash, err := helper.HashPassword(changePassword.NewPassword)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, user.Id)
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	existing.PasswordHash = passwordHash
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	d := dto_account.NewUser(*existing)
 	return dto.NewSuccessResponse(&d)

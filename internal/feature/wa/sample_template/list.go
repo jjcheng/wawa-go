@@ -34,18 +34,21 @@ func (list *List) Validate() []exception.InputException {
 }
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_wa.SampleTemplate] {
+	if user == nil {
+		return dto.NewFailedResponse[[]dto_wa.SampleTemplate](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
 	if errors := list.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_wa.SampleTemplate](errors)
 	}
 	templates, err := dependencies.UnitOfWork.WASampleTemplateRepository().List(list.Category, list.Language)
 	if err != nil {
-		return dto.NewFailedResponse[[]dto_wa.SampleTemplate](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[[]dto_wa.SampleTemplate](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := make([]dto_wa.SampleTemplate, 0, len(templates))
 	for _, template := range templates {
 		dtoTemplate, err := dto_wa.NewSampleTemplate(template)
 		if err != nil {
-			return dto.NewFailedResponse[[]dto_wa.SampleTemplate](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[[]dto_wa.SampleTemplate](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		result = append(result, *dtoTemplate)
 	}

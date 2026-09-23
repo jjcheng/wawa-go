@@ -40,7 +40,7 @@ func (list *List) Validate() []exception.InputException {
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_customer.BroadcastRecipient]] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](inputErrors)
@@ -48,16 +48,16 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, list.BroadcastId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusNotFound, "broadcast not found")
+			return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusNotFound, "broadcast not found", nil)
 		}
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if broadcast.UserId != user.Id {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusNotFound, "broadcast not found")
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	recipients, totalCount, totalPages, err := dependencies.UnitOfWork.BroadcastRecipientRepository().ListByBroadcastId(ctx, list.BroadcastId, list.Name, list.Status, false, list.Page, list.PageSize)
 	if err != nil {
-		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.BroadcastRecipient]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	items := make([]dto_customer.BroadcastRecipient, 0, len(recipients))
 	for _, recipient := range recipients {
@@ -78,7 +78,7 @@ func (List) APISettings() feature.APISettings {
 		true,
 		types.APITagWA,
 		[]feature.APIError{
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

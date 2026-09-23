@@ -29,20 +29,18 @@ func (listSets ListSets) Handle(ctx context.Context, _ *dto_account.User, depend
 	}
 	website := getWebsiteFromContext(ctx)
 	if website == nil {
-		return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusNotFound, "website not found")
+		return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusNotFound, "website not found", nil)
 	}
 	catalog, err := dependencies.UnitOfWork.CommerceCatalogRepository().GetByWebsiteId(ctx, website.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusNotFound, "catalog not found")
+			return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusNotFound, "catalog not found", nil)
 		}
-		dependencies.Logger.ErrorFunction(err, website.Id)
-		return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	sets, err := dependencies.UnitOfWork.CommerceSetRepository().ListByCatalogId(ctx, catalog.Id)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, catalog.Id)
-		return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[[]dto_commerce.Set](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	items := make([]dto_commerce.Set, 0, len(sets))
 	for _, set := range sets {

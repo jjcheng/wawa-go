@@ -38,7 +38,7 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 	existing, _, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByWABAId(ctx, store.WABADetails.ID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	var businessAccount dao_wa.BusinessAccount
@@ -58,7 +58,7 @@ func (store Store) Handle(ctx context.Context, _, dependencies *service.Dependen
 			Currency:             store.WABADetails.Currency,
 		}
 		if err := dependencies.UnitOfWork.WABusinessAccountRepository().Insert(ctx, &businessAccount); err != nil {
-			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
 	d := dto_wa.NewBusinessAccount(businessAccount, "", "")

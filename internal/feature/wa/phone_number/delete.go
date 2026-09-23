@@ -26,9 +26,14 @@ func (delete *Delete) Validate() []exception.InputException {
 }
 
 func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
-	//return dto.NewFailedResponse[any](http.StatusNotImplemented, "not in use")
+	if user == nil {
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not master")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessAccount == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// only can delete if there is no message, no message event, no customer, no broadcast
 	if errors := delete.Validate(); len(errors) > 0 {
@@ -37,22 +42,19 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, delete.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")
+			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found", nil)
 		}
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
-	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not authorized")
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if user.WA.BusinessAccount.Id != phoneNumber.BusinessAccountId {
-		return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found")
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// TODO: remove all messages
 	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolio.MetaBusinessPortfolioId); err != nil {
-		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error())
+		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 	}
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().DeleteById(ctx, phoneNumber.Id); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }

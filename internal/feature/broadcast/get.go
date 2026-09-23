@@ -28,7 +28,7 @@ func (get *Get) Validate() []exception.InputException {
 
 func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Broadcast] {
 	if user == nil {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusForbidden, "you are not authenticated")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if errors := get.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Broadcast](errors)
@@ -36,12 +36,12 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	broadcast, err := dependencies.UnitOfWork.BroadcastRepository().GetById(ctx, get.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusNotFound, "broadcast not found")
+			return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusNotFound, "broadcast not found", nil)
 		}
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError)
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if broadcast.UserId != user.Id {
-		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusNotFound, "broadcast not found")
+		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	result := dto_customer.NewBroadcast(*broadcast)
 	return dto.NewSuccessResponse(&result)
@@ -59,7 +59,7 @@ func (Get) APISettings() feature.APISettings {
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
-			feature.NewAPIError(*exception.NewCustomException("you are not authenticated", http.StatusForbidden)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)
