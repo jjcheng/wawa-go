@@ -174,7 +174,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -208,7 +208,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -573,7 +573,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -607,7 +607,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -853,7 +853,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -887,7 +887,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -1190,7 +1190,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -1224,7 +1224,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -1268,49 +1268,6 @@
               }
             },
             "description": "internal server error"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "message": {
-                      "description": "error message if not success",
-                      "example": "realtime notification is unavailable",
-                      "type": "string"
-                    },
-                    "request_id": {
-                      "description": "request correlation id",
-                      "type": "string"
-                    },
-                    "status_code": {
-                      "description": "http status code",
-                      "example": 503,
-                      "format": "int32",
-                      "type": "integer"
-                    },
-                    "success": {
-                      "description": "is request is success",
-                      "example": false,
-                      "type": "boolean"
-                    },
-                    "time_taken": {
-                      "description": "time taken in miliseconds",
-                      "example": 100,
-                      "format": "int64",
-                      "type": "integer"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "status_code",
-                    "time_taken"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "realtime notification is unavailable"
           },
           "default": {
             "description": ""
@@ -1490,7 +1447,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -1524,7 +1481,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -1742,7 +1699,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -1776,7 +1733,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -2027,7 +1984,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -2061,7 +2018,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -3422,7 +3379,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -3456,7 +3413,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -3465,7 +3422,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -3499,7 +3456,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -4145,7 +4102,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -4179,7 +4136,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -4675,7 +4632,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -4709,7 +4666,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -5172,7 +5129,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -5206,7 +5163,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -5437,7 +5394,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -5471,7 +5428,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -5805,7 +5762,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -5839,7 +5796,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -6113,7 +6070,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -6147,7 +6104,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -6429,7 +6386,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -6463,7 +6420,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -6733,7 +6690,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -6767,7 +6724,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -6776,7 +6733,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -6810,7 +6767,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -7121,7 +7078,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -7155,7 +7112,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -7164,7 +7121,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -7198,7 +7155,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -7485,7 +7442,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -7519,7 +7476,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -7528,7 +7485,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -7562,7 +7519,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -7925,7 +7882,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -7959,7 +7916,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -7968,7 +7925,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -8002,7 +7959,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -8233,7 +8190,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -8267,7 +8224,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -8276,7 +8233,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -8310,7 +8267,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -8629,7 +8586,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -8663,7 +8620,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -8672,7 +8629,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -8706,7 +8663,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -9083,7 +9040,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -9117,7 +9074,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -9126,7 +9083,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -9160,7 +9117,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -9401,7 +9358,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -9435,7 +9392,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -9444,7 +9401,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -9478,7 +9435,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -9709,7 +9666,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -9743,7 +9700,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -9752,7 +9709,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -9786,7 +9743,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -11178,7 +11135,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -11212,7 +11169,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -11458,7 +11415,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -11492,7 +11449,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -12007,7 +11964,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -12041,7 +11998,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -12436,7 +12393,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -12470,7 +12427,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -12855,7 +12812,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -12889,7 +12846,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -13284,7 +13241,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -13318,7 +13275,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -15048,7 +15005,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -15082,7 +15039,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -15792,7 +15749,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -15826,7 +15783,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -16181,7 +16138,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -16215,7 +16172,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -16493,7 +16450,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -16527,7 +16484,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -16536,7 +16493,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -16570,7 +16527,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -16947,7 +16904,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -16981,7 +16938,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -16990,7 +16947,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -17024,7 +16981,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -17319,7 +17276,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -17353,7 +17310,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -17362,7 +17319,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -17396,7 +17353,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -17694,7 +17651,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -17728,7 +17685,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -18042,7 +17999,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -18076,7 +18033,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -18524,7 +18481,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -18558,7 +18515,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -19321,7 +19278,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -19355,7 +19312,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -19704,7 +19661,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -19738,7 +19695,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -20184,7 +20141,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -20218,7 +20175,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -20466,7 +20423,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -20500,7 +20457,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -20509,7 +20466,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -20543,7 +20500,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -21175,7 +21132,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -21209,7 +21166,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -21526,7 +21483,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -21560,7 +21517,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "404": {
             "content": {
@@ -21937,7 +21894,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -21971,7 +21928,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -21980,7 +21937,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -22014,7 +21971,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -26529,7 +26486,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -26563,7 +26520,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -27603,7 +27560,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": "you are not authorized, unauthorized access",
+                      "example": "You are not authorized., unauthorized access",
                       "type": "string"
                     },
                     "request_id": {
@@ -27637,7 +27594,7 @@
                 }
               }
             },
-            "description": "you are not authorized, unauthorized access"
+            "description": "You are not authorized., unauthorized access"
           },
           "403": {
             "content": {
@@ -27646,7 +27603,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -27680,7 +27637,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {
@@ -28049,7 +28006,7 @@
                   "properties": {
                     "message": {
                       "description": "error message if not success",
-                      "example": types.ExceptionMessageForbidden,
+                      "example": "You are not authenticated.",
                       "type": "string"
                     },
                     "request_id": {
@@ -28083,7 +28040,7 @@
                 }
               }
             },
-            "description": types.ExceptionMessageForbidden
+            "description": "You are not authenticated."
           },
           "500": {
             "content": {

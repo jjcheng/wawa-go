@@ -53,6 +53,7 @@ func logRaw(c *gin.Context, startAt time.Time, userId int32, requestJSON string,
 	logger.LogHTTPRequest(
 		c.Request.Method,
 		c.Request.URL.Path,
+		c.Request.URL.RawQuery,
 		c.Writer.Status(),
 		time.Since(startAt),
 		userId,

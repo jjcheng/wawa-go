@@ -23,7 +23,7 @@ func NewLogger() *Logger {
 	}
 	return &Logger{
 		out: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: outLevel})),
-		err: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn, AddSource: true})),
+		err: slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn})),
 	}
 }
 
@@ -58,7 +58,6 @@ func (logger *Logger) Error(err error) {
 func (logger *Logger) ErrorWithFields(err error, event string, fields ...any) {
 	attrs := []any{"event", event}
 	attrs = append(attrs, fields...)
-
 	if err == nil {
 		logger.err.Error("<nil>", attrs...)
 		return
@@ -98,8 +97,9 @@ func (logger *Logger) Warnf(message string, v ...any) {
 
 // LogHTTPRequest logs a one-line structured summary for a completed HTTP request.
 // requestJSON is only attached in the develop environment to avoid logging request payloads in prod.
-func (logger *Logger) LogHTTPRequest(method string, path string, statusCode int, duration time.Duration, userId int32, remoteAddress string, requestId string, requestJSON string) {
+func (logger *Logger) LogHTTPRequest(method string, path string, query string, statusCode int, duration time.Duration, userId int32, remoteAddress string, requestId string, requestJSON string) {
 	attrs := []any{
+		"event", "http_request_completed",
 		"method", method,
 		"path", path,
 		"status", statusCode,
@@ -108,10 +108,15 @@ func (logger *Logger) LogHTTPRequest(method string, path string, statusCode int,
 		"ip", remoteAddress,
 		"request_id", requestId,
 	}
-	if cfg.Default().Site.Environment == types.EnvironmentDevelop && requestJSON != "" {
-		attrs = append(attrs, "request_json", requestJSON)
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		if query != "" {
+			attrs = append(attrs, "query", query)
+		}
+		if requestJSON != "" {
+			attrs = append(attrs, "request_json", requestJSON)
+		}
 	}
-	logger.out.Info("HTTP_REQUEST", attrs...)
+	logger.out.Info("HTTP request info", attrs...)
 }
 
 // Fatal logs an unrecovered panic with the request context needed to correlate it via requestId.
@@ -121,9 +126,9 @@ func (logger *Logger) Fatal(err error, path string, query string, method string,
 		message = err.Error()
 	}
 	attrs := []any{
+		"event", "http_request_panicked",
 		"method", method,
 		"path", path,
-		"query", query,
 		"status", statusCode,
 		"user_id", userId,
 		"ip", remoteAddress,
@@ -132,6 +137,9 @@ func (logger *Logger) Fatal(err error, path string, query string, method string,
 		"stack", stack,
 	}
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		if query != "" {
+			attrs = append(attrs, "query", query)
+		}
 		if requestBody != "" {
 			attrs = append(attrs, "request_body", requestBody)
 		}

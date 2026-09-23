@@ -75,7 +75,10 @@ func dispatchBroadcasts(ctx context.Context, dependencies *service.Dependencies)
 		log.Printf("dispatching broadcast id: %d", pendingBroadcast.Id)
 		// send a message to SMQ which will trigger worker function
 		// ignore any error, the next cycle will do it again
-		_, _ = dependencies.MessageQueue.PublishJob("start_broadcast", pendingBroadcast.Id, 0, service.MessageQueuePriorityHigh)
+		_, err := dependencies.MessageQueue.PublishJob("start_broadcast", pendingBroadcast.Id, 0, service.MessageQueuePriorityHigh)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, pendingBroadcast.Id)
+		}
 	}
 }
 
@@ -88,7 +91,10 @@ func dispatchRetryMessages(ctx context.Context, dependencies *service.Dependenci
 	}
 	for _, pendingMessage := range pendingMessages {
 		// ignore any error, the next cycle will do it again
-		_, _ = dependencies.MessageQueue.PublishJob("retry_send_message", pendingMessage.Id, 0, service.MessageQueuePriorityHigh)
+		_, err := dependencies.MessageQueue.PublishJob("retry_send_message", pendingMessage.Id, 0, service.MessageQueuePriorityHigh)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, pendingMessage.Id)
+		}
 	}
 }
 

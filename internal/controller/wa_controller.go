@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"reflect"
+	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -83,9 +84,12 @@ func registerWebhookVerifyRoute(routerGroup *gin.RouterGroup, dependencies *serv
 
 func registerWebhookReceiveRoute(routerGroup *gin.RouterGroup, dependencies *service.Dependencies) {
 	routerGroup.POST(feature_wa_webhook.Receive{}.APISettings().Path, func(ctx *gin.Context) {
+		startAt := time.Now()
 		rawBody, err := ctx.GetRawData()
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, dto.NewFailedResponse[any](http.StatusBadRequest, "failed to read raw body", err))
+			response := dto.NewFailedResponse[any](http.StatusBadRequest, "failed to read raw body", err)
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
+			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return
 		}
 		if !helper.VerifyWhatsAppWebhookSignature(ctx.GetHeader("X-Hub-Signature-256"), rawBody, cfg.Default().WhatsApp.AppSecret) {
@@ -94,6 +98,7 @@ func registerWebhookReceiveRoute(routerGroup *gin.RouterGroup, dependencies *ser
 		}
 		requestObject := feature_wa_webhook.Receive{RawBody: string(rawBody)}
 		responseObject := requestObject.Handle(ctx.Request.Context(), nil, dependencies)
+		finalizeResponse(ctx, dependencies.Logger, &responseObject.ResponseBase, responseObject.Error, startAt)
 		if !responseObject.Success {
 			ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 			return
@@ -106,9 +111,11 @@ func registerTemplateSampleUploadRoute(routerGroup *gin.RouterGroup, dependencie
 	settings := feature_wa_template.UploadExample{}.APISettings()
 	_ = apiGenerator.AddEndpoint(feature_wa_template.UploadExample{}, reflect.TypeFor[*service.WhatsAppTemplateHeaderSampleUploadResponse]())
 	routerGroup.POST(settings.Path, func(ctx *gin.Context) {
+		startAt := time.Now()
 		content, err := ctx.GetRawData()
 		if err != nil {
 			response := dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusBadRequest, "failed to read sample content", err)
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
 			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return
 		}
@@ -122,6 +129,7 @@ func registerTemplateSampleUploadRoute(routerGroup *gin.RouterGroup, dependencie
 			user = userValue.(*dto_account.User)
 		}
 		response := request.Handle(ctx.Request.Context(), user, dependencies)
+		finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
 		ctx.JSON(response.StatusCode, response)
 	})
 }
@@ -130,9 +138,11 @@ func registerMediaUploadRoute(routerGroup *gin.RouterGroup, dependencies *servic
 	settings := feature_wa_message.UploadMedia{}.APISettings()
 	_ = apiGenerator.AddEndpoint(feature_wa_message.UploadMedia{}, reflect.TypeFor[*feature_wa_message.Media]())
 	routerGroup.POST(settings.Path, func(ctx *gin.Context) {
+		startAt := time.Now()
 		content, err := ctx.GetRawData()
 		if err != nil {
 			response := feature_wa_message.UploadMediaRequestError(err)
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
 			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return
 		}
@@ -143,6 +153,15 @@ func registerMediaUploadRoute(routerGroup *gin.RouterGroup, dependencies *servic
 			user = userValue.(*dto_account.User)
 		}
 		response := request.Handle(ctx.Request.Context(), user, dependencies)
+		finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
 		ctx.JSON(response.StatusCode, response)
 	})
+}
+
+func finalizeResponse(ctx *gin.Context, logger *service.Logger, response *dto.ResponseBase, err error, startAt time.Time) {
+	response.StartAt = startAt
+	response.EndAt = time.Now()
+	response.TimeTaken = helper.GetTimeDifferenceInMS(response.EndAt, startAt)
+	response.RequestId = middleware.GetRequestID(ctx)
+	logResponseError(ctx, logger, *response, err)
 }

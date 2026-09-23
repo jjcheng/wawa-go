@@ -90,16 +90,7 @@ func registerRoute[R any, T feature.Request[R]](server *gin.RouterGroup, depende
 		responseObject.EndAt = endAt
 		responseObject.TimeTaken = helper.GetTimeDifferenceInMS(endAt, startAt)
 		responseObject.RequestId = middleware.GetRequestID(ctx)
-		if responseObject.Error != nil {
-			dependencies.Logger.ErrorWithFields(responseObject.Error,
-				"request_id", responseObject.RequestId,
-				"status", responseObject.StatusCode,
-				"method", ctx.Request.Method,
-				"path", ctx.Request.URL.Path,
-				"started_at", responseObject.StartAt,
-				"time_taken", responseObject.TimeTaken,
-			)
-		}
+		logResponseError(ctx, dependencies.Logger, responseObject.ResponseBase, responseObject.Error)
 		if !responseObject.Success {
 			ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 			return
@@ -114,6 +105,21 @@ func registerRoute[R any, T feature.Request[R]](server *gin.RouterGroup, depende
 		}
 		ctx.JSON(responseObject.StatusCode, responseObject)
 	})
+}
+
+func logResponseError(ctx *gin.Context, logger *service.Logger, response dto.ResponseBase, err error) {
+	if err == nil {
+		return
+	}
+	logger.ErrorWithFields(err,
+		"http_request_failed",
+		"request_id", response.RequestId,
+		"status", response.StatusCode,
+		"method", ctx.Request.Method,
+		"path", ctx.Request.URL.Path,
+		"started_at", response.StartAt,
+		"time_taken", response.TimeTaken,
+	)
 }
 
 // write the api-doc.json to www/
