@@ -97,23 +97,26 @@ func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencie
 		}
 	}()
 	// get wa assets
-	var phoneNumber *dao_wa.PhoneNumber
+	var phoneNumbers []dao_wa.PhoneNumber
 	var businessAccount *dao_wa.BusinessAccount
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	err = try(ctx, func() error {
 		var e error
-		phoneNumber, businessAccount, businessPortfolio, e = dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
+		phoneNumbers, businessAccount, businessPortfolio, e = dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
 		return e
 	})
 	if err != nil {
 		errorMessages = append(errorMessages, "failed to get user's WhatsApp assets")
 		return fmt.Errorf("failed to get WA assets for user %d: %w", user.Id, err)
 	}
-	phoneNumberDTO := dto_wa.NewPhoneNumber(*phoneNumber)
+	var phoneNumberDTOs []dto_wa.PhoneNumber
+	for _, phoneNumber := range phoneNumbers {
+		phoneNumberDTOs = append(phoneNumberDTOs, dto_wa.NewPhoneNumber(phoneNumber))
+	}
 	businessAccountDTO := dto_wa.NewBusinessAccount(*businessAccount, businessPortfolio.MetaBusinessPortfolioId, businessPortfolio.Name)
 	businessPortfolioDTO := dto_wa.NewBusinessPortfolio(*businessPortfolio, false)
 	userDTO.WA = &dto_account.UserWA{
-		PhoneNumber_:                 &phoneNumberDTO,
+		PhoneNumbers:                 phoneNumberDTOs,
 		BusinessAccount:              &businessAccountDTO,
 		BusinessPortfolio:            &businessPortfolioDTO,
 		BusinessPortfolioAccessToken: businessPortfolio.AccessToken,

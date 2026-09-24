@@ -10,6 +10,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -30,6 +31,9 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if user == nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Message](inputErrors)
 	}
@@ -47,7 +51,9 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		}
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if phoneNumber.UserId != user.Id {
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == phoneNumber.Id
+	}) {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	result := dto_wa.NewMessage(*message)

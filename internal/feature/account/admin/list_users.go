@@ -29,7 +29,7 @@ func (listUsers ListUsers) Handle(ctx context.Context, user *dto_account.User, d
 	if inputErrors := listUsers.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_account.User](inputErrors)
 	}
-	users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
+	users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

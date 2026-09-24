@@ -218,19 +218,26 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessPortfolioAccessToken == "" {
+	if user.WA == nil || user.WA.BusinessPortfolioAccessToken == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Message](inputErrors)
 	}
 	// get customer by customer id
-	customer, err := dependencies.UnitOfWork.CustomerRepository().GetByIdAndUserId(ctx, create.CustomerId, user.Id)
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, create.CustomerId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "customer not found", nil)
 		}
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	// get phone number
+	phoneNumber := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == customer.PhoneNumberId
+	})
+	if phoneNumber == nil {
+		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if customer.WAId == "" && customer.MetaUserId == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID or Meta user ID, please edit the details", nil)
@@ -250,7 +257,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	delete(payload, "customer_id")
 	token := uuid.NewString()
 	payload["biz_opaque_callback_data"] = token
-	response, err := dependencies.Whatsapp.SendMessage(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, payload, user.WA.BusinessPortfolioAccessToken)
+	response, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumber.MetaPhoneNumberId, payload, user.WA.BusinessPortfolioAccessToken)
 	// always insert message to db
 	var sendError string
 	messageStatus := types.WAMessageStatusAccepted
@@ -267,7 +274,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	timestamp := time.Now().Unix()
 	message := dao_wa.Message{
 		Sending:       true,
-		PhoneNumberId: user.WA.PhoneNumber_.Id,
+		PhoneNumberId: phoneNumber.Id,
 		CustomerId:    customer.Id,
 		Timestamp:     timestamp,
 		Type:          string(create.Type),
@@ -294,7 +301,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	result := dto_wa.NewMessage(message)
 	// publish the message even if it has error, so user is aware, this applies to broadcast messages as well
 	// if user is currently on the chat page
-	channelName := helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token)
+	channelName := helper.GetChatChannelName(phoneNumber.MetaPhoneNumberId, customer.Token)
 	err = dependencies.Ably.Publish("message", channelName, result)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, channelName, result.Id)

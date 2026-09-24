@@ -105,10 +105,31 @@ func (phoneNumberRepository *WAPhoneNumberRepository) CountByBusinessAccountId(c
 	return int(count), nil
 }
 
+func (phoneNumberRepository *WAPhoneNumberRepository) ListUnassigned(ctx context.Context, businessAccountId int32) ([]dao_wa.PhoneNumber, error) {
+	var phoneNumbers []dao_wa.PhoneNumber
+	result := phoneNumberRepository.db.WithContext(ctx).
+		Table("wa.phone_numbers AS pn").
+		Where("pn.business_account_id = ?", businessAccountId).
+		Where("NOT EXISTS (?)", phoneNumberRepository.db.
+			Table("account.user_phone_numbers AS upn").
+			Select("1").
+			Where("upn.phone_number_id = pn.id")).
+		Order("pn.id").
+		Find(&phoneNumbers)
+	if result.Error != nil {
+		return nil, fmt.Errorf("PhoneNumberRepository.ListUnassigned businessAccountId=%d error=%w", businessAccountId, result.Error)
+	}
+	for i := range phoneNumbers {
+		if err := phoneNumberRepository.decryptSecrets(&phoneNumbers[i]); err != nil {
+			return nil, fmt.Errorf("PhoneNumberRepository.ListUnassigned businessAccountId=%d phoneNumberId=%d error=%w", businessAccountId, phoneNumbers[i].Id, err)
+		}
+	}
+	return phoneNumbers, nil
+}
+
 func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32, status types.WAPhoneNumberStatus, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
 	query := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers AS pn").
-		Joins("INNER JOIN account.users AS u ON u.id = pn.user_id").
 		Where("pn.business_account_id = ?", businessAccountId)
 	if status != "" {
 		query = query.Where("pn.status = ?", status)
@@ -116,12 +137,12 @@ func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessAccountId(ct
 		query = query.Where("pn.status <> ?", types.WAPhoneNumberStatusRemoved)
 	}
 	var count int64
-	if err := query.Distinct("pn.id").Count(&count).Error; err != nil {
+	if err := query.Count(&count).Error; err != nil {
 		return nil, 0, 0, fmt.Errorf("PhoneNumberRepository.ListByBusinessAccountId index=0 businessAccountId=%d status=%s page=%d pageSize=%d error=%w", businessAccountId, status, page, pageSize, err)
 	}
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
-	if err := query.Select("pn.*, u.name AS user_name").Order("pn.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers).Error; err != nil {
+	if err := query.Select("pn.*").Order("pn.id").Offset((page - 1) * pageSize).Limit(pageSize).Find(&phoneNumbers).Error; err != nil {
 		return nil, 0, 0, fmt.Errorf("PhoneNumberRepository.ListByBusinessAccountId index=1 businessAccountId=%d status=%s page=%d pageSize=%d error=%w", businessAccountId, status, page, pageSize, err)
 	}
 	for i := range phoneNumbers {
@@ -132,26 +153,34 @@ func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessAccountId(ct
 	return phoneNumbers, totalCount, totalPages, nil
 }
 
-func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Context, userId int32) (*dao_wa.PhoneNumber, *dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error) {
-	var phoneNumber dao_wa.PhoneNumber
+func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Context, userId int32) ([]dao_wa.PhoneNumber, *dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error) {
+	var phoneNumbers []dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).
-		Model(&dao_wa.PhoneNumber{}).
-		Where("user_id = ?", userId).
-		First(&phoneNumber)
+		Table("wa.phone_numbers AS pn").
+		Joins("JOIN account.user_phone_numbers AS upn ON upn.phone_number_id = pn.id").
+		Where("upn.user_id = ?", userId).
+		Select("pn.*").
+		Order("pn.id").
+		Find(&phoneNumbers)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=0 userId=%d error=%w", userId, result.Error)
 		}
 		return nil, nil, nil, result.Error
 	}
-	if err := phoneNumberRepository.decryptSecrets(&phoneNumber); err != nil {
-		return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=1 userId=%d error=%w", userId, result.Error)
+	if len(phoneNumbers) == 0 {
+		return nil, nil, nil, gorm.ErrRecordNotFound
+	}
+	for i := range phoneNumbers {
+		if err := phoneNumberRepository.decryptSecrets(&phoneNumbers[i]); err != nil {
+			return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=1 userId=%d phoneNumberId=%d error=%w", userId, phoneNumbers[i].Id, err)
+		}
 	}
 	businessPortfolio, businessAccount, err := phoneNumberRepository.GetBusinessPortfolioAndAccountByUserId(ctx, userId)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=2 userId=%d error=%w", userId, result.Error)
+		return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=2 userId=%d error=%w", userId, err)
 	}
-	return &phoneNumber, businessAccount, businessPortfolio, nil
+	return phoneNumbers, businessAccount, businessPortfolio, nil
 }
 
 // used in update user
@@ -160,8 +189,8 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 	result := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.business_accounts").
 		Select("wa.business_accounts.*").
-		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.business_account_id = wa.business_accounts.id").
-		Where("wa.phone_numbers.user_id = ?", userId).
+		Joins("JOIN account.users ON account.users.business_account_id = wa.business_accounts.id").
+		Where("account.users.id = ?", userId).
 		Order("wa.business_accounts.id").
 		First(&businessAccount)
 	if result.Error != nil {

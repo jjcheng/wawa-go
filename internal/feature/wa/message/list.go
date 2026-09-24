@@ -48,7 +48,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if user == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil {
+	if user.WA == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
@@ -61,10 +61,12 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		}
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if customer.UserId != user.Id {
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == customer.PhoneNumberId
+	}) {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, user.WA.PhoneNumber_.Id, customer.Id, true, list.Page, list.PageSize)
+	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, customer.PhoneNumberId, customer.Id, true, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

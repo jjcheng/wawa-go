@@ -11,6 +11,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -49,11 +50,15 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 	}
 	if user.Type != types.UserTypeMaster {
 		// in case user supplied WAIds which don't belong to him, use this to filter
-		if user.WA == nil || user.WA.PhoneNumber_ == nil {
+		if user.WA == nil {
 			return dto.NewSuccessResponse(&dto_wa.MessageAnalytics{})
 		}
-		// assign back to WAIds
-		getUsage.Id = user.WA.PhoneNumber_.Id
+		// make sure the id belong to the user
+		if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+			return pn.Id == getUsage.Id
+		}) {
+			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
 	}
 	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
 		return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
@@ -71,12 +76,16 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 			}
 			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
-		if phoneNumber.BusinessAccountId != user.WA.PhoneNumber_.BusinessAccountId {
+		if phoneNumber.BusinessAccountId != user.BusinessAccountId {
 			return dto.NewFailedResponse[*dto_wa.MessageAnalytics](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
 		waId = phoneNumber.WAId
 	} else {
-		waId = user.WA.PhoneNumber_.WAId
+		phoneNumber := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+			return pn.Id == getUsage.Id
+		})
+		// no need to check nil again, it's checked earlier
+		waId = phoneNumber.WAId
 	}
 	analytics, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, []string{waId}, getUsage.Start, getUsage.End, getUsage.Granularity, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {

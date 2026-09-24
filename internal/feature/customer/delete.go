@@ -40,6 +40,12 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
@@ -50,17 +56,15 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 			transaction.Rollback()
 		}
 	}()
-	customerCount, err := transaction.CustomerRepository().CountByIds(ctx, user.Id, delete.Ids)
+	customers, err := transaction.CustomerRepository().ListByPhoneNumberIdsAndIds(ctx, user.WA.PhoneNumberIds(), delete.Ids)
 	if err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if customerCount != len(delete.Ids) {
+	if len(customers) != len(delete.Ids) {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	for _, id := range delete.Ids {
-		if err := transaction.CustomerRepository().DeleteById(ctx, id); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		}
+	if err = transaction.CustomerRepository().DeleteByIds(ctx, delete.Ids); err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)

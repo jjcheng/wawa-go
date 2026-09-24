@@ -7,8 +7,10 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -32,7 +34,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessAccount == nil {
+	if user.WA == nil || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := delete.Validate(); len(errors) > 0 {
@@ -45,7 +47,9 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if user.WA.BusinessAccount.Id != phoneNumber.BusinessAccountId {
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == delete.Id
+	}) {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	phoneNumberDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)

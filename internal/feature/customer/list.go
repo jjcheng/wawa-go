@@ -15,18 +15,16 @@ import (
 )
 
 type List struct {
-	Order       types.OrderCustomersType `form:"order"`
-	Name        string                   `form:"name"`
-	PhoneNumber string                   `form:"phone_number"`
-	Tags        []string                 `form:"tags"`
-	Status      types.CustomerStatus     `form:"status"`
-	Page        int                      `form:"page"`
-	PageSize    int                      `form:"page_size"`
+	Order    types.OrderCustomersType `form:"order"`
+	Name     string                   `form:"name"`
+	Tags     []string                 `form:"tags"`
+	Status   types.CustomerStatus     `form:"status"`
+	Page     int                      `form:"page"`
+	PageSize int                      `form:"page_size"`
 }
 
 func (list *List) Validate() []exception.InputException {
 	list.Name = strings.TrimSpace(list.Name)
-	list.PhoneNumber = strings.TrimSpace(list.PhoneNumber)
 	if list.Order == "" {
 		list.Order = types.OrderCustomersTypeFromNew
 	}
@@ -56,10 +54,13 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if user == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.WA == nil || len(user.WA.PhoneNumbers) == 0 {
+		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.Customer]](inputErrors)
 	}
-	customers, totalItems, totalPages, err := dependencies.UnitOfWork.CustomerRepository().List(ctx, user.Id, list.Name, list.PhoneNumber, list.Order, list.Status, list.Tags, list.Page, list.PageSize)
+	customers, totalItems, totalPages, err := dependencies.UnitOfWork.CustomerRepository().List(ctx, user.WA.PhoneNumberIds(), list.Name, list.Order, list.Status, list.Tags, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

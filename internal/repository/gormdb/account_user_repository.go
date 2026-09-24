@@ -60,7 +60,7 @@ func (accountUserRepository *AccountUserRepository) Update(ctx context.Context, 
 
 func (accountUserRepository *AccountUserRepository) GetById(ctx context.Context, id int32) (*dao_account.User, error) {
 	var item *dao_account.User
-	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("id = ?", id).First(&item)
+	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("id = ? AND status <> ?", id, types.UserStatusClosed).First(&item)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("AccountUserRepository.GetById index=0 id=%d error=%w", id, result.Error)
@@ -78,12 +78,8 @@ func (accountUserRepository *AccountUserRepository) GetById(ctx context.Context,
 
 func (accountUserRepository *AccountUserRepository) HasMasterUserInBusinessAccount(ctx context.Context, businessAccountId int32) (bool, error) {
 	var count int64
-	result := accountUserRepository.db.WithContext(ctx).
-		Table("account.users").
-		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = account.users.id").
-		Joins("JOIN wa.business_accounts ON wa.business_accounts.id = wa.phone_numbers.business_account_id").
-		Select("account.users.*, wa.business_accounts.name AS business_account_name").
-		Where("account.users.status <> ? AND wa.business_accounts.id = ? AND account.users.type = ?", types.UserStatusClosed, businessAccountId, types.UserTypeMaster).
+	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).
+		Where("business_account_id = ? AND type = ? AND status <> ?", businessAccountId, types.UserTypeMaster, types.UserStatusClosed).
 		Count(&count)
 	if result.Error != nil {
 		return false, fmt.Errorf("AccountUserRepository.HasMasterUserInBusinessAccount businessAccountId=%d error=%w", businessAccountId, result.Error)
@@ -91,27 +87,50 @@ func (accountUserRepository *AccountUserRepository) HasMasterUserInBusinessAccou
 	return count > 0, nil
 }
 
-func (accountUserRepository *AccountUserRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32, typ *types.UserType, excludeClosed bool) ([]dao_account.User, error) {
+func (accountUserRepository *AccountUserRepository) CountByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error) {
+	var count int64
+	if err := accountUserRepository.db.WithContext(ctx).
+		Model(&dao_account.User{}).
+		Where("business_account_id = ?", businessAccountId).
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("AccountUserRepository.CountByBusinessAccountId businessAccountId=%d error=%w", businessAccountId, err)
+	}
+	return int(count), nil
+}
+
+func (accountUserRepository *AccountUserRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32, typ *types.UserType) ([]dao_account.User, error) {
 	var users []dao_account.User
-	query := accountUserRepository.db.WithContext(ctx).
-		Table("account.users").
-		Joins("JOIN wa.phone_numbers ON wa.phone_numbers.user_id = account.users.id").
-		Joins("JOIN wa.business_accounts ON wa.business_accounts.id = wa.phone_numbers.business_account_id").
-		Where("wa.business_accounts.id = ?", businessAccountId).
-		Distinct()
-	if excludeClosed {
-		query.Where("account.users.status <> ?", types.UserStatusClosed)
-	}
+	query := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("business_account_id = ? AND status <> ?", businessAccountId, types.UserStatusClosed)
 	if typ != nil {
-		query = query.Where("account.users.type = ?", *typ)
+		query = query.Where("type = ?", *typ)
 	}
-	result := query.Order("account.users.id").Find(&users)
+	result := query.Order("id").Find(&users)
 	if result.Error != nil {
-		return nil, fmt.Errorf("AccountUserRepository.ListByBusinessAccountId index=0 businessAccountId=%d typ=%v excludeClosed=%v error=%w", businessAccountId, typ, excludeClosed, result.Error)
+		return nil, fmt.Errorf("AccountUserRepository.ListByBusinessAccountId index=0 businessAccountId=%d typ=%v error=%w", businessAccountId, typ, result.Error)
 	}
 	for i := range users {
 		if err := accountUserRepository.decryptSensitiveFields(&users[i]); err != nil {
-			return nil, fmt.Errorf("AccountUserRepository.ListByBusinessAccountId index=1 businessAccountId=%d typ=%v excludeClosed=%v error=%w", businessAccountId, typ, excludeClosed, err)
+			return nil, fmt.Errorf("AccountUserRepository.ListByBusinessAccountId index=1 businessAccountId=%d typ=%v error=%w", businessAccountId, typ, err)
+		}
+	}
+	return users, nil
+}
+
+func (accountUserRepository *AccountUserRepository) GetByIdsAndBusinessAccountId(ctx context.Context, ids []int32, businessAccountId int32) ([]dao_account.User, error) {
+	if len(ids) == 0 {
+		return []dao_account.User{}, nil
+	}
+	var users []dao_account.User
+	result := accountUserRepository.db.WithContext(ctx).
+		Where("id IN ? AND business_account_id = ? AND status <> ?", ids, businessAccountId, types.UserStatusClosed).
+		Order("id").
+		Find(&users)
+	if result.Error != nil {
+		return nil, fmt.Errorf("AccountUserRepository.GetByIdsAndBusinessAccountId ids=%v businessAccountId=%d index=0 error=%w", ids, businessAccountId, result.Error)
+	}
+	for i := range users {
+		if err := accountUserRepository.decryptSensitiveFields(&users[i]); err != nil {
+			return nil, fmt.Errorf("AccountUserRepository.GetByIdsAndBusinessAccountId ids=%v businessAccountId=%d index=1 error=%w", ids, businessAccountId, err)
 		}
 	}
 	return users, nil
@@ -123,7 +142,7 @@ func (accountUserRepository *AccountUserRepository) GetByPhoneNumber(ctx context
 	if err != nil {
 		return nil, fmt.Errorf("AccountUserRepository.GetByPhoneNumber index=0 countryCode=%s error=%w", countryCode, err)
 	}
-	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number_hash = ?", countryCode, phoneNumberHash).First(&item)
+	result := accountUserRepository.db.WithContext(ctx).Model(&dao_account.User{}).Where("country_code = ? AND phone_number_hash = ? AND status <> ?", countryCode, phoneNumberHash, types.UserStatusClosed).First(&item)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, result.Error

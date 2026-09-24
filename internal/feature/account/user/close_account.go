@@ -36,7 +36,7 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 	}
 	// get all MASTER users in the business account
 	if user.WA != nil && user.WA.BusinessAccount != nil && user.Type == types.UserTypeMaster {
-		users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
+		users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil)
 		if err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
@@ -89,70 +89,70 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 }
 
 // don't use this, will delete everything
-func (closeAccount *CloseAccount) _(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
-	// start a transaction
-	transaction := dependencies.UnitOfWork.BeginTransaction()
-	var committed bool
-	defer func() {
-		if !committed {
-			transaction.Rollback()
-		}
-	}()
-	// broadcasts, will also delete broadcast_recipients using FK
-	if err := transaction.BroadcastRepository().DeleteByUserId(ctx, user.Id); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
-	// messages, will delete message_status using FK
-	if user.WA != nil && user.WA.PhoneNumber_ != nil {
-		if err := transaction.WAMessageRepository().DeleteByPhoneNumberId(ctx, user.WA.PhoneNumber_.Id); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		}
-		// delete phone number
-		if err := transaction.WAPhoneNumberRepository().DeleteById(ctx, user.WA.PhoneNumber_.Id); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		}
-	}
-	// customers
-	if err := transaction.CustomerRepository().DeleteByUserId(ctx, user.Id); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
-	// user
-	if err := transaction.AccountUserRepository().DeleteById(ctx, user.Id); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
-	// check how many users left in business account
-	if user.WA != nil && user.WA.BusinessAccount != nil {
-		users, err := transaction.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
-		if err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		}
-		if len(users) == 0 {
-			// if no more user, delete business account
-			if err := transaction.WABusinessAccountRepository().DeleteById(ctx, user.WA.BusinessAccount.Id); err != nil {
-				return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-			}
-			// if only business portfolio has no business account, delete it
-			if user.WA.BusinessPortfolio != nil {
-				businessAccounts, err := transaction.WABusinessAccountRepository().ListByBusinessPortfolioId(ctx, user.WA.BusinessPortfolio.Id)
-				if err != nil {
-					return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-				}
-				if len(businessAccounts) == 0 {
-					if err := transaction.WABusinessPortfolioRepository().DeleteById(ctx, user.WA.BusinessPortfolio.Id); err != nil {
-						return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-					}
-				}
-			}
+// func (closeAccount *CloseAccount) _(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+// 	// start a transaction
+// 	transaction := dependencies.UnitOfWork.BeginTransaction()
+// 	var committed bool
+// 	defer func() {
+// 		if !committed {
+// 			transaction.Rollback()
+// 		}
+// 	}()
+// 	// broadcasts, will also delete broadcast_recipients using FK
+// 	if err := transaction.BroadcastRepository().DeleteByUserId(ctx, user.Id); err != nil {
+// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 	}
+// 	// messages, will delete message_status using FK
+// 	if user.WA != nil && user.WA.PhoneNumber_ != nil {
+// 		if err := transaction.WAMessageRepository().DeleteByPhoneNumberId(ctx, user.WA.PhoneNumber_.Id); err != nil {
+// 			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 		}
+// 		// delete phone number
+// 		if err := transaction.WAPhoneNumberRepository().DeleteById(ctx, user.WA.PhoneNumber_.Id); err != nil {
+// 			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 		}
+// 	}
+// 	// customers
+// 	if err := transaction.CustomerRepository().DeleteByUserId(ctx, user.Id); err != nil {
+// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 	}
+// 	// user
+// 	if err := transaction.AccountUserRepository().DeleteById(ctx, user.Id); err != nil {
+// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 	}
+// 	// check how many users left in business account
+// 	if user.WA != nil && user.WA.BusinessAccount != nil {
+// 		users, err := transaction.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
+// 		if err != nil {
+// 			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 		}
+// 		if len(users) == 0 {
+// 			// if no more user, delete business account
+// 			if err := transaction.WABusinessAccountRepository().DeleteById(ctx, user.WA.BusinessAccount.Id); err != nil {
+// 				return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 			}
+// 			// if only business portfolio has no business account, delete it
+// 			if user.WA.BusinessPortfolio != nil {
+// 				businessAccounts, err := transaction.WABusinessAccountRepository().ListByBusinessPortfolioId(ctx, user.WA.BusinessPortfolio.Id)
+// 				if err != nil {
+// 					return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 				}
+// 				if len(businessAccounts) == 0 {
+// 					if err := transaction.WABusinessPortfolioRepository().DeleteById(ctx, user.WA.BusinessPortfolio.Id); err != nil {
+// 						return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 					}
+// 				}
+// 			}
 
-		}
-	}
-	// commit
-	if err := transaction.CommitTransaction(); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
-	committed = true
-	return dto.NewEmptyResponse(true, http.StatusOK)
-}
+// 		}
+// 	}
+// 	// commit
+// 	if err := transaction.CommitTransaction(); err != nil {
+// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+// 	}
+// 	committed = true
+// 	return dto.NewEmptyResponse(true, http.StatusOK)
+// }
 
 func (CloseAccount) APISettings() feature.APISettings {
 	return feature.NewAPISettings(

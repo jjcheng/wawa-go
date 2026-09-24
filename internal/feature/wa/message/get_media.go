@@ -8,8 +8,10 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -62,7 +64,9 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 		}
 		return dto.NewFailedResponse[*Media](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if phoneNumber.UserId != user.Id {
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == phoneNumber.Id
+	}) {
 		return dto.NewFailedResponse[*Media](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// download from Meta

@@ -45,6 +45,9 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := setStatus.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
@@ -55,17 +58,15 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 			transaction.Rollback()
 		}
 	}()
-	customerCount, err := transaction.CustomerRepository().CountByIds(ctx, user.Id, setStatus.Ids)
+	customers, err := transaction.CustomerRepository().ListByPhoneNumberIdsAndIds(ctx, user.WA.PhoneNumberIds(), setStatus.Ids)
 	if err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if customerCount != len(setStatus.Ids) {
+	if len(customers) != len(setStatus.Ids) {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	for _, id := range setStatus.Ids {
-		if err := transaction.CustomerRepository().UpdateFields(ctx, id, map[string]any{"status": setStatus.Status}); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		}
+	if err = transaction.CustomerRepository().UpdateStatusByIds(ctx, setStatus.Ids, setStatus.Status); err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if err := transaction.CommitTransaction(); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)

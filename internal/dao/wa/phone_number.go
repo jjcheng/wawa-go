@@ -7,17 +7,14 @@ import (
 
 type PhoneNumber struct {
 	dao.DAOBase
-	BusinessAccountId  int32                     `gorm:"column:business_account_id"`
+	BusinessAccountId  int32                     `gorm:"column:business_account_id"` // in case it's not assigned to any user
 	MetaPhoneNumberId  string                    `gorm:"column:meta_phone_number_id"`
 	DisplayPhoneNumber string                    `gorm:"-"` // not a db column
 	WAId               string                    `gorm:"-"` // not a db column
 	Name               string                    `gorm:"column:name"`
-	UserId             int32                     `gorm:"column:user_id"`
 	Status             types.WAPhoneNumberStatus `gorm:"column:status"`
 	// two-step verification PIN set at registration, required to re-register the number later
 	RegistrationPin string `gorm:"-"` // not a db column
-	// from account.users table
-	UserName string `gorm:"column:user_name;->"`
 	// encryption
 	DisplayPhoneNumberEncrypted string `gorm:"column:display_phone_number_encrypted"`
 	WAIdEncrypted               string `gorm:"column:wa_id_encrypted"`

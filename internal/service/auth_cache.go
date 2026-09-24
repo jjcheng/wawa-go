@@ -5,6 +5,7 @@ import (
 	"time"
 
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 )
 
 const authCacheTTL = 15 * time.Second
@@ -96,9 +97,8 @@ func cloneCachedUser(user dto_account.User) dto_account.User {
 	}
 	if user.WA != nil {
 		wa := *user.WA
-		if user.WA.PhoneNumber_ != nil {
-			phoneNumber := *user.WA.PhoneNumber_
-			wa.PhoneNumber_ = &phoneNumber
+		if user.WA.PhoneNumbers != nil {
+			wa.PhoneNumbers = append([]dto_wa.PhoneNumber(nil), user.WA.PhoneNumbers...)
 		}
 		if user.WA.BusinessAccount != nil {
 			businessAccount := *user.WA.BusinessAccount

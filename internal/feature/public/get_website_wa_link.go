@@ -81,20 +81,20 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 	// set cache key for 1 year, ignore error
 	_ = dependencies.Cache.Set(ctx, cacheKey, fmt.Sprint(user.Id), time.Now().Add(time.Hour*24*360))
 	// get phone number
-	phoneNumber, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
+	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[string](http.StatusNotFound, "no phone number found", nil)
 		}
 		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	phoneNumberDTO := dto_wa.NewPhoneNumber(*phoneNumber)
+	phoneNumberDTO := dto_wa.NewPhoneNumber(phoneNumbers[0])
 	waLink := phoneNumberDTO.WALink(website.ContactText)
 	return dto.NewSuccessResponse(waLink)
 }
 
 func (getWebsiteWALink *GetWebsiteWALink) getFirstActiveUser(ctx context.Context, businessAccountId int32, dependencies *service.Dependencies) (*dao_account.User, error) {
-	allUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, businessAccountId, nil, true)
+	allUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, businessAccountId, nil)
 	if err != nil {
 		return nil, fmt.Errorf("GetWebsiteWALink.getFirstActiveUser businessAccountId=%d error=%w", businessAccountId, err)
 	}
@@ -121,7 +121,7 @@ func (getWebsiteWALink *GetWebsiteWALink) getFirstActiveUser(ctx context.Context
 }
 
 func (getWebsiteWALink *GetWebsiteWALink) getNextActiveUser(ctx context.Context, businessAccountId int32, currentUserId int32, dependencies *service.Dependencies) (*dao_account.User, error) {
-	allUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, businessAccountId, nil, true)
+	allUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, businessAccountId, nil)
 	if err != nil {
 		return nil, fmt.Errorf("GetWebsiteWALink.getNextActiveUser businessAccountId=%d currentUserId=%d error=%w", businessAccountId, currentUserId, err)
 	}

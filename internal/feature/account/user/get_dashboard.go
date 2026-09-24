@@ -7,8 +7,10 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -60,17 +62,21 @@ func (getDashboard GetDashboard) Handle(ctx context.Context, user *dto_account.U
 		messagesSent = usage.TotalSent
 		messagesDelivered = usage.TotalDelivered
 	} else {
-		if user.WA.PhoneNumber_ != nil && user.WA.PhoneNumber_.Status == types.WAPhoneNumberStatusConnected {
-			activePhoneNumbers = 1
+		phoneNumberWAIds := helper.Map(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) string {
+			return pn.WAId
+		})
+		// if no linked phone number, no customer
+		if len(phoneNumberWAIds) == 0 {
+			return dto.NewSuccessResponse(&Dashboard{})
 		}
-		usage, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, []string{user.WA.PhoneNumber_.WAId}, start, end, types.WAAnalyticsGranularityDay, user.WA.BusinessPortfolioAccessToken)
+		usage, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, phoneNumberWAIds, start, end, types.WAAnalyticsGranularityDay, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusBadGateway, err.Error(), err)
 		}
 		messagesSent = usage.TotalSent
 		messagesDelivered = usage.TotalDelivered
 		// get user's customers
-		ac, err := dependencies.UnitOfWork.CustomerRepository().CountActiveByUserId(ctx, user.Id)
+		ac, err := dependencies.UnitOfWork.CustomerRepository().CountActiveByPhoneNumberIds(ctx, user.WA.PhoneNumberIds())
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}

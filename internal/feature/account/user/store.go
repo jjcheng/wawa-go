@@ -103,15 +103,16 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		newUser := dao_account.User{
-			Name:         store.Name,
-			CountryCode:  store.CountryCode,
-			PhoneNumber:  store.PhoneNumber,
-			Email:        store.Email,
-			Description:  store.Description,
-			Type:         store.Type,
-			PasswordHash: passwordHash,
-			Status:       types.UserStatusPendingPassword, // new user always need to set a password
-			EncryptionID: uuid.NewString(),
+			Name:              store.Name,
+			CountryCode:       store.CountryCode,
+			PhoneNumber:       store.PhoneNumber,
+			Email:             store.Email,
+			Description:       store.Description,
+			Type:              store.Type,
+			PasswordHash:      passwordHash,
+			Status:            types.UserStatusPendingPassword, // new user always need to set a password
+			EncryptionID:      uuid.NewString(),
+			BusinessAccountId: user.WA.BusinessAccount.Id,
 		}
 		// Insert will do all the encryption/hashing
 		if err := dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser); err != nil {

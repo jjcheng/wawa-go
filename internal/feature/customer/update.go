@@ -9,8 +9,10 @@ import (
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -53,6 +55,9 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := update.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
 	}
@@ -63,12 +68,14 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if customer.UserId != user.Id {
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == customer.PhoneNumberId
+	}) {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if update.CountryCode != "" {
 		if customer.CountryCode != update.CountryCode || customer.PhoneNumber != update.PhoneNumber {
-			existing, err := dependencies.UnitOfWork.CustomerRepository().GetByCountryCodePhoneNumber(ctx, user.Id, update.CountryCode, update.PhoneNumber)
+			existing, err := dependencies.UnitOfWork.CustomerRepository().GetByCountryCodePhoneNumber(ctx, customer.PhoneNumberId, update.CountryCode, update.PhoneNumber)
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}

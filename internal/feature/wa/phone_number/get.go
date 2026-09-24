@@ -7,8 +7,10 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -26,14 +28,18 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if user == nil {
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessPortfolioAccessToken == "" {
+	if user.WA == nil || user.WA.BusinessPortfolioAccessToken == "" {
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*service.WhatsAppPhoneNumberDetailsResponse](inputErrors)
 	}
 	if user.Type != types.UserTypeMaster {
-		get.Id = user.WA.PhoneNumber_.Id
+		if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+			return pn.Id == get.Id
+		}) {
+			return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
 	}
 	storedPhoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, get.Id)
 	if err != nil {
@@ -42,6 +48,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		}
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
+	// if user is master, it must be belong to business account; non-master already check earlier
 	if storedPhoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}

@@ -6,18 +6,20 @@ import (
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
 type User struct {
 	dto.DTOBase
-	Name        string           `json:"name"`
-	CountryCode string           `json:"country_code"`
-	PhoneNumber string           `json:"phone_number"`
-	Email       string           `json:"email"`
-	Description string           `json:"description"`
-	Type        types.UserType   `json:"type"`
-	Status      types.UserStatus `json:"status"`
+	Name              string           `json:"name"`
+	CountryCode       string           `json:"country_code"`
+	PhoneNumber       string           `json:"phone_number"`
+	Email             string           `json:"email"`
+	Description       string           `json:"description"`
+	Type              types.UserType   `json:"type"`
+	Status            types.UserStatus `json:"status"`
+	BusinessAccountId int32            `json:"business_account_id"`
 	// got from session
 	AccessToken       string     `json:"access_token,omitempty" description:"only returned during login"`
 	AccessTokenExpiry *time.Time `json:"access_token_expiry,omitempty" description:"access token expiry time"`
@@ -32,10 +34,22 @@ type User struct {
 }
 
 type UserWA struct {
-	PhoneNumber_                 *dto_wa.PhoneNumber       `json:"-"`
+	PhoneNumbers                 []dto_wa.PhoneNumber      `json:"-"`
 	BusinessAccount              *dto_wa.BusinessAccount   `json:"-"`
 	BusinessPortfolio            *dto_wa.BusinessPortfolio `json:"-"`
 	BusinessPortfolioAccessToken string                    `json:"-"`
+}
+
+func (userWA *UserWA) PhoneNumberIds() []int32 {
+	return helper.Map(userWA.PhoneNumbers, func(pn dto_wa.PhoneNumber) int32 {
+		return pn.Id
+	})
+}
+
+func (userWA *UserWA) PhoneNumberWAIds() []string {
+	return helper.Map(userWA.PhoneNumbers, func(pn dto_wa.PhoneNumber) string {
+		return pn.WAId
+	})
 }
 
 func NewUser(user dao_account.User) User {
@@ -45,13 +59,14 @@ func NewUser(user dao_account.User) User {
 			AddedAt:       user.AddedAt,
 			LastUpdatedAt: user.LastUpdatedAt,
 		},
-		Name:        user.Name,
-		CountryCode: user.CountryCode,
-		PhoneNumber: user.PhoneNumber,
-		Email:       user.Email,
-		Description: user.Description,
-		Type:        user.Type,
-		Status:      user.Status,
+		Name:              user.Name,
+		CountryCode:       user.CountryCode,
+		PhoneNumber:       user.PhoneNumber,
+		Email:             user.Email,
+		Description:       user.Description,
+		Type:              user.Type,
+		Status:            user.Status,
+		BusinessAccountId: user.BusinessAccountId,
 	}
 	return d
 }

@@ -13,11 +13,12 @@ type UnitOfWork struct {
 	db     *gorm.DB
 	logger *service.Logger
 	// account
-	accountUserRepository         repository.AccountUserRepository
-	accountSettingRepository      repository.AccountSettingRepository
-	accountSessionRepository      repository.AccountSessionRepository
-	accountNotificationRepository repository.AccountNotificationRepository
-	accountCacheRepository        repository.AccountCacheRepository
+	accountUserRepository            repository.AccountUserRepository
+	accountSettingRepository         repository.AccountSettingRepository
+	accountSessionRepository         repository.AccountSessionRepository
+	accountNotificationRepository    repository.AccountNotificationRepository
+	accountCacheRepository           repository.AccountCacheRepository
+	accountUserPhoneNumberRepository repository.AccountUserPhoneNumberRepository
 	// customer
 	customerRepository           repository.CustomerRepository
 	broadcastRepository          repository.BarodcastRepository
@@ -51,6 +52,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.accountSessionRepository = NewAccountSessionRepository(db, logger)
 	unitOfWork.accountNotificationRepository = NewAccountNotificationRepository(db, logger)
 	unitOfWork.accountCacheRepository = NewAccountCacheRepository(db, logger)
+	unitOfWork.accountUserPhoneNumberRepository = NewAccountUserPhoneNumberRepository(db, logger)
 	// customer
 	unitOfWork.customerRepository = NewCustomerRepository(db, logger)
 	unitOfWork.broadcastRepository = NewBroadcastRepository(db, logger)
@@ -97,6 +99,10 @@ func (unitOfWork *UnitOfWork) AccountNotificationRepository() repository.Account
 
 func (unitOfWork *UnitOfWork) AccountCacheRepository() repository.AccountCacheRepository {
 	return unitOfWork.accountCacheRepository
+}
+
+func (unitOfWork *UnitOfWork) AccountUserPhoneNumberRepository() repository.AccountUserPhoneNumberRepository {
+	return unitOfWork.accountUserPhoneNumberRepository
 }
 
 // customer
@@ -174,15 +180,20 @@ func (unitOfWork *UnitOfWork) BeginTransaction() repository.UnitOfWork {
 	return transaction
 }
 
-func (transaction *UnitOfWork) Rollback() {
-	transaction.db.Rollback()
+func (unitOfWork *UnitOfWork) Rollback() {
+	unitOfWork.db.Rollback()
 }
 
-func (transaction *UnitOfWork) CommitTransaction() error {
-	if err := transaction.db.Commit().Error; err != nil {
+func (unitOfWork *UnitOfWork) CommitTransaction() error {
+	if err := unitOfWork.db.Commit().Error; err != nil {
 		return fmt.Errorf("UnitOfWork.CommitTransaction error=%w", err)
 	}
 	return nil
+}
+
+func (unitOfWork *UnitOfWork) IsInTransaction() bool {
+	_, isTx := unitOfWork.db.Statement.ConnPool.(gorm.TxCommitter)
+	return isTx
 }
 
 //end of transaction

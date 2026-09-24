@@ -11,6 +11,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -28,6 +29,7 @@ type Create struct {
 	Tags          []string `json:"tags" description:"tags of the customer"`
 	Remarks       string   `json:"remarks" description:"for your own reference"`
 	WAId          string   `json:"wa_id" description:"optional waId from incoming messages"`
+	PhoneNumberId int32    `json:"phone_number_id" val:"required" description:"which phone number to assign this customer to"`
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -57,6 +59,9 @@ func (create *Create) Validate() []exception.InputException {
 			errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
 		}
 	}
+	if create.PhoneNumberId <= 0 {
+		errors = append(errors, exception.NewInputException("phone_number_id", "missing phone number id"))
+	}
 	return errors
 }
 
@@ -64,20 +69,28 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == create.PhoneNumberId
+	}) {
+		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
 	}
 	// check existing
 	if create.CountryCode != "" {
-		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByCountryCodePhoneNumber(ctx, user.Id, create.CountryCode, create.PhoneNumber)
+		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByCountryCodePhoneNumber(ctx, create.PhoneNumberId, create.CountryCode, create.PhoneNumber)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		if existing != nil {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusConflict, "customer already exists", nil)
 		}
-	} else if create.MetaUserId != "" {
-		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByMetaUserId(ctx, user.Id, create.MetaUserId)
+	} else if create.MetaUserId != "" { // created by incoming message with only meta user id
+		existing, err := dependencies.UnitOfWork.CustomerRepository().GetByMetaUserId(ctx, create.PhoneNumberId, create.MetaUserId)
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
@@ -90,6 +103,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if waId == "" {
 		waId = helper.GetWAId(create.CountryCode, create.PhoneNumber)
 	}
+	// insert
 	customer := dao_customer.Customer{
 		DisplayName:         create.DisplayName,
 		WADisplayName:       create.WADisplayName,
@@ -97,7 +111,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		PhoneNumber:         create.PhoneNumber,
 		MetaUserId:          create.MetaUserId,
 		Tags:                create.Tags,
-		UserId:              user.Id,
+		PhoneNumberId:       create.PhoneNumberId,
 		WAId:                waId,
 		Status:              types.CustomerStatusActive,
 		Remarks:             create.Remarks,

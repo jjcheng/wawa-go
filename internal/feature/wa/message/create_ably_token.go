@@ -32,7 +32,7 @@ func (createAblyToken CreateAblyToken) Handle(ctx context.Context, user *dto_acc
 	if user == nil {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.PhoneNumber_ == nil {
+	if user.WA == nil || len(user.WA.PhoneNumbers) == 0 {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := createAblyToken.Validate(); len(inputErrors) > 0 {
@@ -45,7 +45,14 @@ func (createAblyToken CreateAblyToken) Handle(ctx context.Context, user *dto_acc
 		}
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	channelName := helper.GetChatChannelName(user.WA.PhoneNumber_.MetaPhoneNumberId, customer.Token)
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, customer.PhoneNumberId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusBadRequest, "phone number not found", nil)
+		}
+		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	channelName := helper.GetChatChannelName(phoneNumber.MetaPhoneNumberId, customer.Token)
 	tokenRequest, err := dependencies.Ably.CreateConversationTokenRequest(channelName, fmt.Sprintf("user:%d", user.Id))
 	if err != nil {
 		return dto.NewFailedResponse[*service.AblyTokenRequest](http.StatusServiceUnavailable, "realtime chat is unavailable", err)

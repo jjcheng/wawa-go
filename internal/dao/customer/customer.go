@@ -6,9 +6,11 @@ import (
 	"github.com/lib/pq"
 )
 
+// 1 customer is linked to 1 phone number, but the the same customer can have
+// multiple accounts and talk to different phone numbers
 type Customer struct {
 	dao.DAOBase
-	UserId              int32                `gorm:"column:user_id"`
+	PhoneNumberId       int32                `gorm:"column:phone_number_id"` // wa_phone_number.id not customer's phone number
 	DisplayName         string               `gorm:"column:display_name"`    // name tracked by user
 	WADisplayName       string               `gorm:"column:wa_display_name"` // name given by WhatsApp
 	CountryCode         string               `gorm:"column:country_code"`

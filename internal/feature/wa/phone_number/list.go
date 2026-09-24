@@ -9,6 +9,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -56,8 +57,14 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		for index, phoneNumber := range phoneNumbers {
 			items[index] = dto_wa.NewPhoneNumber(phoneNumber)
 		}
-	} else if user.WA.PhoneNumber_ != nil && (list.Status == "" || user.WA.PhoneNumber_.Status == list.Status) {
-		items = append(items, *user.WA.PhoneNumber_)
+	} else {
+		phoneNumbers := user.WA.PhoneNumbers
+		if list.Status != "" {
+			phoneNumbers = helper.Filter(phoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+				return pn.Status == list.Status
+			})
+		}
+		items = phoneNumbers
 		totalCount = 1
 		totalPages = 1
 	}

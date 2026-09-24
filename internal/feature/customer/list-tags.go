@@ -23,10 +23,13 @@ func (listTags ListTags) Handle(ctx context.Context, user *dto_account.User, dep
 	if user == nil {
 		return dto.NewFailedResponse[[]string](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[[]string](http.StatusBadRequest, "no phone number has been assigned to you", nil)
+	}
 	if inputErrors := listTags.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]string](inputErrors)
 	}
-	tags, err := dependencies.UnitOfWork.CustomerRepository().GetDistinctTags(ctx, user.Id)
+	tags, err := dependencies.UnitOfWork.CustomerRepository().GetDistinctTagsByPhoneNumberIds(ctx, user.WA.PhoneNumberIds())
 	if err != nil {
 		return dto.NewFailedResponse[[]string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

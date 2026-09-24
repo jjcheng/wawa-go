@@ -49,10 +49,10 @@ func (upload UploadMedia) Handle(ctx context.Context, user *dto_account.User, de
 	}
 	filename := strings.ReplaceAll(uuid.NewString(), "-", "") + filepath.Ext(upload.Filename)
 	if upload.ToMeta {
-		if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessPortfolioAccessToken == "" {
+		if user.WA == nil || user.WA.BusinessPortfolioAccessToken == "" || len(user.WA.PhoneNumbers) == 0 {
 			return dto.NewFailedResponse[*Media](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
-		mediaID, err := dependencies.Whatsapp.UploadMedia(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, filename, upload.ContentType, upload.Content, user.WA.BusinessPortfolioAccessToken)
+		mediaID, err := dependencies.Whatsapp.UploadMedia(ctx, user.WA.PhoneNumbers[0].MetaPhoneNumberId, filename, upload.ContentType, upload.Content, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
 			return dto.NewFailedResponse[*Media](http.StatusBadGateway, err.Error(), err)
 		}

@@ -2,16 +2,18 @@ package feature_wa_account
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
+	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
 	feature_account_user "github.com/jjcheng/wawa-go/internal/feature/account/user"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
@@ -19,6 +21,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type EmbeddedSignup struct {
@@ -67,6 +70,15 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	if errors := embeddedSignup.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
+	// user is either nil or is a master
+	if user != nil {
+		if user.Type != types.UserTypeMaster {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
+		if user.WA != nil && user.WA.BusinessAccount != nil && user.WA.BusinessAccount.WABAId != embeddedSignup.Data.WABAId {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "you can not sign up a phone number from a different WhatsApp Business Account", nil)
+		}
+	}
 	// Step 1 — Swap the code for a token
 	accessToken, err := dependencies.Whatsapp.ExchangeAccessToken(ctx, embeddedSignup.AuthorizationCode)
 	if err != nil {
@@ -79,13 +91,13 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	}
 	// Step 3 — Write everything to the database, all or nothing
 	// A transaction opens. Five rows get created or updated, in dependency order:
-	transaction := dependencies.UnitOfWork.BeginTransaction()
+	_transaction := dependencies.UnitOfWork.BeginTransaction()
 	transactionDependencies := *dependencies
-	transactionDependencies.UnitOfWork = transaction
+	transactionDependencies.UnitOfWork = _transaction
 	committed := false
 	defer func() {
 		if !committed {
-			transaction.Rollback()
+			transactionDependencies.UnitOfWork.Rollback()
 		}
 	}()
 	// business portfolio — store the access token and the name from owner_business_info
@@ -105,83 +117,116 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	if !storeBusinessAccountResponse.Success {
 		return dto.NewFailedResponse[*dto_account.User](storeBusinessAccountResponse.StatusCode, storeBusinessAccountResponse.Message, storeBusinessAccountResponse.Error)
 	}
-	// user — the login account. Before creating it you ask the database "does this business account (not portoflio) already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
-	hasMasterUser, err := transaction.AccountUserRepository().HasMasterUserInBusinessAccount(ctx, storeBusinessAccountResponse.Data.Id)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
-	// create user
-	tmpPassword := uuid.NewString()
-	// extract country code and phone number
-	split := strings.Split(phoneNumberDetails.DisplayPhoneNumber, " ")
-	countryCode := strings.ReplaceAll(split[0], "+", "")
-	countryCode = strings.TrimSpace(countryCode)
-	phoneNumber := strings.TrimPrefix(phoneNumberDetails.DisplayPhoneNumber, split[0])
-	phoneNumber = strings.ReplaceAll(phoneNumber, "-", "")
-	phoneNumber = strings.ReplaceAll(phoneNumber, " ", "")
-	phoneNumber = strings.TrimSpace(phoneNumber)
-	storeUser := feature_account_user.Store{
-		Name:            phoneNumberDetails.VerifiedName,
-		CountryCode:     countryCode,
-		PhoneNumber:     phoneNumber,
-		Type:            types.UserTypeOperator,
-		Description:     "created by WhatsApp embedded signup",
-		Password:        tmpPassword,
-		ConfirmPassword: tmpPassword,
-		// Meta verified ownership above, so a signup that was abandoned before the password was set can be resumed
-		ResumePendingPassword: true,
-	}
-	if !hasMasterUser {
-		storeUser.Type = types.UserTypeMaster
-	}
-	storeUserResponse := storeUser.Handle(ctx, nil, &transactionDependencies)
-	if !storeUserResponse.Success {
-		return storeUserResponse
-	}
 	// phone number — using the display number and verified name Meta reported
 	storePhoneNumberResponse := (feature_wa_phone_number.Store{
 		BusinessAccountId:  storeBusinessAccountResponse.Data.Id,
 		MetaPhoneNumberId:  embeddedSignup.Data.PhoneNumberId,
 		DisplayPhoneNumber: phoneNumberDetails.DisplayPhoneNumber,
 		Name:               phoneNumberDetails.VerifiedName,
-		UserId:             storeUserResponse.Data.Id,
 	}).Handle(ctx, nil, &transactionDependencies)
 	if !storePhoneNumberResponse.Success {
 		return dto.NewFailedResponse[*dto_account.User](storePhoneNumberResponse.StatusCode, storePhoneNumberResponse.Message, storePhoneNumberResponse.Error)
 	}
+	// user — the login account. Before creating it you ask the database "does this business account (not portoflio) already have a master?" If not, this user becomes master; otherwise they're an operator. Asking the database rather than guessing means a signup that failed halfway and got retried still produces a master.
+	hasMasterUser, err := transactionDependencies.UnitOfWork.AccountUserRepository().HasMasterUserInBusinessAccount(ctx, storeBusinessAccountResponse.Data.Id)
+	if err != nil {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	// if no master user, create new user as MASTER
+	var finalUser dto_account.User
+	if !hasMasterUser {
+		// create user
+		tmpPassword := uuid.NewString()
+		// extract country code and phone number
+		split := strings.Split(phoneNumberDetails.DisplayPhoneNumber, " ")
+		countryCode := strings.ReplaceAll(split[0], "+", "")
+		countryCode = strings.TrimSpace(countryCode)
+		phoneNumber := strings.TrimPrefix(phoneNumberDetails.DisplayPhoneNumber, split[0])
+		phoneNumber = strings.ReplaceAll(phoneNumber, "-", "")
+		phoneNumber = strings.ReplaceAll(phoneNumber, " ", "")
+		phoneNumber = strings.TrimSpace(phoneNumber)
+		storeUser := feature_account_user.Store{
+			Name:            phoneNumberDetails.VerifiedName,
+			CountryCode:     countryCode,
+			PhoneNumber:     phoneNumber,
+			Type:            types.UserTypeMaster,
+			Description:     "created by WhatsApp embedded signup",
+			Password:        tmpPassword,
+			ConfirmPassword: tmpPassword,
+			// Meta verified ownership above, so a signup that was abandoned before the password was set can be resumed
+			ResumePendingPassword: true,
+		}
+		fakeUser := &dto_account.User{
+			Type: types.UserTypeMaster,
+			WA: &dto_account.UserWA{
+				BusinessAccount: &dto_wa.BusinessAccount{
+					DTOBase: dto.DTOBase{Id: storeBusinessAccountResponse.Data.Id},
+				},
+			}}
+		storeUserResponse := storeUser.Handle(ctx, fakeUser, &transactionDependencies)
+		if !storeUserResponse.Success {
+			return storeUserResponse
+		}
+		finalUser = *storeUserResponse.Data
+	} else if user != nil {
+		// find out total users in the business account, cannot be 0
+		totalUserCount, err := transactionDependencies.UnitOfWork.AccountUserRepository().CountByBusinessAccountId(ctx, storeBusinessAccountResponse.Data.Id)
+		if err != nil {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
+		// if only 1 user, which must be the current user, assign the phone number to him/her
+		if totalUserCount == 1 {
+			var needToAssignToCurrentUser bool
+			// if this phone number is new, assign to current user
+			if storePhoneNumberResponse.Data.New {
+				needToAssignToCurrentUser = true
+
+			} else { // check existing assignment
+				existingAssignment, err := transactionDependencies.UnitOfWork.AccountUserPhoneNumberRepository().GetByUserIdAndPhoneNumberId(ctx, user.Id, storePhoneNumberResponse.Data.Id)
+				if err != nil {
+					if !errors.Is(err, gorm.ErrRecordNotFound) {
+						return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+					}
+				}
+				// if no existing assignment, assign to current user
+				if existingAssignment == nil {
+					needToAssignToCurrentUser = true
+				}
+			}
+			if needToAssignToCurrentUser {
+				userPhoneNumber := dao_account.UserPhoneNumber{
+					UserId:        user.Id,
+					PhoneNumberId: storePhoneNumberResponse.Data.Id,
+				}
+				if err := transactionDependencies.UnitOfWork.AccountUserPhoneNumberRepository().Insert(ctx, &userPhoneNumber); err != nil {
+					return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+				}
+			}
+			finalUser = *user
+		} else {
+			// if there are more than 1 users in the business account, ask user to assign
+			if err := transactionDependencies.UnitOfWork.AccountUserRepository().UpdateFields(ctx, user.Id, map[string]any{"status": types.UserStatusActive}); err != nil {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			// update status of the user dto
+			user.Status = types.UserStatusPendingAssignment
+			finalUser = *user
+		}
+	}
 	// If any step fails, the deferred rollback throws away all of it. You never end up with half a tenant.
-	if err := transaction.CommitTransaction(); err != nil {
+	if err := transactionDependencies.UnitOfWork.CommitTransaction(); err != nil {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	committed = true
 	// Step 4 — Commit, then subscribe the app and activate the phone number
 	// The transaction commits. Only now does activateOnMeta run, because these two calls change things on Meta's side and a database rollback can't undo them:
 	if err := embeddedSignup.activateOnMeta(ctx, accessToken, storePhoneNumberResponse.Data.Id, phoneNumberDetails.Status, dependencies); err != nil {
-		storeUserResponse.Data.WAError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta at the moment. Please try again later. Error from Meta: %v", err.Error())
-		return storeUserResponse
+		finalUser.WAError = fmt.Sprintf("Your account was created, but your WhatsApp phone number could not be activated by Meta at the moment. Please try again later. Error from Meta: %v", err.Error())
+		return dto.NewSuccessResponse(&finalUser)
 	}
-	storeUserResponse.Data.WAActivated = true
+	finalUser.WAActivated = true
 	// The new user is returned along with a session token, so the customer lands logged in
-	// Step 5 - if new user is not User himself/herself, send notification to the masters
-	if storeUserResponse.Data.New && hasMasterUser {
-		// get all masters
-		masterUsers, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, storeBusinessAccountResponse.Data.Id, helper.ConvertToPointer(types.UserTypeMaster), true)
-		if err != nil {
-			dependencies.Logger.ErrorFunction(err, storeBusinessAccountResponse.Data.Id)
-		} else {
-			// send notifications
-			for _, master := range masterUsers {
-				createNotification := feature_account_notification.Create{
-					Type:  types.NotificationTypeSuccess,
-					Title: fmt.Sprintf("%s has joined through Meta embedded signup.", storeUserResponse.Data.Name),
-					Body:  "You can view this new user in Phone numbers page or Account Settings / Users.",
-					URL:   "/phone-numbers",
-				}
-				_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(master)), dependencies)
-			}
-		}
-	}
-	return storeUserResponse
+	return dto.NewSuccessResponse(&finalUser)
 }
 
 // verifyOwnership confirms the browser supplied WABA and phone number are actually granted by the exchanged token.

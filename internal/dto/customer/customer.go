@@ -8,6 +8,7 @@ import (
 
 type Customer struct {
 	dto.DTOBase
+	PhoneNumberId       int32                `json:"phone_number_id"`
 	DisplayName         string               `json:"display_name"`
 	WADisplayName       string               `json:"wa_display_name"`
 	CountryCode         string               `json:"country_code"`
@@ -29,6 +30,7 @@ func NewCustomer(customer dao_customer.Customer) Customer {
 			AddedAt:       customer.AddedAt,
 			LastUpdatedAt: customer.LastUpdatedAt,
 		},
+		PhoneNumberId:       customer.PhoneNumberId,
 		DisplayName:         customer.DisplayName,
 		WADisplayName:       customer.WADisplayName,
 		CountryCode:         customer.CountryCode,

@@ -51,7 +51,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil || user.WA.PhoneNumber_ == nil {
+	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
@@ -82,11 +82,6 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if metaCatalog.Vertical != "commerce" {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusNotImplemented, "currently only commerce catalog type is supported", nil)
 	}
-	// get phone number business profile
-	phoneNumberBusinessProfile, err := dependencies.Whatsapp.GetPhoneNumberBusinessProfile(ctx, user.WA.PhoneNumber_.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error(), err)
-	}
 	// get metaSets
 	metaSets, _, err := dependencies.Whatsapp.ListProductSets(ctx, create.MetaCatalogId, "", "", 999, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
@@ -116,13 +111,21 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Status:              types.CommerceWebsiteStatusActive,
 		ProductsLastSynedAt: time.Now(),
 	}
-	if phoneNumberBusinessProfile != nil && len(phoneNumberBusinessProfile.Data) > 0 {
-		website.About = phoneNumberBusinessProfile.Data[0].About
-		website.Description = phoneNumberBusinessProfile.Data[0].Description
-		website.ProfilePictureURL = phoneNumberBusinessProfile.Data[0].ProfilePictureURL
-		website.Address = phoneNumberBusinessProfile.Data[0].Address
-		website.Email = phoneNumberBusinessProfile.Data[0].Email
-		website.Vertical = phoneNumberBusinessProfile.Data[0].Vertical
+	// get phone number business profile
+	if len(user.WA.PhoneNumbers) > 0 {
+		// just use the first number's business profile
+		phoneNumberBusinessProfile, err := dependencies.Whatsapp.GetPhoneNumberBusinessProfile(ctx, user.WA.PhoneNumbers[0].MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
+		if err != nil {
+			return dto.NewFailedResponse[*dto_commerce.Website](http.StatusBadGateway, err.Error(), err)
+		}
+		if phoneNumberBusinessProfile != nil && len(phoneNumberBusinessProfile.Data) > 0 {
+			website.About = phoneNumberBusinessProfile.Data[0].About
+			website.Description = phoneNumberBusinessProfile.Data[0].Description
+			website.ProfilePictureURL = phoneNumberBusinessProfile.Data[0].ProfilePictureURL
+			website.Address = phoneNumberBusinessProfile.Data[0].Address
+			website.Email = phoneNumberBusinessProfile.Data[0].Email
+			website.Vertical = phoneNumberBusinessProfile.Data[0].Vertical
+		}
 	}
 	if err := transaction.CommerceWebsiteRepository().Insert(ctx, &website); err != nil {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)

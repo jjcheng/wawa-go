@@ -12,10 +12,11 @@ var UserTypes = []UserType{UserTypeMaster, UserTypeOperator}
 type UserStatus string
 
 const (
-	UserStatusActive          UserStatus = "ACTIVE"
-	UserStatusPendingPassword UserStatus = "PENDING_PASSWORD"
-	UserStatusInactive        UserStatus = "INACTIVE"
-	UserStatusClosed          UserStatus = "CLOSED"
+	UserStatusActive            UserStatus = "ACTIVE"
+	UserStatusPendingPassword   UserStatus = "PENDING_PASSWORD"   // a new user signed up in embedded signup
+	UserStatusPendingAssignment UserStatus = "PENDING_ASSIGNMENT" // a MASTER user created a new phone number pending assignment to user
+	UserStatusInactive          UserStatus = "INACTIVE"
+	UserStatusClosed            UserStatus = "CLOSED"
 )
 
 type NotificationType string

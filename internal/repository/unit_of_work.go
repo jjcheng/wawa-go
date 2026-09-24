@@ -9,12 +9,14 @@ type UnitOfWork interface {
 	Rollback()
 	CommitTransaction() error
 	DB() *gorm.DB
+	IsInTransaction() bool
 	// account
 	AccountUserRepository() AccountUserRepository
 	AccountSettingRepository() AccountSettingRepository
 	AccountSessionRepository() AccountSessionRepository
 	AccountNotificationRepository() AccountNotificationRepository
 	AccountCacheRepository() AccountCacheRepository
+	AccountUserPhoneNumberRepository() AccountUserPhoneNumberRepository
 	// customer
 	CustomerRepository() CustomerRepository
 	BroadcastRepository() BarodcastRepository

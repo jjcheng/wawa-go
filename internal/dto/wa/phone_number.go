@@ -16,10 +16,10 @@ type PhoneNumber struct {
 	MetaPhoneNumberId  string                    `json:"meta_phone_number_id"`
 	DisplayPhoneNumber string                    `json:"display_phone_number"`
 	Name               string                    `json:"name"`
-	UserId             int32                     `json:"user_id"`
 	WAId               string                    `json:"wa_id"`
 	Status             types.WAPhoneNumberStatus `json:"status"`
-	UserName           string                    `json:"user_name"` // retrieved from users table
+	// not stored
+	New bool `json:"-"`
 }
 
 func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
@@ -34,9 +34,7 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 		DisplayPhoneNumber: phoneNumber.DisplayPhoneNumber,
 		Name:               phoneNumber.Name,
 		WAId:               phoneNumber.WAId,
-		UserId:             phoneNumber.UserId,
 		Status:             phoneNumber.Status,
-		UserName:           phoneNumber.UserName,
 	}
 	return d
 }

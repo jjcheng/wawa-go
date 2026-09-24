@@ -11,6 +11,7 @@ import (
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -20,7 +21,8 @@ import (
 )
 
 type Import struct {
-	Contacts []Contact `json:"contacts" val:"required" description:"contacts to import"`
+	Contacts      []Contact `json:"contacts" val:"required" description:"contacts to import"`
+	PhoneNumberId int32     `json:"phone_number_id" val:"required" description:"phone number to assign this customer to"`
 }
 
 type Contact struct {
@@ -83,8 +85,17 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 	if user == nil {
 		return dto.NewFailedResponse[*ImportResult](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.WA == nil {
+		return dto.NewFailedResponse[*ImportResult](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := importCustomers.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*ImportResult](inputErrors)
+	}
+	// check if phone number id to assign to belong to user
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == importCustomers.PhoneNumberId
+	}) {
+		return dto.NewFailedResponse[*ImportResult](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	transaction := dependencies.UnitOfWork.BeginTransaction()
 	committed := false
@@ -101,7 +112,7 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 			continue
 		}
 		countryCode, phoneNumber := parsePhoneNumber(contact.PhoneNumber)
-		existing, err := transaction.CustomerRepository().GetByImportedPhoneNumber(ctx, user.Id, contact.ImportedPhoneNumber)
+		existing, err := transaction.CustomerRepository().GetByImportedPhoneNumber(ctx, importCustomers.PhoneNumberId, contact.ImportedPhoneNumber)
 		if err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return dto.NewFailedResponse[*ImportResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
@@ -114,7 +125,7 @@ func (importCustomers Import) Handle(ctx context.Context, user *dto_account.User
 			continue
 		}
 		customer := dao_customer.Customer{
-			UserId:              user.Id,
+			PhoneNumberId:       importCustomers.PhoneNumberId,
 			DisplayName:         contact.DisplayName,
 			CountryCode:         countryCode,
 			PhoneNumber:         phoneNumber,

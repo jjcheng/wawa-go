@@ -7,8 +7,10 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -18,32 +20,38 @@ type Disconnect struct {
 	Id int32 `uri:"id" description:"id of the phone number"`
 }
 
-func (deregister *Disconnect) Validate() []exception.InputException {
-	if deregister.Id <= 0 {
+func (disconnect *Disconnect) Validate() []exception.InputException {
+	if disconnect.Id <= 0 {
 		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
 	}
 	return nil
 }
 
-func (deregister Disconnect) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+func (disconnect Disconnect) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if inputErrors := deregister.Validate(); len(inputErrors) > 0 {
+	if user.WA == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if inputErrors := disconnect.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, deregister.Id)
+	pn := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == disconnect.Id
+	})
+	if pn == nil {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, pn.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "phone number not found", nil)
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
-	if user.WA == nil || user.WA.BusinessAccount == nil || phoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	phoneDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {

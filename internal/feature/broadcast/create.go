@@ -26,7 +26,7 @@ type Create struct {
 	SendDate     *time.Time          `json:"send_date"`
 	WATemplateId string              `json:"wa_template_id"`
 	SendTemplate dto_wa.SendTemplate `json:"send_template"`
-	CustomerIds  []int32             `json:"customer_ids"`
+	CustomerIds  []int32             `json:"customer_ids"` // send to who
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -81,7 +81,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if exist {
 		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusBadRequest, "this broadcast name is already used", nil)
 	}
-	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByIds(ctx, user.Id, create.CustomerIds)
+	customers, err := dependencies.UnitOfWork.CustomerRepository().ListByPhoneNumberIdsAndIds(ctx, user.WA.PhoneNumberIds(), create.CustomerIds)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_customer.Broadcast](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
