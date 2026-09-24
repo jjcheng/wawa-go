@@ -12,6 +12,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dao"
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
+	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -133,6 +134,22 @@ func migrateData(ctx context.Context, targetUnitOfWork repository.UnitOfWork, so
 		},
 		func() error {
 			return migrateTableData[dao_customer.BroadcastRecipient](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		// commerce
+		func() error {
+			return migrateTableData[dao_commerce.Website](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_commerce.Catalog](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_commerce.Set](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_commerce.GenericProduct](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_commerce.Page](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
 		},
 	}
 	//run them now

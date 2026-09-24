@@ -68,10 +68,9 @@ func (store *Store) Validate() []exception.InputException {
 }
 
 func (store Store) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
-	if user == nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
-	}
-	if user.Type != types.UserTypeMaster {
+	// user is nil if coming from new embedded signup
+	// if user is not nil, must be a master
+	if user != nil && user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := store.Validate(); len(errors) > 0 {

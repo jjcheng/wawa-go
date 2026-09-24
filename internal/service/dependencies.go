@@ -13,6 +13,7 @@ type Dependencies struct {
 	Whatsapp     *Whatsapp
 	AuthCache    *AuthCache
 	Cache        *Cache
+	Cloudflare   *Cloudflare
 }
 
 func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *File, messageQueue *MessageQueue, ably *Ably, whatsapp *Whatsapp) *Dependencies {
@@ -25,5 +26,6 @@ func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *Fil
 		Whatsapp:     whatsapp,
 		AuthCache:    NewAuthCache(),
 		Cache:        NewCache(unitOfWork),
+		Cloudflare:   NewCloudflare(logger),
 	}
 }

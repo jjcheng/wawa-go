@@ -17,13 +17,14 @@ import (
 )
 
 type Config struct {
-	Site      SiteConfig
-	Database  DatabaseConfig
-	AliyunOSS AliyunOSSConfig
-	AliyunSMQ AliyunSMQConfig
-	Ably      AblyConfig
-	WhatsApp  WhatsAppConfig
-	Commerce  CommerceConfig
+	Site       SiteConfig
+	Database   DatabaseConfig
+	AliyunOSS  AliyunOSSConfig
+	AliyunSMQ  AliyunSMQConfig
+	Ably       AblyConfig
+	WhatsApp   WhatsAppConfig
+	Commerce   CommerceConfig
+	Cloudflare Cloudflare
 }
 
 type DatabaseConfig struct {
@@ -81,6 +82,10 @@ type WhatsAppConfig struct {
 
 type CommerceConfig struct {
 	WebsiteDomain string
+}
+
+type Cloudflare struct {
+	TurnstileSecretKey string
 }
 
 var configInstance *Config
@@ -150,6 +155,9 @@ func Default() *Config {
 			},
 			Commerce: CommerceConfig{
 				WebsiteDomain: os.Getenv("COMMERCE_WEBSITE_DOMAIN"),
+			},
+			Cloudflare: Cloudflare{
+				TurnstileSecretKey: os.Getenv("TURNSTILE_SECRET_KEY"),
 			},
 		}
 	})

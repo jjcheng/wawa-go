@@ -3537,12 +3537,17 @@
                     "description": "phone number without country code",
                     "example": "90909090",
                     "type": "string"
+                  },
+                  "turnstile_response": {
+                    "description": "from Cloudflare Turnstile",
+                    "type": "string"
                   }
                 },
                 "required": [
                   "country_code",
                   "phone_number",
-                  "password"
+                  "password",
+                  "turnstile_response"
                 ],
                 "type": "object"
               }

@@ -609,14 +609,15 @@ func (whatsapp *Whatsapp) SubscribeCatalog(ctx context.Context, catalogId string
 	return nil
 }
 
-// should not be used
-func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
-	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
-	if err := whatsapp.doJSONRequest(ctx, "remove_phone_number", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
-		return err
-	}
-	return nil
-}
+// deleting a phone number can only be done via WhatsApp Manager
+// https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/phone-numbers#delete-phone-number-from-a-waba
+// func (whatsapp *Whatsapp) RemovePhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
+// 	endpoint := fmt.Sprintf("%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))
+// 	if err := whatsapp.doJSONRequest(ctx, "remove_phone_number", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
 func (whatsapp *Whatsapp) DisconnectPhoneNumber(ctx context.Context, phoneNumberID string, businessAccessToken string) error {
 	endpoint := fmt.Sprintf("%s/%s/%s/deregister", whatsapp.baseURL, whatsapp.apiVersion, url.PathEscape(phoneNumberID))

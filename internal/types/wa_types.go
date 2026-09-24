@@ -104,4 +104,5 @@ type WAPhoneNumberStatus string
 const (
 	WAPhoneNumberStatusConnected    WAPhoneNumberStatus = "CONNECTED"
 	WAPhoneNumberStatusDisconnected WAPhoneNumberStatus = "DISCONNECTED"
+	WAPhoneNumberStatusRemoved      WAPhoneNumberStatus = "REMOVED"
 )

@@ -20,15 +20,17 @@ import (
 )
 
 type Login struct {
-	CountryCode string `json:"country_code" val:"required" description:"country code of the phone number" example:"65"`
-	PhoneNumber string `json:"phone_number" val:"required" description:"phone number without country code" example:"90909090"`
-	Password    string `json:"password" val:"required" description:"user's password"`
+	CountryCode       string `json:"country_code" val:"required" description:"country code of the phone number" example:"65"`
+	PhoneNumber       string `json:"phone_number" val:"required" description:"phone number without country code" example:"90909090"`
+	Password          string `json:"password" val:"required" description:"user's password"`
+	TurnstileResponse string `json:"turnstile_response" val:"required" description:"from Cloudflare Turnstile"`
 }
 
 func (login *Login) Validate() []exception.InputException {
 	login.CountryCode = strings.TrimSpace(login.CountryCode)
 	login.PhoneNumber = strings.TrimSpace(login.PhoneNumber)
 	login.Password = strings.TrimSpace(login.Password)
+	login.TurnstileResponse = strings.TrimSpace(login.TurnstileResponse)
 	errors := []exception.InputException{}
 	if login.CountryCode == "" {
 		errors = append(errors, exception.NewInputException("country_code", "missing country code"))
@@ -43,12 +45,23 @@ func (login *Login) Validate() []exception.InputException {
 	} else if passwordError := helper.ValidatePassword(login.Password); passwordError != nil {
 		errors = append(errors, exception.NewInputException("password", passwordError.Error()))
 	}
+	if login.TurnstileResponse == "" {
+		errors = append(errors, exception.NewInputException("password", "you are not forbidden to access this API"))
+	}
 	return errors
 }
 
 func (login Login) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.User] {
 	if errors := login.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
+	}
+	// verify captcha using cloudflare turstile
+	verified, err := dependencies.Cloudflare.VerifyTurnstile(login.TurnstileResponse, *helper.GetClientIP(ctx))
+	if err != nil {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusBadGateway, "failed to verify if you are a bot", err)
+	}
+	if !verified {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusForbidden, "we are not sure if you are a bot", nil)
 	}
 	user, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, login.CountryCode, login.PhoneNumber)
 	if err != nil {

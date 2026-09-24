@@ -112,6 +112,8 @@ func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessAccountId(ct
 		Where("pn.business_account_id = ?", businessAccountId)
 	if status != "" {
 		query = query.Where("pn.status = ?", status)
+	} else {
+		query = query.Where("pn.status <> ?", types.WAPhoneNumberStatusRemoved)
 	}
 	var count int64
 	if err := query.Distinct("pn.id").Count(&count).Error; err != nil {

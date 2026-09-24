@@ -35,7 +35,6 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.WA == nil || user.WA.PhoneNumber_ == nil || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	// only can delete if there is no message, no message event, no customer, no broadcast
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
@@ -49,11 +48,23 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.WA.BusinessAccount.Id != phoneNumber.BusinessAccountId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	// TODO: remove all messages
-	if err := dependencies.Whatsapp.RemovePhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolio.MetaBusinessPortfolioId); err != nil {
+	phoneNumberDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
+	if err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 	}
-	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().DeleteById(ctx, phoneNumber.Id); err != nil {
+	if phoneNumber.Status != types.WAPhoneNumberStatus(phoneNumberDetails.Status) {
+		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().UpdateFields(ctx, phoneNumber.Id, map[string]any{"status": phoneNumberDetails.Status}); err != nil {
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
+	}
+	if phoneNumberDetails.Status != "DISCONNECTED" {
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "you need to disconnect your phone number first", nil)
+	}
+	// remove using meta API, but don't delete from db
+	// Meta don't allow removing phone number via API
+	// https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/phone-numbers#delete-phone-number-from-a-waba
+	phoneNumber.Status = types.WAPhoneNumberStatusRemoved
+	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, phoneNumber); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
