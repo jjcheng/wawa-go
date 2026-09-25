@@ -2,11 +2,49 @@ package helper
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/jjcheng/wawa-go/internal/types"
 )
+
+func TestVerifyWhatsAppWebhookSignature(t *testing.T) {
+	body := []byte(`{"entry":[{"id":"123"}]}`)
+	appSecret := "test-app-secret"
+	mac := hmac.New(sha256.New, []byte(appSecret))
+	_, _ = mac.Write(body)
+	signature := hex.EncodeToString(mac.Sum(nil))
+
+	tests := []struct {
+		name      string
+		signature string
+		body      []byte
+		want      bool
+	}{
+		{name: "sha256 prefix", signature: "sha256=" + signature, body: body, want: true},
+		{name: "uppercase prefix", signature: "SHA256=" + signature, body: body, want: true},
+		{name: "without prefix", signature: signature, body: body, want: true},
+		{name: "trimmed app secret", signature: "sha256=" + signature, body: body, want: true},
+		{name: "wrong body", signature: "sha256=" + signature, body: []byte(`{"entry":[]}`), want: false},
+		{name: "wrong signature", signature: "sha256=" + strings.Repeat("0", 64), body: body, want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			secret := appSecret
+			if test.name == "trimmed app secret" {
+				secret = "  " + appSecret + "  "
+			}
+			if got := VerifyWhatsAppWebhookSignature(test.signature, test.body, secret); got != test.want {
+				t.Fatalf("VerifyWhatsAppWebhookSignature() = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
 
 func testCryptoKeys(t *testing.T) *CryptoKeys {
 	t.Helper()

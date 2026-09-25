@@ -30,6 +30,7 @@ type Create struct {
 	Remarks       string   `json:"remarks" description:"for your own reference"`
 	WAId          string   `json:"wa_id" description:"optional waId from incoming messages"`
 	PhoneNumberId int32    `json:"phone_number_id" val:"required" description:"which phone number to assign this customer to"`
+	FromIncoming  bool     `json:"-"` // if from incoming, there is no user
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -66,16 +67,18 @@ func (create *Create) Validate() []exception.InputException {
 }
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Customer] {
-	if user == nil {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
-	}
-	if user.WA == nil {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
-	}
-	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
-		return pn.Id == create.PhoneNumberId
-	}) {
-		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	if !create.FromIncoming {
+		if user == nil {
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+		}
+		if user.WA == nil {
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
+		if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+			return pn.Id == create.PhoneNumberId
+		}) {
+			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)

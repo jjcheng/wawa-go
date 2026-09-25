@@ -13,7 +13,6 @@ import (
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
-	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
@@ -253,10 +252,9 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 	// check customer exists based on waId or metaUserId
 	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.Id, contact.WaID, incomingMessage.FromUserID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("customer not found")
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to get customer fromUserId=%s: %w", incomingMessage.FromUserID, err)
 		}
-		return fmt.Errorf("failed to get customer fromUserId=%s: %w", incomingMessage.FromUserID, err)
 	}
 	// if no existing customer, create new
 	var customerDTO dto_customer.Customer
@@ -281,14 +279,9 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			WAId:          contact.WaID,
 			Remarks:       "created from incoming WhatsApp message",
 			PhoneNumberId: userPhoneNumber.Id,
+			FromIncoming:  true,
 		}
-		user := dto_account.User{
-			DTOBase: dto.DTOBase{
-				Id: userPhoneNumber.Id,
-			},
-			BusinessAccountId: userPhoneNumber.BusinessAccountId,
-		}
-		createCustomerResponse := createCustomer.Handle(ctx, &user, &transactionDependencies)
+		createCustomerResponse := createCustomer.Handle(ctx, nil, &transactionDependencies)
 		if !createCustomerResponse.Success {
 			return createCustomerResponse.Error
 		}
@@ -335,10 +328,18 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 	}
 	committed = true
 	messageDTO := dto_wa.NewMessage(message)
-	channelName := helper.GetChatChannelName(metadata.PhoneNumberID, customerDTO.Token)
-	err = dependencies.Ably.Publish("message", channelName, messageDTO)
+	messageDTO.CustomerName = customerDTO.DisplayName
+	// publish to the chat room between phone number and customer
+	chatChannelName := helper.GetChatChannelName(metadata.PhoneNumberID, customerDTO.Token)
+	err = dependencies.Ably.Publish("message", chatChannelName, messageDTO)
 	if err != nil {
-		dependencies.Logger.ErrorFunction(err, channelName)
+		dependencies.Logger.ErrorFunction(err, chatChannelName)
+	}
+	// publish to phone number channel
+	phoneNumberChannelName := helper.GetPhoneNumberChannelName(customerDTO.PhoneNumberId)
+	err = dependencies.Ably.Publish("phone_number_message", phoneNumberChannelName, messageDTO)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, phoneNumberChannelName)
 	}
 	return nil
 }
@@ -427,27 +428,33 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 		})
 		// if no error, find out the user and send him/her notification
 		if err == nil {
-			var user *dao_account.User
-			err = retry(ctx, 3, func() error {
-				u, e := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, message.UserId)
-				if e != nil {
-					return e
+			if message.SenderUserId != nil {
+				var senderUser *dao_account.User
+				err = retry(ctx, 3, func() error {
+					u, e := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, *message.SenderUserId)
+					if e != nil {
+						return e
+					}
+					senderUser = u
+					return nil
+				})
+				if senderUser != nil {
+					// send user the notification, ignore any error
+					_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(*senderUser)), dependencies)
 				}
-				user = u
-				return nil
-			})
-			if user != nil {
-				// send user the notification, ignore any error
-				_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(*user)), dependencies)
 			}
+
 		} else {
 			dependencies.Logger.ErrorFunction(err, message.Id)
 		}
 	}()
 	// get business portfolio to get access token
+	if message.SenderUserId == nil {
+		return fmt.Errorf("missing sender user id in message")
+	}
 	var businessPortfolio *dao_wa.BusinessPortfolio
 	err = retry(ctx, 3, func() error {
-		bp, _, e := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, message.UserId)
+		bp, _, e := dependencies.UnitOfWork.WAPhoneNumberRepository().GetBusinessPortfolioAndAccountByUserId(ctx, *message.SenderUserId)
 		if e != nil {
 			return e
 		}
@@ -460,7 +467,7 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 			return fmt.Errorf("business portfolio not found")
 		} else {
 			errorMessages = append(errorMessages, "failed to get business portfolio")
-			return fmt.Errorf("failed to get business portfolio userId=%d error=%w", message.UserId, err)
+			return fmt.Errorf("failed to get business portfolio userId=%d error=%w", *message.SenderUserId, err)
 		}
 	}
 	// send message using WhatsApp API

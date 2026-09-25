@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
@@ -246,29 +247,62 @@ func (customerRepository *CustomerRepository) GetDistinctTagsByPhoneNumberIds(ct
 	return tags, nil
 }
 
-func (customerRepository *CustomerRepository) List(ctx context.Context, phoneNumberIds []int32, name string, order types.OrderCustomersType, status types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error) {
+func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasMessage bool, phoneNumberIds []int32, name string, order types.OrderCustomersType, status types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error) {
 	query := customerRepository.db.WithContext(ctx).
-		Model(&dao_customer.Customer{}).
-		Where("phone_number_id IN ?", phoneNumberIds)
+		Table("customer.customers AS c").
+		Where("c.phone_number_id IN ?", phoneNumberIds)
 	if name != "" {
-		query = query.Where("display_name ILIKE ?", "%"+name+"%")
+		query = query.Where("c.display_name ILIKE ?", "%"+name+"%")
 	}
 	// Phone-number filtering happens after decryption because the database stores only ciphertext.
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("c.status = ?", status)
 	}
 	if len(tags) > 0 {
-		query = query.Where("tags && ?", pq.Array(tags))
+		query = query.Where("c.tags && ?", pq.Array(tags))
+	}
+	if onlyHasMessage {
+		query = query.Where(`EXISTS (
+			SELECT 1
+			FROM wa.messages AS filtered_message
+			WHERE filtered_message.customer_id = c.id
+				AND filtered_message.phone_number_id = c.phone_number_id
+				AND filtered_message.type <> ?
+		)`, "unsupported")
 	}
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
 		return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=0 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
 	}
-	if order == types.OrderCustomersTypeFromOld {
-		query = query.Order("id")
-	} else {
-		query = query.Order("id DESC")
+	switch order {
+	case types.OrderCustomersTypeLatestMessage:
+		query = query.Order("latest_message.timestamp DESC NULLS LAST, latest_message.id DESC NULLS LAST")
+	case types.OrderCustomersTypeFromOld:
+		query = query.Order("c.id")
+	default:
+		query = query.Order("c.id DESC")
 	}
+	query = query.
+		Select(`
+			c.*,
+			latest_message.id AS latest_message_id,
+			latest_message.timestamp AS last_message_timestamp,
+			latest_message.sending AS latest_message_sending,
+			latest_message.type AS latest_message_type,
+			latest_message.token AS latest_message_token,
+			latest_message.payload_encrypted AS latest_message_payload_encrypted
+		`).
+		Joins(`
+			LEFT JOIN LATERAL (
+				SELECT m.id, m.timestamp, m.sending, m.type, m.token, m.payload_encrypted
+				FROM wa.messages AS m
+				WHERE m.customer_id = c.id
+					AND m.phone_number_id = c.phone_number_id
+					AND m.type <> ?
+				ORDER BY m.timestamp DESC, m.id DESC
+				LIMIT 1
+			) AS latest_message ON true
+		`, "unsupported")
 	result := query.Find(&customers)
 	if result.Error != nil {
 		return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=1 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, result.Error)
@@ -277,6 +311,9 @@ func (customerRepository *CustomerRepository) List(ctx context.Context, phoneNum
 	for i := range customers {
 		if err := customerRepository.decryptSensitiveFields(&customers[i]); err != nil {
 			return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=2 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
+		}
+		if err := customerRepository.setLatestMessageContent(&customers[i]); err != nil {
+			return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=3 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
 		}
 		decrypted = append(decrypted, customers[i])
 	}
@@ -291,6 +328,90 @@ func (customerRepository *CustomerRepository) List(ctx context.Context, phoneNum
 		end = totalItems
 	}
 	return decrypted[start:end], totalItems, totalPages, nil
+}
+
+func (customerRepository *CustomerRepository) setLatestMessageContent(customer *dao_customer.Customer) error {
+	messageType := strings.ToLower(strings.TrimSpace(customer.LatestMessageType))
+	if messageType == "" {
+		return nil
+	}
+	content, err := customerRepository.latestMessageContentByType(customer, messageType)
+	if err != nil {
+		return err
+	}
+	if content == "" {
+		content = titleMessageType(messageType)
+	}
+	if customer.LatestMessageSending {
+		content = "You: " + content
+	}
+	customer.LatestMessageContent = content
+	return nil
+}
+
+func (customerRepository *CustomerRepository) latestMessageContentByType(customer *dao_customer.Customer, messageType string) (string, error) {
+	switch messageType {
+	case "image":
+		return "Image", nil
+	case "video":
+		return "Video", nil
+	case "audio":
+		return "Audio", nil
+	case "document":
+		return "Document", nil
+	case "text":
+		payload, err := customerRepository.latestMessagePayload(customer)
+		if err != nil {
+			return "", err
+		}
+		return nestedString(payload, "text", "body"), nil
+	case "reaction":
+		payload, err := customerRepository.latestMessagePayload(customer)
+		if err != nil {
+			return "", err
+		}
+		return nestedString(payload, "reaction", "emoji"), nil
+	default:
+		return "", nil
+	}
+}
+
+func (customerRepository *CustomerRepository) latestMessagePayload(customer *dao_customer.Customer) (map[string]any, error) {
+	if customer.LatestMessagePayloadEncrypted == "" || customer.LatestMessageToken == "" {
+		return nil, nil
+	}
+	payload, err := decryptSecret(customer.LatestMessagePayloadEncrypted, fmt.Sprintf("wa.messages:%s:%s", "payload", customer.LatestMessageToken))
+	if err != nil {
+		return nil, fmt.Errorf("CustomerRepository.latestMessagePayload index=0 customerId=%d error=%w", customer.Id, err)
+	}
+	data := map[string]any{}
+	if err := json.Unmarshal([]byte(payload), &data); err != nil {
+		return nil, fmt.Errorf("CustomerRepository.latestMessagePayload index=1 customerId=%d error=%w", customer.Id, err)
+	}
+	return data, nil
+}
+
+func titleMessageType(messageType string) string {
+	if messageType == "" {
+		return ""
+	}
+	return strings.ToUpper(messageType[:1]) + messageType[1:]
+}
+
+func nestedString(data map[string]any, key string, nestedKey string) string {
+	value, ok := data[key]
+	if !ok {
+		return ""
+	}
+	if text, ok := value.(string); ok {
+		return text
+	}
+	nested, ok := value.(map[string]any)
+	if !ok {
+		return ""
+	}
+	text, _ := nested[nestedKey].(string)
+	return text
 }
 
 func (customerRepository *CustomerRepository) DeleteByIds(ctx context.Context, ids []int32) error {

@@ -274,9 +274,9 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	timestamp := time.Now().Unix()
 	message := dao_wa.Message{
 		Sending:       true,
+		SenderUserId:  &user.Id, // each phone number can be assigned to multiple user, indicate who is sending
 		PhoneNumberId: phoneNumber.Id,
 		CustomerId:    customer.Id,
-		UserId:        user.Id,
 		Timestamp:     timestamp,
 		Type:          string(create.Type),
 		Payload:       payload,

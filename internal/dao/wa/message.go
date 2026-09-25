@@ -10,7 +10,7 @@ import (
 type Message struct {
 	dao.DAOBase
 	Sending       bool                  `gorm:"column:sending"`
-	UserId        int32                 `gorm:"phone_number_id"`        // sender
+	SenderUserId  *int32                `gorm:"sender_user_id"`         // sender
 	PhoneNumberId int32                 `gorm:"column:phone_number_id"` // phone used to send
 	CustomerId    int32                 `gorm:"column:customer_id"`     // recipient
 	WAMessageId   string                `gorm:"column:wa_message_id"`

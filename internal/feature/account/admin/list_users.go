@@ -57,6 +57,7 @@ func (listUsers ListUsers) Handle(ctx context.Context, user *dto_account.User, d
 					Id:                 up.PhoneNumberId,
 					Name:               up.PhoneNumber.Name,
 					DisplayPhoneNumber: up.PhoneNumber.DisplayPhoneNumber,
+					MetaPhoneNumberId:  up.PhoneNumber.MetaPhoneNumberId,
 				}
 			})
 		}

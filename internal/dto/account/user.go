@@ -33,6 +33,7 @@ type User struct {
 
 type AssignedPhoneNumber struct {
 	Id                 int32  `json:"id"`
+	MetaPhoneNumberId  string `json:"meta_phone_number_id"`
 	DisplayPhoneNumber string `json:"display_phone_number"`
 	Name               string `json:"name"`
 }

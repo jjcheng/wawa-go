@@ -15,18 +15,19 @@ import (
 )
 
 type List struct {
-	Order    types.OrderCustomersType `form:"order"`
-	Name     string                   `form:"name"`
-	Tags     []string                 `form:"tags"`
-	Status   types.CustomerStatus     `form:"status"`
-	Page     int                      `form:"page"`
-	PageSize int                      `form:"page_size"`
+	Order          types.OrderCustomersType `form:"order"`
+	Name           string                   `form:"name"`
+	Tags           []string                 `form:"tags"`
+	Status         types.CustomerStatus     `form:"status"`
+	OnlyHasMessage bool                     `form:"only_has_message"`
+	Page           int                      `form:"page"`
+	PageSize       int                      `form:"page_size"`
 }
 
 func (list *List) Validate() []exception.InputException {
 	list.Name = strings.TrimSpace(list.Name)
 	if list.Order == "" {
-		list.Order = types.OrderCustomersTypeFromNew
+		list.Order = types.OrderCustomersTypeLatestMessage
 	}
 	for i := range list.Tags {
 		list.Tags[i] = strings.TrimSpace(list.Tags[i])
@@ -38,7 +39,7 @@ func (list *List) Validate() []exception.InputException {
 		list.PageSize = 10
 	}
 	inputErrors := []exception.InputException{}
-	if list.Order != types.OrderCustomersTypeFromNew && list.Order != types.OrderCustomersTypeFromOld {
+	if list.Order != types.OrderCustomersTypeLatestMessage && list.Order != types.OrderCustomersTypeFromNew && list.Order != types.OrderCustomersTypeFromOld {
 		inputErrors = append(inputErrors, exception.NewInputException("order", "invalid order"))
 	}
 	if list.PageSize > 500 {
@@ -60,7 +61,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_customer.Customer]](inputErrors)
 	}
-	customers, totalItems, totalPages, err := dependencies.UnitOfWork.CustomerRepository().List(ctx, user.WA.PhoneNumberIds(), list.Name, list.Order, list.Status, list.Tags, list.Page, list.PageSize)
+	customers, totalItems, totalPages, err := dependencies.UnitOfWork.CustomerRepository().List(ctx, list.OnlyHasMessage, user.WA.PhoneNumberIds(), list.Name, list.Order, list.Status, list.Tags, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_customer.Customer]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

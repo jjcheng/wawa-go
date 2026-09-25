@@ -1,6 +1,7 @@
 package dto_wa
 
 import (
+	"strings"
 	"time"
 
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
@@ -27,9 +28,11 @@ type Message struct {
 	ErrorMessage  string                `json:"error_message"`
 	Token         string                `json:"token"`
 	// lazy loaded
-	Statuses        []MessageStatus `json:"statuses,omitempty"`
-	PreviewHTML     string          `json:"preview_html,omitempty"`
-	PreviewDarkHTML string          `json:"preview_dark_html,omitempty"`
+	Statuses            []MessageStatus `json:"statuses,omitempty"`
+	PreviewHTML         string          `json:"preview_html,omitempty"`
+	PreviewDarkHTML     string          `json:"preview_dark_html,omitempty"`
+	CustomerName        string          `json:"customer_name"`
+	NotificationContent string          `json:"notification_content"`
 }
 
 func NewMessage(message dao_wa.Message) Message {
@@ -61,5 +64,38 @@ func NewMessage(message dao_wa.Message) Message {
 		d.ErrorMessage = ""
 		d.NextAttemptAt = nil
 	}
+	d.NotificationContent = NotificationContent(message.Type, message.Payload)
 	return d
+}
+
+func NotificationContent(messageType string, payload map[string]any) string {
+	switch strings.ToLower(strings.TrimSpace(messageType)) {
+	case "text":
+		return nestedMessageString(payload, "text", "body")
+	case "reaction":
+		return nestedMessageString(payload, "reaction", "emoji")
+	case "image":
+		return "Image"
+	case "document":
+		return "Document"
+	case "video":
+		return "Video"
+	case "audio":
+		return "Audio"
+	default:
+		return ""
+	}
+}
+
+func nestedMessageString(payload map[string]any, key string, nestedKey string) string {
+	value, ok := payload[key]
+	if !ok {
+		return ""
+	}
+	nested, ok := value.(map[string]any)
+	if !ok {
+		return ""
+	}
+	content, _ := nested[nestedKey].(string)
+	return content
 }

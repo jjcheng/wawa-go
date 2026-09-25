@@ -91,6 +91,14 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 					BusinessPortfolio:            &businessPortfolioDTO,
 					BusinessPortfolioAccessToken: businessPortfolio.AccessToken,
 				}
+				userDTO.AssignedPhoneNumbers = helper.Map(managedPhoneNumbers, func(pn dto_wa.PhoneNumber) dto_account.AssignedPhoneNumber {
+					return dto_account.AssignedPhoneNumber{
+						Id:                 pn.Id,
+						DisplayPhoneNumber: pn.DisplayPhoneNumber,
+						MetaPhoneNumberId:  pn.MetaPhoneNumberId,
+						Name:               pn.Name,
+					}
+				})
 			} else {
 				responseObject := dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)

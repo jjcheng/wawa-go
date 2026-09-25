@@ -64,14 +64,22 @@ func GetChatChannelName(metaPhoneNumberId string, customerToken string) string {
 	return fmt.Sprintf("chat:%s-%s", metaPhoneNumberId, customerToken)
 }
 
+func GetPhoneNumberChannelName(phoneNumberId int32) string {
+	return fmt.Sprintf("phone_number:%d", phoneNumberId)
+}
+
 func GetTemplateStatusChangeCacheKey(templateId string) string {
 	return fmt.Sprintf("template_%s_status_change_user_id", templateId)
 }
 
 // take X-Hub-Signature-256 from header
 func VerifyWhatsAppWebhookSignature(signature string, body []byte, appSecret string) bool {
-	signature = strings.TrimPrefix(strings.TrimSpace(signature), "sha256=")
-	if signature == "" || strings.TrimSpace(appSecret) == "" {
+	signature = strings.TrimSpace(signature)
+	appSecret = strings.TrimSpace(appSecret)
+	if len(signature) >= len("sha256=") && strings.EqualFold(signature[:len("sha256=")], "sha256=") {
+		signature = signature[len("sha256="):]
+	}
+	if signature == "" || appSecret == "" {
 		return false
 	}
 	providedSignature, err := hex.DecodeString(signature)

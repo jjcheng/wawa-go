@@ -31,6 +31,14 @@ type Customer struct {
 	ImportedPhoneNumberEncrypted string `gorm:"column:imported_phone_number_encrypted"`
 	ImportedPhoneNumberHash      string `gorm:"column:imported_phone_number_hash"`
 	AdditionalDataEncrypted      string `gorm:"column:additional_data_encrypted"`
+	// latest message fields are read-only values selected by customer list queries
+	LatestMessageId               *int32 `gorm:"column:latest_message_id;->"`
+	LastMessageTimestamp          *int64 `gorm:"column:last_message_timestamp;->"`
+	LatestMessageSending          bool   `gorm:"column:latest_message_sending;->"`
+	LatestMessageType             string `gorm:"column:latest_message_type;->"`
+	LatestMessageToken            string `gorm:"column:latest_message_token;->"`
+	LatestMessagePayloadEncrypted string `gorm:"column:latest_message_payload_encrypted;->"`
+	LatestMessageContent          string `gorm:"-"`
 }
 
 func (Customer) TableName() string {

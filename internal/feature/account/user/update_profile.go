@@ -17,11 +17,13 @@ import (
 )
 
 type UpdateProfile struct {
+	Name        string `json:"name" val:"required" description:"name of the user"`
 	Email       string `json:"email" description:"email of the user"`
 	Description string `json:"description" val:"required" description:"description of the user"`
 }
 
 func (update *UpdateProfile) Validate() []exception.InputException {
+	update.Name = strings.TrimSpace(update.Name)
 	update.Email = strings.TrimSpace(update.Email)
 	update.Description = strings.TrimSpace(update.Description)
 	errors := []exception.InputException{}
@@ -45,6 +47,19 @@ func (update UpdateProfile) Handle(ctx context.Context, user *dto_account.User, 
 		}
 		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
+	if update.Email != "" {
+		// check email not du
+		existingEmail, err := dependencies.UnitOfWork.AccountUserRepository().GetByEmailAndBusinessAccountId(ctx, update.Email, user.BusinessAccountId)
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+		}
+		if existingEmail != nil && existingEmail.Id != user.Id {
+			return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "this email is used by another user", nil)
+		}
+	}
+	existing.Name = update.Name
 	existing.Email = update.Email
 	existing.Description = update.Description
 	if err := dependencies.UnitOfWork.AccountUserRepository().Update(ctx, existing); err != nil {
