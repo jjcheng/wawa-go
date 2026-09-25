@@ -95,21 +95,7 @@ func migrateData(ctx context.Context, targetUnitOfWork repository.UnitOfWork, so
 	tables := []string{}
 	maxIds := []int32{}
 	//4. migrate table data
-	dataRunners := []func() error{
-		// account
-		func() error {
-			return migrateTableData[dao_account.User](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
-		},
-		func() error {
-			return migrateTableData[dao_account.Setting](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
-		},
-		func() error {
-			return migrateTableData[dao_account.Session](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
-		},
-		// customer
-		func() error {
-			return migrateTableData[dao_customer.Customer](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
-		},
+	_ = []func() error{
 		// wa
 		func() error {
 			return migrateTableData[dao_wa.BusinessPortfolio](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
@@ -128,6 +114,26 @@ func migrateData(ctx context.Context, targetUnitOfWork repository.UnitOfWork, so
 		},
 		func() error {
 			return migrateTableData[dao_wa.SampleTemplate](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		// account
+		func() error {
+			return migrateTableData[dao_account.User](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_account.Setting](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_account.Session](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_account.UserPhoneNumber](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		func() error {
+			return migrateTableData[dao_account.Notification](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
+		},
+		// customer
+		func() error {
+			return migrateTableData[dao_customer.Customer](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
 		},
 		func() error {
 			return migrateTableData[dao_customer.Broadcast](ctx, targetUnitOfWork.DB(), sourceUnitOfWork.DB(), &ups, &downs, &tables, &maxIds)
@@ -153,11 +159,13 @@ func migrateData(ctx context.Context, targetUnitOfWork repository.UnitOfWork, so
 		},
 	}
 	//run them now
-	for _, run := range dataRunners {
-		if err := run(); err != nil {
-			panic(err.Error())
-		}
-	}
+	// for _, run := range dataRunners {
+	// 	fmt.Println("skipped run")
+	// 	continue
+	// 	if err := run(); err != nil {
+	// 		panic(err.Error())
+	// 	}
+	// }
 	return ups, downs, tables, maxIds
 }
 

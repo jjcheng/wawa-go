@@ -26,13 +26,13 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster {
+	if user.Type != types.UserTypeMaster || user.WA.BusinessAccount == nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := update.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.BusinessAccount](errors)
 	}
-	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, user.WA.BusinessAccount.Id)
+	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, user.BusinessAccountId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business account not found", nil)
@@ -49,7 +49,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// now update business portfolio
-	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetById(ctx, user.WA.BusinessPortfolio.Id)
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetById(ctx, user.BusinessAccountId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusNotFound, "business portfolio not found", nil)

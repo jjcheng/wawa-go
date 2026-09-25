@@ -24,13 +24,10 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if user == nil {
 		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
-	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_commerce.Website](inputErrors)
 	}
-	websites, err := dependencies.UnitOfWork.CommerceWebsiteRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
+	websites, err := dependencies.UnitOfWork.CommerceWebsiteRepository().ListByBusinessAccountId(ctx, user.BusinessAccountId)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

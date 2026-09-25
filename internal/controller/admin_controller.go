@@ -12,7 +12,13 @@ import (
 func registerAdminController(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
 	registerRoute[[]dto_account.User, feature_account_admin.ListUsers](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.PhoneNumber, feature_account_admin.ListUnassignedPhoneNumbers](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_account.UserPhoneNumber, feature_account_admin.ListAssignedUsers](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_account_admin.AssignPhoneNumbers](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_account_admin.AssignUsers](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_account_admin.SetUserStatus](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_account_admin.SetUserType](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_account.User, feature_account_admin.GetUser](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_account.User, feature_account_admin.CreateUser](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_account.User, feature_account_admin.UpdateUser](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_account_admin.DeleteUser](routerGroup, dependencies, apiGenerator)
 }

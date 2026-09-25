@@ -35,9 +35,6 @@ func (assignPhoneNumbers AssignPhoneNumbers) Handle(ctx context.Context, user *d
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
-	}
 	targetUser, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, assignPhoneNumbers.UserId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -66,7 +63,7 @@ func (assignPhoneNumbers AssignPhoneNumbers) Handle(ctx context.Context, user *d
 		}
 	}()
 	// delete existing assignments
-	if err := transaction.AccountUserPhoneNumberRepository().DeleteByUserId(ctx, user.Id); err != nil {
+	if err := transaction.AccountUserPhoneNumberRepository().DeleteByUserId(ctx, assignPhoneNumbers.UserId); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// insert new assignments
@@ -92,7 +89,7 @@ func (AssignPhoneNumbers) APISettings() feature.APISettings {
 		"Assign phone numbers to user",
 		"Replaces the phone numbers managed by a user in the authenticated business account.",
 		types.HttpRequestTypeJSON,
-		http.MethodPatch,
+		http.MethodPost,
 		"/v1/admin/assign-phone-numbers",
 		true,
 		true,

@@ -168,9 +168,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Co
 		}
 		return nil, nil, nil, result.Error
 	}
-	if len(phoneNumbers) == 0 {
-		return nil, nil, nil, gorm.ErrRecordNotFound
-	}
+	// it's ok if there is no phone number
 	for i := range phoneNumbers {
 		if err := phoneNumberRepository.decryptSecrets(&phoneNumbers[i]); err != nil {
 			return nil, nil, nil, fmt.Errorf("PhoneNumberRepository.GetByUserId index=1 userId=%d phoneNumberId=%d error=%w", userId, phoneNumbers[i].Id, err)

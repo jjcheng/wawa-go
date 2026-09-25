@@ -19,7 +19,14 @@ type PhoneNumber struct {
 	WAId               string                    `json:"wa_id"`
 	Status             types.WAPhoneNumberStatus `json:"status"`
 	// not stored
-	New bool `json:"-"`
+	New           bool           `json:"-"`
+	AssignedUsers []AssignedUser `json:"assigned_users"`
+}
+
+// only used to consolidate assigned user in list phone numbers api, to avoide circular reference
+type AssignedUser struct {
+	Id   int32  `json:"id"`
+	Name string `json:"name"`
 }
 
 func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {

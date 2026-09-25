@@ -30,9 +30,6 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if user == nil {
 		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
-	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_commerce.Catalog](inputErrors)
 	}
@@ -47,7 +44,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if err != nil {
 		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if website.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*dto_commerce.Catalog](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	result := dto_commerce.NewCatalog(*catalog)

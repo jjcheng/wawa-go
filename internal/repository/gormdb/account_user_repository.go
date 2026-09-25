@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
@@ -96,6 +97,45 @@ func (accountUserRepository *AccountUserRepository) CountByBusinessAccountId(ctx
 		return 0, fmt.Errorf("AccountUserRepository.CountByBusinessAccountId businessAccountId=%d error=%w", businessAccountId, err)
 	}
 	return int(count), nil
+}
+
+func (accountUserRepository *AccountUserRepository) GetByNameAndBusinessAccountId(ctx context.Context, name string, businessAccountId int32) (*dao_account.User, error) {
+	var user dao_account.User
+	result := accountUserRepository.db.WithContext(ctx).
+		Where("business_account_id = ? AND LOWER(name) = LOWER(?) AND status <> ?", businessAccountId, strings.TrimSpace(name), types.UserStatusClosed).
+		First(&user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return nil, fmt.Errorf("AccountUserRepository.GetByNameAndBusinessAccountId businessAccountId=%d name=%s error=%w", businessAccountId, name, result.Error)
+	}
+	if err := accountUserRepository.decryptSensitiveFields(&user); err != nil {
+		return nil, fmt.Errorf("AccountUserRepository.GetByNameAndBusinessAccountId businessAccountId=%d name=%s error=%w", businessAccountId, name, err)
+	}
+	return &user, nil
+}
+
+func (accountUserRepository *AccountUserRepository) GetByEmailAndBusinessAccountId(ctx context.Context, email string, businessAccountId int32) (*dao_account.User, error) {
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	emailHash, err := hashSecret(normalizedEmail)
+	if err != nil {
+		return nil, fmt.Errorf("AccountUserRepository.GetByEmailAndBusinessAccountId businessAccountId=%d error=%w", businessAccountId, err)
+	}
+	var user dao_account.User
+	result := accountUserRepository.db.WithContext(ctx).
+		Where("business_account_id = ? AND email_hash = ? AND status <> ?", businessAccountId, emailHash, types.UserStatusClosed).
+		First(&user)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return nil, fmt.Errorf("AccountUserRepository.GetByEmailAndBusinessAccountId businessAccountId=%d error=%w", businessAccountId, result.Error)
+	}
+	if err := accountUserRepository.decryptSensitiveFields(&user); err != nil {
+		return nil, fmt.Errorf("AccountUserRepository.GetByEmailAndBusinessAccountId businessAccountId=%d error=%w", businessAccountId, err)
+	}
+	return &user, nil
 }
 
 func (accountUserRepository *AccountUserRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32, typ *types.UserType) ([]dao_account.User, error) {

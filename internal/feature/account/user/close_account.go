@@ -35,8 +35,8 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
 	// get all MASTER users in the business account
-	if user.WA != nil && user.WA.BusinessAccount != nil && user.Type == types.UserTypeMaster {
-		users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil)
+	if user.Type == types.UserTypeMaster {
+		users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.BusinessAccountId, nil)
 		if err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}

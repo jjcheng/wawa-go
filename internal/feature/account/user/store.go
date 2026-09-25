@@ -20,49 +20,29 @@ import (
 	"gorm.io/gorm"
 )
 
-// for now only used in embedded signup
+// only used in embedded signup
 type Store struct {
-	Name            string         `json:"name" val:"required" description:"name of the new user" example:"John Doe"`
-	CountryCode     string         `json:"country_code" val:"required" description:"country code number"`
-	PhoneNumber     string         `json:"phone_number" val:"required" description:"phone number of the user, without country code"`
-	Email           string         `json:"email" description:"email address of the user"`
-	Type            types.UserType `json:"type" val:"required" description:"type of the user" example:"PUBLIC"`
-	Description     string         `json:"description" description:"for your reference" example:"created by account department"`
-	Password        string         `json:"password" val:"required" description:"password of the user"`
-	ConfirmPassword string         `json:"confirm_password" val:"required" description:"confirm password of the user"`
-	// set only by embedded signup, where Meta has already proven the caller owns the phone number, not a public member
-	ResumePendingPassword bool `json:"-"`
+	Name               string
+	DisplayPhoneNumber string
+	BusinessAccountId  int32
+	PhoneNumberId      int32
 }
 
 func (store *Store) Validate() []exception.InputException {
 	store.Name = strings.TrimSpace(store.Name)
-	store.Description = strings.TrimSpace(store.Description)
-	store.CountryCode = strings.TrimSpace(store.CountryCode)
-	store.PhoneNumber = strings.TrimSpace(store.PhoneNumber)
-	store.Email = strings.TrimSpace(store.Email)
-	// remove any space or + or - from phone number
-	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, "+", "")
-	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, " ", "")
-	store.PhoneNumber = strings.ReplaceAll(store.PhoneNumber, "-", "")
-	store.Password = strings.TrimSpace(store.Password)
-	store.ConfirmPassword = strings.TrimSpace(store.ConfirmPassword)
+	store.DisplayPhoneNumber = strings.TrimSpace(store.DisplayPhoneNumber)
 	errors := []exception.InputException{}
 	if store.Name == "" {
 		errors = append(errors, exception.NewInputException("name", "missing name"))
 	}
-	if store.CountryCode == "" {
-		errors = append(errors, exception.NewInputException("country_code", "missing country code"))
+	if store.DisplayPhoneNumber == "" {
+		errors = append(errors, exception.NewInputException("display_phone_number", "missing display phone number"))
 	}
-	if store.PhoneNumber == "" {
-		errors = append(errors, exception.NewInputException("phone_number", "missing phone number"))
+	if store.BusinessAccountId <= 0 {
+		errors = append(errors, exception.NewInputException("business_account_id", "missing business account id"))
 	}
-	if store.Email != "" && !helper.ValidateEmail(store.Email) {
-		errors = append(errors, exception.NewInputException("email", "invalid email"))
-	}
-	if store.Type == "" {
-		errors = append(errors, exception.NewInputException("type", "missing type"))
-	} else if !helper.Any(types.UserTypes, func(t types.UserType) bool { return t == store.Type }) {
-		errors = append(errors, exception.NewInputException("type", "invalid type"))
+	if store.PhoneNumberId <= 0 {
+		errors = append(errors, exception.NewInputException("phone_number_id", "missing phone number id"))
 	}
 	return errors
 }
@@ -76,73 +56,117 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	if errors := store.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.User](errors)
 	}
+	split := strings.Split(store.DisplayPhoneNumber, " ")
+	countryCode := strings.ReplaceAll(split[0], "+", "")
+	countryCode = strings.TrimSpace(countryCode)
+	phoneNumber := strings.TrimPrefix(store.DisplayPhoneNumber, split[0])
+	phoneNumber = strings.ReplaceAll(phoneNumber, "-", "")
+	phoneNumber = strings.ReplaceAll(phoneNumber, " ", "")
+	phoneNumber = strings.TrimSpace(phoneNumber)
 	// get existing
-	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, store.CountryCode, store.PhoneNumber)
+	existing, err := dependencies.UnitOfWork.AccountUserRepository().GetByPhoneNumber(ctx, countryCode, phoneNumber)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
-	// create access token and access token expiry
-	accessToken, err := helper.GenerateKey(32)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	if existing != nil && existing.BusinessAccountId != store.BusinessAccountId {
+		return dto.NewFailedResponse[*dto_account.User](http.StatusConflict, "this phone number is alrady used in another WhatsApp Business Account", nil)
 	}
-	accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
-	var u dto_account.User
-	if existing != nil {
-		u = dto_account.NewUser(*existing)
-		// if store allows resume pending password and the existing user is pending password, treat it as new user
-		if store.ResumePendingPassword && existing.Status == types.UserStatusPendingPassword {
-			u.New = true
+	// if from a unlogged in page to embedded signupd
+	if user == nil {
+		var u dto_account.User
+		var createSession bool
+		// if has existing user, pull it
+		if existing != nil {
+			u = dto_account.NewUser(*existing)
+			// if has existing and status is pending password, create session and redirect to change password page
+			// if has existing and status is not pending password, do not create session, redirect to login
+			if u.Status == types.UserStatusPendingPassword {
+				createSession = true
+			}
+		} else { // create new user
+			hasMasterUser, err := dependencies.UnitOfWork.AccountUserRepository().HasMasterUserInBusinessAccount(ctx, store.BusinessAccountId)
+			if err != nil {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			// generate password hash
+			fakePassword := uuid.NewString()
+			passwordHash, err := helper.HashPassword(fakePassword)
+			if err != nil {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			newUser := dao_account.User{
+				Name:              store.Name,
+				CountryCode:       countryCode,
+				PhoneNumber:       phoneNumber,
+				Description:       "created from embedded signup",
+				PasswordHash:      passwordHash,
+				EncryptionID:      uuid.NewString(),
+				BusinessAccountId: store.BusinessAccountId,
+				Status:            types.UserStatusPendingPassword,
+			}
+			// if has no existing master user, this new user will be the master; otherwise it's an operator
+			if !hasMasterUser {
+				newUser.Type = types.UserTypeMaster
+			} else {
+				newUser.Type = types.UserTypeOperator
+			}
+			if err := dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser); err != nil {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			u = dto_account.NewUser(newUser)
+			createSession = true
 		}
-	} else {
-		// generate password hash
-		passwordHash, err := helper.HashPassword(store.Password)
+		// check this phone number is assigned to this user
+		userPhoneNumber, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().GetByUserIdAndPhoneNumberId(ctx, u.Id, store.PhoneNumberId)
 		if err != nil {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
 		}
-		newUser := dao_account.User{
-			Name:              store.Name,
-			CountryCode:       store.CountryCode,
-			PhoneNumber:       store.PhoneNumber,
-			Email:             store.Email,
-			Description:       store.Description,
-			Type:              store.Type,
-			PasswordHash:      passwordHash,
-			Status:            types.UserStatusPendingPassword, // new user always need to set a password
-			EncryptionID:      uuid.NewString(),
-			BusinessAccountId: user.WA.BusinessAccount.Id,
+		// if not assigned, assign now
+		if userPhoneNumber == nil {
+			userPhoneNumber := dao_account.UserPhoneNumber{
+				UserId:        u.Id,
+				PhoneNumberId: store.PhoneNumberId,
+			}
+			if err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().Insert(ctx, &userPhoneNumber); err != nil {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
 		}
-		// Insert will do all the encryption/hashing
-		if err := dependencies.UnitOfWork.AccountUserRepository().Insert(ctx, &newUser); err != nil {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		// create user session only for new user, so no need to login after setting password
+		if createSession {
+			// create access token and access token expiry
+			accessToken, err := helper.GenerateKey(32)
+			if err != nil {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			accessTokenExpiry := time.Now().Add(time.Duration(cfg.Default().Site.SessionExpirySeconds) * time.Second)
+			session := dao_account.Session{
+				UserId:            u.Id,
+				AccessTokenHashed: helper.HashSHA256Hex(accessToken),
+				ExpiresAt:         accessTokenExpiry,
+				LastUsedAt:        time.Now(),
+			}
+			if ip := helper.GetClientIP(ctx); ip != nil {
+				session.IP = *ip
+			}
+			if userAgent := helper.GetUserAgent(ctx); userAgent != nil {
+				session.UserAgent = *userAgent
+			}
+			if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session); err != nil {
+				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			// after embedded signup completed, return access token to auto login
+			u.AccessToken = accessToken
+			u.AccessTokenExpiry = &accessTokenExpiry
 		}
-		u = dto_account.NewUser(newUser)
-		u.New = true
+		return dto.NewSuccessResponse(&u)
+	} else { // if from a logged in page
+		// return nil, to indicate next step is to assign this phone number to a user
+		return dto.NewSuccessResponse[*dto_account.User](nil)
 	}
-	// create user session only for new user, so no need to login after setting password
-	if u.New {
-		session := dao_account.Session{
-			UserId:            u.Id,
-			AccessTokenHashed: helper.HashSHA256Hex(accessToken),
-			ExpiresAt:         accessTokenExpiry,
-			LastUsedAt:        time.Now(),
-		}
-		if ip := helper.GetClientIP(ctx); ip != nil {
-			session.IP = *ip
-		}
-		if userAgent := helper.GetUserAgent(ctx); userAgent != nil {
-			session.UserAgent = *userAgent
-		}
-		if err := dependencies.UnitOfWork.AccountSessionRepository().Insert(ctx, &session); err != nil {
-			return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		}
-		// after embedded signup completed, return access token to auto login
-		u.AccessToken = accessToken
-		u.AccessTokenExpiry = &accessTokenExpiry
-	}
-	return dto.NewSuccessResponse(&u)
 }
 
 func (Store) APISettings() feature.APISettings {

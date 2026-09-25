@@ -29,7 +29,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
@@ -49,7 +49,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if website.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// delete the imageUrls if any

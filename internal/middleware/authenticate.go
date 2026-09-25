@@ -78,7 +78,7 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 			userDTO.Session = helper.ConvertToPointer(dto_account.NewSession(*session))
 			// load wa reloated objects
 			phoneNumbers, businessAccount, businessPortfolio, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx.Request.Context(), user.Id)
-			if err == nil && len(phoneNumbers) > 0 {
+			if err == nil {
 				managedPhoneNumbers := make([]dto_wa.PhoneNumber, 0, len(phoneNumbers))
 				for _, phoneNumber := range phoneNumbers {
 					managedPhoneNumbers = append(managedPhoneNumbers, dto_wa.NewPhoneNumber(phoneNumber))
@@ -91,6 +91,10 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 					BusinessPortfolio:            &businessPortfolioDTO,
 					BusinessPortfolioAccessToken: businessPortfolio.AccessToken,
 				}
+			} else {
+				responseObject := dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+				ctx.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+				return
 			}
 			if dependencies.AuthCache != nil {
 				dependencies.AuthCache.Set(tokenHash, &userDTO, time.Now())

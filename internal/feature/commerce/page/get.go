@@ -30,7 +30,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if user == nil {
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.WA == nil {
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := get.Validate(); len(inputErrors) > 0 {
@@ -50,7 +50,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		}
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if website.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusNotFound, "page not found", nil)
 	}
 	result := dto_commerce.NewPage(*page)

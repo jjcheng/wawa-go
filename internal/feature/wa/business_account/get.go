@@ -24,7 +24,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if user == nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.WA == nil || user.WA.BusinessAccount == nil || user.WA.BusinessPortfolio == nil {
 		return dto.NewFailedResponse[*dto_wa.BusinessAccount](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if errors := get.Validate(); len(errors) > 0 {

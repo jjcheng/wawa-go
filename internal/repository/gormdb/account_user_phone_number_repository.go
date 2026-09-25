@@ -28,11 +28,14 @@ func NewAccountUserPhoneNumberRepository(db *gorm.DB, logger *service.Logger) re
 func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListByUserId(ctx context.Context, userId int32) ([]dao_account.UserPhoneNumber, error) {
 	var userPhoneNumbers []dao_account.UserPhoneNumber
 	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
-		Preload("User").
-		Preload("PhoneNumber").
+		Joins("User").
+		Joins("PhoneNumber").
 		Where("user_id = ?", userId).
 		Order("id").
 		Find(&userPhoneNumbers).Error; err != nil {
+		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByUserId userId=%d error=%w", userId, err)
+	}
+	if err := accountUserPhoneNumberRepository.decryptPhoneNumbers(userPhoneNumbers); err != nil {
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByUserId userId=%d error=%w", userId, err)
 	}
 	return userPhoneNumbers, nil
@@ -41,12 +44,53 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListBy
 func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListByPhoneNumberId(ctx context.Context, phoneNumberId int32) ([]dao_account.UserPhoneNumber, error) {
 	var userPhoneNumbers []dao_account.UserPhoneNumber
 	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
-		Preload("User").
-		Preload("PhoneNumber").
+		Joins("User").
+		Joins("PhoneNumber").
 		Where("phone_number_id = ?", phoneNumberId).
 		Order("id").
 		Find(&userPhoneNumbers).Error; err != nil {
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByPhoneNumberId phoneNumberId=%d error=%w", phoneNumberId, err)
+	}
+	if err := accountUserPhoneNumberRepository.decryptPhoneNumbers(userPhoneNumbers); err != nil {
+		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByPhoneNumberId phoneNumberId=%d error=%w", phoneNumberId, err)
+	}
+	return userPhoneNumbers, nil
+}
+
+func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListByUserIds(ctx context.Context, userIds []int32) ([]dao_account.UserPhoneNumber, error) {
+	if len(userIds) == 0 {
+		return []dao_account.UserPhoneNumber{}, nil
+	}
+	var userPhoneNumbers []dao_account.UserPhoneNumber
+	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
+		Joins("User").
+		Joins("PhoneNumber").
+		Where("user_id IN ?", userIds).
+		Order("id").
+		Find(&userPhoneNumbers).Error; err != nil {
+		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByUserIds userIds=%v error=%w", userIds, err)
+	}
+	if err := accountUserPhoneNumberRepository.decryptPhoneNumbers(userPhoneNumbers); err != nil {
+		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByUserIds userIds=%v error=%w", userIds, err)
+	}
+	return userPhoneNumbers, nil
+}
+
+func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListByPhoneNumberIds(ctx context.Context, phoneNumberIds []int32) ([]dao_account.UserPhoneNumber, error) {
+	if len(phoneNumberIds) == 0 {
+		return []dao_account.UserPhoneNumber{}, nil
+	}
+	var userPhoneNumbers []dao_account.UserPhoneNumber
+	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
+		Joins("User").
+		Joins("PhoneNumber").
+		Where("phone_number_id IN ?", phoneNumberIds).
+		Order("id").
+		Find(&userPhoneNumbers).Error; err != nil {
+		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByPhoneNumberIds phoneNumberIds=%v error=%w", phoneNumberIds, err)
+	}
+	if err := accountUserPhoneNumberRepository.decryptPhoneNumbers(userPhoneNumbers); err != nil {
+		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByPhoneNumberIds phoneNumberIds=%v error=%w", phoneNumberIds, err)
 	}
 	return userPhoneNumbers, nil
 }
@@ -75,11 +119,20 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) Delete
 	return nil
 }
 
+func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) DeleteByPhoneNumberId(ctx context.Context, phoneNumberId int32) error {
+	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
+		Where("phone_number_id = ?", phoneNumberId).
+		Delete(&dao_account.UserPhoneNumber{}).Error; err != nil {
+		return fmt.Errorf("AccountUserPhoneNumberRepository.DeleteByPhoneNumberId phoneNumberId=%d error=%w", phoneNumberId, err)
+	}
+	return nil
+}
+
 func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) GetByUserIdAndPhoneNumberId(ctx context.Context, userId int32, phoneNumberId int32) (*dao_account.UserPhoneNumber, error) {
 	var userPhoneNumber dao_account.UserPhoneNumber
 	result := accountUserPhoneNumberRepository.db.WithContext(ctx).
-		Preload("User").
-		Preload("PhoneNumber").
+		Joins("User").
+		Joins("PhoneNumber").
 		Where("user_id = ? AND phone_number_id = ?", userId, phoneNumberId).
 		First(&userPhoneNumber)
 	if result.Error != nil {
@@ -88,5 +141,24 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) GetByU
 		}
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.GetByUserIdAndPhoneNumberId userId=%d phoneNumberId=%d error=%w", userId, phoneNumberId, result.Error)
 	}
+	if userPhoneNumber.PhoneNumber != nil {
+		phoneNumberRepository := WAPhoneNumberRepository{db: accountUserPhoneNumberRepository.db, logger: accountUserPhoneNumberRepository.logger}
+		if err := phoneNumberRepository.decryptSecrets(userPhoneNumber.PhoneNumber); err != nil {
+			return nil, fmt.Errorf("AccountUserPhoneNumberRepository.GetByUserIdAndPhoneNumberId userId=%d phoneNumberId=%d error=%w", userId, phoneNumberId, err)
+		}
+	}
 	return &userPhoneNumber, nil
+}
+
+func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) decryptPhoneNumbers(userPhoneNumbers []dao_account.UserPhoneNumber) error {
+	phoneNumberRepository := WAPhoneNumberRepository{db: accountUserPhoneNumberRepository.db, logger: accountUserPhoneNumberRepository.logger}
+	for i := range userPhoneNumbers {
+		if userPhoneNumbers[i].PhoneNumber == nil {
+			continue
+		}
+		if err := phoneNumberRepository.decryptSecrets(userPhoneNumbers[i].PhoneNumber); err != nil {
+			return fmt.Errorf("index=%d phoneNumberId=%d error=%w", i, userPhoneNumbers[i].PhoneNumberId, err)
+		}
+	}
+	return nil
 }

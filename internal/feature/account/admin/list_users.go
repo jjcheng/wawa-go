@@ -4,10 +4,12 @@ import (
 	"context"
 	"net/http"
 
+	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -29,13 +31,35 @@ func (listUsers ListUsers) Handle(ctx context.Context, user *dto_account.User, d
 	if inputErrors := listUsers.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_account.User](inputErrors)
 	}
-	users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil)
+	users, err := dependencies.UnitOfWork.AccountUserRepository().ListByBusinessAccountId(ctx, user.BusinessAccountId, nil)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	var ds []dto_account.User = make([]dto_account.User, len(users))
 	for i := range users {
 		ds[i] = dto_account.NewUser(users[i])
+	}
+	// get assigned phone nubers
+	if len(ds) > 0 {
+		userIds := helper.Map(ds, func(u dto_account.User) int32 {
+			return u.Id
+		})
+		userPhoneNumbers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByUserIds(ctx, userIds)
+		if err != nil {
+			return dto.NewFailedResponse[[]dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
+		for i := range ds {
+			items := helper.Filter(userPhoneNumbers, func(up dao_account.UserPhoneNumber) bool {
+				return up.UserId == ds[i].Id
+			})
+			ds[i].AssignedPhoneNumbers = helper.Map(items, func(up dao_account.UserPhoneNumber) dto_account.AssignedPhoneNumber {
+				return dto_account.AssignedPhoneNumber{
+					Id:                 up.PhoneNumberId,
+					Name:               up.PhoneNumber.Name,
+					DisplayPhoneNumber: up.PhoneNumber.DisplayPhoneNumber,
+				}
+			})
+		}
 	}
 	return dto.NewSuccessResponse(ds)
 }

@@ -33,7 +33,7 @@ func (getByMetaCatalogId GetByMetaCatalogId) Handle(ctx context.Context, user *d
 	if user == nil {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.WA == nil {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := getByMetaCatalogId.Validate(); len(inputErrors) > 0 {
@@ -47,7 +47,7 @@ func (getByMetaCatalogId GetByMetaCatalogId) Handle(ctx context.Context, user *d
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// check this website belongs to the user
-	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if website.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	result := dto_commerce.NewWebsite(*website)

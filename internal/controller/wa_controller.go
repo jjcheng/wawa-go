@@ -30,7 +30,7 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerWebhookVerifyRoute(routerGroup, dependencies)
 	registerWebhookReceiveRoute(routerGroup, dependencies)
 	// embedded signup
-	registerRoute[*dto_account.User, feature_wa_account.EmbeddedSignup](routerGroup, dependencies, apiGenerator)
+	registerRoute[*feature_wa_account.EmbeddedSignupResult, feature_wa_account.EmbeddedSignup](routerGroup, dependencies, apiGenerator)
 	// business account
 	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Get](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Update](routerGroup, dependencies, apiGenerator)

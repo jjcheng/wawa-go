@@ -55,7 +55,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if user == nil {
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
@@ -68,7 +68,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if website.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	pagesCount, err := dependencies.UnitOfWork.CommercePageRepository().GetPagesCountByWebsiteId(ctx, website.Id)

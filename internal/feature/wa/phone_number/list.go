@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
@@ -27,18 +28,14 @@ func (list *List) Validate() []exception.InputException {
 	if list.PageSize <= 0 {
 		list.PageSize = 10
 	}
-	inputErrors := []exception.InputException{}
-	if list.PageSize > 10 {
-		inputErrors = append(inputErrors, exception.NewInputException("page_size", "page size must be between 1 and 10"))
-	}
-	return inputErrors
+	return nil
 }
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto.ListResponse[dto_wa.PhoneNumber]] {
 	if user == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.WA == nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
@@ -47,7 +44,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	items := make([]dto_wa.PhoneNumber, 0)
 	var totalCount, totalPages int
 	if user.Type == types.UserTypeMaster {
-		phoneNumbers, count, pages, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, list.Status, list.Page, list.PageSize)
+		phoneNumbers, count, pages, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListByBusinessAccountId(ctx, user.BusinessAccountId, list.Status, list.Page, list.PageSize)
 		if err != nil {
 			return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
@@ -56,6 +53,29 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		items = make([]dto_wa.PhoneNumber, len(phoneNumbers))
 		for index, phoneNumber := range phoneNumbers {
 			items[index] = dto_wa.NewPhoneNumber(phoneNumber)
+		}
+		// bind assigned users count
+		if len(items) > 0 {
+			phoneNumberIds := helper.Map(items, func(pn dto_wa.PhoneNumber) int32 {
+				return pn.Id
+			})
+			userPhoneNumbers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByPhoneNumberIds(ctx, phoneNumberIds)
+			if err != nil {
+				return dto.NewFailedResponse[*dto.ListResponse[dto_wa.PhoneNumber]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			for i := range items {
+				userPhoneNumbers := helper.Filter(userPhoneNumbers, func(au dao_account.UserPhoneNumber) bool {
+					return au.PhoneNumberId == items[i].Id
+				})
+				var assignedUsers []dto_wa.AssignedUser
+				for _, userPhoneNumber := range userPhoneNumbers {
+					assignedUsers = append(assignedUsers, dto_wa.AssignedUser{
+						Id:   userPhoneNumber.UserId,
+						Name: userPhoneNumber.User.Name,
+					})
+				}
+				items[i].AssignedUsers = assignedUsers
+			}
 		}
 	} else {
 		phoneNumbers := user.WA.PhoneNumbers
@@ -74,11 +94,11 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List user WhatsApp phone numbers",
+		"List WhatsApp phone numbers",
 		"Lists WhatsApp phone numbers in pages: all numbers in a master's business portfolio, or numbers assigned to another authenticated user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
-		"/v1/wa/user-phone-numbers",
+		"/v1/wa/phone-numbers",
 		true,
 		true,
 		types.APITagWA,

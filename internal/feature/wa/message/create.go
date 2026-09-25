@@ -276,6 +276,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Sending:       true,
 		PhoneNumberId: phoneNumber.Id,
 		CustomerId:    customer.Id,
+		UserId:        user.Id,
 		Timestamp:     timestamp,
 		Type:          string(create.Type),
 		Payload:       payload,

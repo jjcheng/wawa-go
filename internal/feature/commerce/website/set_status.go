@@ -34,7 +34,7 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := setStatus.Validate(); len(inputErrors) > 0 {
@@ -47,7 +47,7 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if website.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if err := dependencies.UnitOfWork.CommerceWebsiteRepository().UpdateFields(ctx, setStatus.Id, map[string]any{"status": setStatus.Status}); err != nil {

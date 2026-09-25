@@ -40,7 +40,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		}
 		return dto.NewFailedResponse[[]dto_commerce.Page](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if website.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if website.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[[]dto_commerce.Page](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	pages, err := dependencies.UnitOfWork.CommercePageRepository().ListByWebsiteId(ctx, website.Id)

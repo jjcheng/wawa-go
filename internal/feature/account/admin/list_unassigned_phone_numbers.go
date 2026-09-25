@@ -24,13 +24,13 @@ func (list ListUnassignedPhoneNumbers) Handle(ctx context.Context, user *dto_acc
 	if user == nil {
 		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if user.Type != types.UserTypeMaster || user.WA == nil || user.WA.BusinessAccount == nil {
+	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_wa.PhoneNumber](inputErrors)
 	}
-	phoneNumbers, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListUnassigned(ctx, user.WA.BusinessAccount.Id)
+	phoneNumbers, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListUnassigned(ctx, user.BusinessAccountId)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

@@ -46,7 +46,7 @@ func (getDashboard GetDashboard) Handle(ctx context.Context, user *dto_account.U
 	var err error
 	if getDashboard.BusinessAccount && user.Type == types.UserTypeMaster {
 		// get phone numbers by WABA
-		activePhoneNumbers, err = dependencies.UnitOfWork.WAPhoneNumberRepository().CountByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
+		activePhoneNumbers, err = dependencies.UnitOfWork.WAPhoneNumberRepository().CountByBusinessAccountId(ctx, user.BusinessAccountId)
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
@@ -69,6 +69,7 @@ func (getDashboard GetDashboard) Handle(ctx context.Context, user *dto_account.U
 		if len(phoneNumberWAIds) == 0 {
 			return dto.NewSuccessResponse(&Dashboard{})
 		}
+		activePhoneNumbers = len(user.WA.PhoneNumbers)
 		usage, err := dependencies.Whatsapp.GetPhoneNumberUsage(ctx, user.WA.BusinessAccount.WABAId, phoneNumberWAIds, start, end, types.WAAnalyticsGranularityDay, user.WA.BusinessPortfolioAccessToken)
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusBadGateway, err.Error(), err)

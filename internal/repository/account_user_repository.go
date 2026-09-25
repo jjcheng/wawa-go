@@ -14,4 +14,6 @@ type AccountUserRepository interface {
 	ListByBusinessAccountId(ctx context.Context, businessAccountId int32, typ *types.UserType) ([]dao_account.User, error)
 	CountByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error)
 	GetByIdsAndBusinessAccountId(ctx context.Context, ids []int32, businessAccountId int32) ([]dao_account.User, error)
+	GetByNameAndBusinessAccountId(ctx context.Context, name string, businessAccountId int32) (*dao_account.User, error)
+	GetByEmailAndBusinessAccountId(ctx context.Context, email string, businessAccountId int32) (*dao_account.User, error)
 }

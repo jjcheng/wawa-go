@@ -1,43 +1,60 @@
 package feature_account_admin
 
-// type Delete struct {
-// 	Identifier string `uri:"identifier" val:"required" description:"identifier of the user to delete" example:"bf4a7bf2-5433-4401-afb6-300e10e8f27e"`
-// }
+import (
+	"context"
+	"errors"
+	"net/http"
 
-// func (delete *Delete) Validate() []exception.InputException {
-// 	errors := []exception.InputException{}
-// 	if delete.Identifier == "" {
-// 		errors = append(errors, exception.NewInputException("id", "invalid id"))
-// 	}
-// 	return errors
-// }
+	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	"github.com/jjcheng/wawa-go/internal/exception"
+	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
+)
 
-// func (delete Delete) Handle(ctx context.Context, user *dto_ai.User, dependencies *service.Dependencies) dto.Response[any] {
-// 	if user.Type != types.UserTypeAdmin {
-// 		return dto.NewFailedResponse[any](http.StatusUnauthorized, "you are not admin")
-// 	}
-// 	if errors := delete.Validate(); len(errors) > 0 {
-// 		return dto.NewInvalidInputResponse[any](errors)
-// 	}
-// 	existingUser, ex := dependencies.UnitOfWork.AIUserRepository().GetByIdentifierAndAppId(ctx, user.App.Id, delete.Identifier)
-// 	if ex != nil {
-// 		if ex.StatusCode == http.StatusNotFound {
-// 			return dto.NewFailedResponse[any](ex.StatusCode, "user not found")
-// 		}
-// 		return dto.NewFailedResponse[any](ex.StatusCode, "error getting user")
-// 	}
-// 	if existingUser.Type == types.UserTypeMaster {
-// 		return dto.NewFailedResponse[any](http.StatusBadRequest, "master user cannot be deleted")
-// 	}
-// 	err := dependencies.UnitOfWork.AIUserRepository().DeleteById(ctx, existingUser.Id)
-// 	if err != nil {
-// 		return dto.NewFailedResponse[any](http.StatusInternalServerError, "error deleting user", err)
-// 	}
-// 	return dto.NewEmptyResponse(true, http.StatusOK)
-// }
+type DeleteUser struct {
+	Id int32 `uri:"id" val:"required" description:"id of the user"`
+}
 
-// func (Delete) APISettings() feature.APISettings {
-// 	return feature.NewAPISettings("Delete user", "Delete a user by its identifier. Only admin can delete users.", types.HttpRequestTypeUri, "DELETE", "/users/v1/:identifier", true, false, types.APITagAccount, []feature.APIError{
-// 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
-// 	})
-// }
+func (deleteUser *DeleteUser) Validate() []exception.InputException {
+	errors := []exception.InputException{}
+	if deleteUser.Id <= 0 {
+		errors = append(errors, exception.NewInputException("id", "missing id"))
+	}
+	return errors
+}
+
+func (deleteUser DeleteUser) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+	if user == nil {
+		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+	}
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if errors := deleteUser.Validate(); len(errors) > 0 {
+		return dto.NewInvalidInputResponse[any](errors)
+	}
+	existingUser, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, deleteUser.Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	if existingUser.Type == types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusBadRequest, "master user cannot be deleted", nil)
+	}
+	err = dependencies.UnitOfWork.AccountUserRepository().DeleteById(ctx, existingUser.Id)
+	if err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	return dto.NewEmptyResponse(true, http.StatusOK)
+}
+
+func (DeleteUser) APISettings() feature.APISettings {
+	return feature.NewAPISettings("Delete user", "Delete a user by id. Only MASTER can delete non-MASTER users.", types.HttpRequestTypeUri, "DELETE", "/v1/admin/users/:id", true, true, types.APITagAccount, []feature.APIError{
+		feature.NewAPIError(*exception.NewCustomException("master user cannot be deleted", http.StatusBadRequest)),
+	})
+}

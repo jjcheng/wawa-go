@@ -39,7 +39,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusBadGateway, err.Error(), err)
 	}
 	// retrive catalogs in our db, not every Meta catalog is in db, only those need to create website
-	commerceCatalogs, err := dependencies.UnitOfWork.CommerceCatalogRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
+	commerceCatalogs, err := dependencies.UnitOfWork.CommerceCatalogRepository().ListByBusinessAccountId(ctx, user.BusinessAccountId)
 	if err != nil {
 		return dto.NewFailedResponse[[]service.WhatsAppProductCatalog](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
