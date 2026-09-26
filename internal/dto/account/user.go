@@ -20,6 +20,7 @@ type User struct {
 	Type              types.UserType   `json:"type"`
 	Status            types.UserStatus `json:"status"`
 	BusinessAccountId int32            `json:"business_account_id"`
+	New               bool             `json:"-"`
 	// got from session
 	AccessToken       string     `json:"access_token,omitempty" description:"only returned during login"`
 	AccessTokenExpiry *time.Time `json:"access_token_expiry,omitempty" description:"access token expiry time"`
@@ -27,7 +28,7 @@ type User struct {
 	WA *UserWA `json:"-"`
 	// login info
 	Session *Session `json:"-"`
-	// only used when editing user
+	// lazy loaded
 	AssignedPhoneNumbers []AssignedPhoneNumber `json:"assigned_phone_numbers"`
 }
 

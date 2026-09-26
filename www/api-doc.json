@@ -314,6 +314,16 @@
         "description": "List notifications for the authenticated user.",
         "parameters": [
           {
+            "description": "category of the notification to filter",
+            "example": "",
+            "in": "query",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "description": "type of the notifications to filter",
             "example": "",
             "in": "query",
@@ -376,6 +386,12 @@
                                 "type": "string"
                               },
                               "body": {
+                                "type": "string"
+                              },
+                              "category": {
+                                "type": "string"
+                              },
+                              "icon_type": {
                                 "type": "string"
                               },
                               "id": {
@@ -14549,6 +14565,65 @@
                               "remarks": {
                                 "type": "string"
                               },
+                              "sending_phone_number": {
+                                "properties": {
+                                  "added_at": {
+                                    "example": "2025-10-01T08:08:00Z",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "assigned_users": {
+                                    "items": {
+                                      "properties": {
+                                        "id": {
+                                          "format": "int32",
+                                          "type": "integer"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "type": "array"
+                                  },
+                                  "business_account_id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "display_phone_number": {
+                                    "type": "string"
+                                  },
+                                  "id": {
+                                    "example": 1,
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "last_updated_at": {
+                                    "example": "2025-10-01T08:08:00Z",
+                                    "format": "date-time",
+                                    "type": "string"
+                                  },
+                                  "meta_phone_number_id": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string"
+                                  },
+                                  "wa_id": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "added_at",
+                                  "last_updated_at"
+                                ],
+                                "type": "object"
+                              },
                               "status": {
                                 "type": "string"
                               },
@@ -14920,6 +14995,65 @@
                         },
                         "remarks": {
                           "type": "string"
+                        },
+                        "sending_phone_number": {
+                          "properties": {
+                            "added_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "assigned_users": {
+                              "items": {
+                                "properties": {
+                                  "id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "business_account_id": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "display_phone_number": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "example": 1,
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "last_updated_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "meta_phone_number_id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "wa_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "added_at",
+                            "last_updated_at"
+                          ],
+                          "type": "object"
                         },
                         "status": {
                           "type": "string"
@@ -16167,6 +16301,65 @@
                         "remarks": {
                           "type": "string"
                         },
+                        "sending_phone_number": {
+                          "properties": {
+                            "added_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "assigned_users": {
+                              "items": {
+                                "properties": {
+                                  "id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "business_account_id": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "display_phone_number": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "example": 1,
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "last_updated_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "meta_phone_number_id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "wa_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "added_at",
+                            "last_updated_at"
+                          ],
+                          "type": "object"
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -16613,6 +16806,65 @@
                         },
                         "remarks": {
                           "type": "string"
+                        },
+                        "sending_phone_number": {
+                          "properties": {
+                            "added_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "assigned_users": {
+                              "items": {
+                                "properties": {
+                                  "id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "business_account_id": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "display_phone_number": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "example": 1,
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "last_updated_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "meta_phone_number_id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "wa_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "added_at",
+                            "last_updated_at"
+                          ],
+                          "type": "object"
                         },
                         "status": {
                           "type": "string"
@@ -17051,6 +17303,65 @@
                         "remarks": {
                           "type": "string"
                         },
+                        "sending_phone_number": {
+                          "properties": {
+                            "added_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "assigned_users": {
+                              "items": {
+                                "properties": {
+                                  "id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "business_account_id": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "display_phone_number": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "example": 1,
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "last_updated_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "meta_phone_number_id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "wa_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "added_at",
+                            "last_updated_at"
+                          ],
+                          "type": "object"
+                        },
                         "status": {
                           "type": "string"
                         },
@@ -17497,6 +17808,65 @@
                         },
                         "remarks": {
                           "type": "string"
+                        },
+                        "sending_phone_number": {
+                          "properties": {
+                            "added_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "assigned_users": {
+                              "items": {
+                                "properties": {
+                                  "id": {
+                                    "format": "int32",
+                                    "type": "integer"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "business_account_id": {
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "display_phone_number": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "example": 1,
+                              "format": "int32",
+                              "type": "integer"
+                            },
+                            "last_updated_at": {
+                              "example": "2025-10-01T08:08:00Z",
+                              "format": "date-time",
+                              "type": "string"
+                            },
+                            "meta_phone_number_id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string"
+                            },
+                            "wa_id": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "added_at",
+                            "last_updated_at"
+                          ],
+                          "type": "object"
                         },
                         "status": {
                           "type": "string"

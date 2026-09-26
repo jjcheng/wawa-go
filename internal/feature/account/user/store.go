@@ -116,6 +116,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 				return dto.NewFailedResponse[*dto_account.User](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 			}
 			u = dto_account.NewUser(newUser)
+			u.New = true
 			createSession = true
 		}
 		// check this phone number is assigned to this user

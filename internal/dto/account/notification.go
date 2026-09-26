@@ -8,11 +8,13 @@ import (
 
 type Notification struct {
 	dto.DTOBase
-	Title string                 `json:"title"`
-	Body  string                 `json:"body"`
-	Type  types.NotificationType `json:"type"`
-	URL   string                 `json:"url"`
-	Read  bool                   `json:"read"`
+	Type     types.NotificationType     `json:"type"`
+	Category types.NotificationCategory `json:"category"`
+	IconType types.NotificationIconType `json:"icon_type"`
+	Title    string                     `json:"title"`
+	Body     string                     `json:"body"`
+	URL      string                     `json:"url"`
+	Read     bool                       `json:"read"`
 }
 
 func NewNotification(notification dao_account.Notification) Notification {
@@ -22,10 +24,12 @@ func NewNotification(notification dao_account.Notification) Notification {
 			AddedAt:       notification.AddedAt,
 			LastUpdatedAt: notification.LastUpdatedAt,
 		},
-		Title: notification.Title,
-		Body:  notification.Body,
-		Type:  notification.Type,
-		URL:   notification.URL,
-		Read:  notification.Read,
+		IconType: notification.IconType,
+		Category: notification.Category,
+		Title:    notification.Title,
+		Body:     notification.Body,
+		Type:     notification.Type,
+		URL:      notification.URL,
+		Read:     notification.Read,
 	}
 }

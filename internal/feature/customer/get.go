@@ -43,12 +43,14 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		}
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+	sendingPhoneNumber := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
 		return pn.Id == customer.PhoneNumberId
-	}) {
+	})
+	if sendingPhoneNumber == nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	d := dto_customer.NewCustomer(*customer)
+	d.SendingPhoneNumber = sendingPhoneNumber
 	return dto.NewSuccessResponse(&d)
 }
 

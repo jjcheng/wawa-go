@@ -11,6 +11,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
 	feature_account_user "github.com/jjcheng/wawa-go/internal/feature/account/user"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
 	feature_wa_business_portfolio "github.com/jjcheng/wawa-go/internal/feature/wa/business_portfolio"
@@ -160,6 +161,116 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	result := EmbeddedSignupResult{
 		User:        finalUser,
 		PhoneNumber: storePhoneNumberResponse.Data,
+	}
+	// for new user, create todos
+	if storeUserResponse.Data.New {
+		// interact with customer
+		if html, err := helper.ReadFromFile("www/todos/chat_with_customer.html"); err == nil {
+			createNotification := feature_account_notification.Create{
+				Category: types.NotificationCategoryPending,
+				IconType: types.NotificationIconTypeChat,
+				Type:     types.NotificationTypeInfo,
+				Title:    "Get Started: Chat with your customers",
+				Body:     *html,
+				URL:      "/chats",
+				ToUserId: finalUser.Id,
+			}
+			_ = createNotification.Handle(ctx, user, dependencies)
+		}
+		if storeUserResponse.Data.Type == types.UserTypeMaster {
+			// create websites
+			if html, err := helper.ReadFromFile("www/todos/create_websites.html"); err == nil {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					IconType: types.NotificationIconTypeWebsite,
+					Type:     types.NotificationTypeInfo,
+					Title:    "Get Started: Create websites",
+					Body:     *html,
+					URL:      "/catalogs",
+					ToUserId: finalUser.Id,
+				}
+				_ = createNotification.Handle(ctx, user, dependencies)
+			}
+			// broadcast to customers
+			if html, err := helper.ReadFromFile("www/todos/broadcast_to_customers.html"); err == nil {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					Type:     types.NotificationTypeInfo,
+					IconType: types.NotificationIconTypeBroadcast,
+					Title:    "Get Started: Broadcast to your customers",
+					Body:     *html,
+					URL:      "/chats",
+					ToUserId: finalUser.Id,
+				}
+				_ = createNotification.Handle(ctx, user, dependencies)
+			}
+			// create templates
+			if html, err := helper.ReadFromFile("www/todos/create_templates.html"); err == nil {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					Type:     types.NotificationTypeInfo,
+					IconType: types.NotificationIconTypeTemplate,
+					Title:    "Get Started: Create message templates",
+					Body:     *html,
+					URL:      "/templates",
+					ToUserId: finalUser.Id,
+				}
+				_ = createNotification.Handle(ctx, user, dependencies)
+			}
+			// add customers
+			if html, err := helper.ReadFromFile("www/todos/add_customers.html"); err == nil {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					Type:     types.NotificationTypeInfo,
+					IconType: types.NotificationIconTypeCustomer,
+					Title:    "Get Started: Add more customers",
+					Body:     *html,
+					URL:      "/chats",
+					ToUserId: finalUser.Id,
+				}
+				_ = createNotification.Handle(ctx, user, dependencies)
+			}
+			// onbard more members
+			if html, err := helper.ReadFromFile("www/todos/onboard_phone_numbers.html"); err == nil {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					IconType: types.NotificationIconTypeJoin,
+					Type:     types.NotificationTypeInfo,
+					Title:    "Get Started: Onboard more WhatsApp phone numbers",
+					Body:     *html,
+					URL:      "/users",
+					ToUserId: finalUser.Id,
+				}
+				_ = createNotification.Handle(ctx, user, dependencies)
+			}
+		} else {
+			// broadcast to customers
+			if html, err := helper.ReadFromFile("www/todos/broadcast_to_customers.html"); err == nil {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					Type:     types.NotificationTypeInfo,
+					IconType: types.NotificationIconTypeBroadcast,
+					Title:    "Get Started: Broadcast to your customers",
+					Body:     *html,
+					URL:      "/chats",
+					ToUserId: finalUser.Id,
+				}
+				_ = createNotification.Handle(ctx, user, dependencies)
+			}
+			// add customers
+			if html, err := helper.ReadFromFile("www/todos/add_customers.html"); err == nil {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					Type:     types.NotificationTypeInfo,
+					IconType: types.NotificationIconTypeCustomer,
+					Title:    "Get Started: Add more customers",
+					Body:     *html,
+					URL:      "/chats",
+					ToUserId: finalUser.Id,
+				}
+				_ = createNotification.Handle(ctx, user, dependencies)
+			}
+		}
 	}
 	return dto.NewSuccessResponse(&result)
 }

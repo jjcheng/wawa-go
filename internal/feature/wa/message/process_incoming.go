@@ -76,22 +76,30 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				}
 				var title, body, url string
 				var notificationType types.NotificationType
+				var notificationIconType types.NotificationIconType
+				var notificationCategory types.NotificationCategory
 				if templateStatus.Event == "APPROVED" {
 					title = fmt.Sprintf("Your template %s (%s) has been approved by Meta.", templateStatus.MessageTemplateName, templateStatus.MessageTemplateLanguage)
-					body = "You can now go to customers page, select at least 1 customer and start a broadcast with your new template."
+					body = "You can now go to Chats page, select at least 1 customer and start a broadcast with your new template."
 					notificationType = types.NotificationTypeSuccess
-					url = "/customers"
+					notificationIconType = types.NotificationIconTypeSuccess
+					notificationCategory = types.NotificationCategoryHandsOff
+					url = "/chats"
 				} else {
 					title = fmt.Sprintf("Your template %s (%s) has been %s by Meta.", templateStatus.Event, templateStatus.MessageTemplateName, templateStatus.MessageTemplateLanguage)
 					body = fmt.Sprintf("Reason returned by Meta is: %s", templateStatus.Reason)
 					notificationType = types.NotificationTypeWarning
+					notificationIconType = types.NotificationIconTypeWarning
+					notificationCategory = types.NotificationCategoryPending
 					url = "/templates"
 				}
 				createNotification := feature_account_notification.Create{
-					Type:  notificationType,
-					Title: title,
-					Body:  body,
-					URL:   url,
+					Category: notificationCategory,
+					Type:     notificationType,
+					IconType: notificationIconType,
+					Title:    title,
+					Body:     body,
+					URL:      url,
 				}
 				_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(*user)), dependencies)
 				err = dependencies.Cache.Remove(ctx, key)
@@ -412,15 +420,19 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 			message.Status = types.WAMessageStatusRejected
 			minutes := 5 * message.Attempts
 			message.NextAttemptAt = helper.ConvertToPointer(now.Add(time.Duration(minutes) * time.Minute))
-			createNotification.Title = fmt.Sprintf("Error occurred while sending your message %d.", message.Id)
-			createNotification.Body = fmt.Sprintf("We have encountered an error while sending your message %d, will retry %d minutes later. Please check the errors below:\n\n%s", message.Id, minutes, strings.Join(errorMessages, "\n"))
+			createNotification.Title = fmt.Sprintf("Warning: Error occurred while sending your message %d.", message.Id)
+			createNotification.Body = fmt.Sprintf("We have encountered an error while sending your message %d, we will retry in %d minutes later. Please check the errors:\n\n%s", message.Id, minutes, strings.Join(errorMessages, "\n"))
 			createNotification.Type = types.NotificationTypeWarning
+			createNotification.IconType = types.NotificationIconTypeWarning
+			createNotification.Category = types.NotificationCategoryHandsOff
 		} else { // attemps exhausted
 			message.Status = types.WAMessageStatusFailed
 			message.NextAttemptAt = nil
 			createNotification.Type = types.NotificationTypeError
-			createNotification.Title = fmt.Sprintf("Failed to send your message %d.", message.Id)
-			createNotification.Body = fmt.Sprintf("We are sorry to inform you that we have failed to send your message %d despite %d attempts, please check the errors below:\n\n%s", message.Id, message.Attempts, strings.Join(errorMessages, "\n"))
+			createNotification.IconType = types.NotificationIconTypeError
+			createNotification.Category = types.NotificationCategoryPending
+			createNotification.Title = fmt.Sprintf("Error: Failed to send your message %d.", message.Id)
+			createNotification.Body = fmt.Sprintf("We are sorry to inform you that we have failed to send your message %d despite %d attempts, please check the errors:\n\n%s", message.Id, message.Attempts, strings.Join(errorMessages, "\n"))
 		}
 		err = retry(ctx, 3, func() error {
 			e := dependencies.UnitOfWork.WAMessageRepository().Update(ctx, message)

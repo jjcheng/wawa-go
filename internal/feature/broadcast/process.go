@@ -82,10 +82,13 @@ func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencie
 		// if dequeueTime >= max dequeue time, this broadcast has failed
 		if dequeueCount >= cfg.Default().AliyunSMQ.MaxDequeueCount {
 			createNotification := feature_account_notification.Create{
-				Title: fmt.Sprintf("Error occurred when sending your broadcast %s.", broadcast.Name),
-				Body:  fmt.Sprintf("We are sorry to inform you that your broadcast %s has failed to send despite %d deliveries. Please try again later. The errors are below:\n\n%s", broadcast.Name, dequeueCount, strings.Join(errorMessages, "\n")),
-				Type:  types.NotificationTypeError,
-				URL:   "/broadcasts",
+				Category: types.NotificationCategoryPending,
+				IconType: types.NotificationIconTypeBroadcast,
+				Title:    fmt.Sprintf("Error: Failed to send your broadcast %s.", broadcast.Name),
+				Body:     fmt.Sprintf("We are sorry to inform you that your broadcast %s has failed to send despite %d attempts. Please create a new broadcast again later. The errors are:\n\n%s", broadcast.Name, dequeueCount, strings.Join(errorMessages, "\n")),
+				Type:     types.NotificationTypeError,
+				URL:      "/broadcasts",
+				ToUserId: userDTO.Id,
 			}
 			createNotification.Handle(ctx, &userDTO, dependencies)
 		}
@@ -125,10 +128,13 @@ func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencie
 	// now only, if the original broadcast status is pending, push notification to info user it's started
 	if wasPending {
 		createNotification := feature_account_notification.Create{
-			Type:  types.NotificationTypeSuccess,
-			Title: fmt.Sprintf("Your broadcast %s has started.", broadcast.Name),
-			Body:  fmt.Sprintf("We have started your broadcast %s, total %d recipients. Check the broadcast recipients page to see any individual messages that are failed to be sent.", broadcast.Name, broadcast.RecipientCount),
-			URL:   fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),
+			Type:     types.NotificationTypeSuccess,
+			Category: types.NotificationCategoryHandsOff,
+			IconType: types.NotificationIconTypeBroadcast,
+			Title:    fmt.Sprintf("Your broadcast %s has started.", broadcast.Name),
+			Body:     fmt.Sprintf("We have started your broadcast %s, total %d recipients. Check the broadcast recipients page to see any individual messages that are failed to be sent.", broadcast.Name, broadcast.RecipientCount),
+			URL:      fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),
+			ToUserId: userDTO.Id,
 		}
 		_ = createNotification.Handle(ctx, &userDTO, dependencies)
 	}
@@ -203,10 +209,13 @@ func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencie
 	}
 	// create notification
 	createNotification := feature_account_notification.Create{
-		Type:  types.NotificationTypeSuccess,
-		Title: fmt.Sprintf("Your broadcast %s has completed.", broadcast.Name),
-		Body:  fmt.Sprintf("Your broadcast %s has completed sending to a total %d recipients. Check the broadcast recipients page to see any individual messages that fail to send.", broadcast.Name, broadcast.RecipientCount),
-		URL:   fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),
+		Type:     types.NotificationTypeSuccess,
+		Category: types.NotificationCategoryHandsOff,
+		IconType: types.NotificationIconTypeBroadcast,
+		Title:    fmt.Sprintf("Your broadcast %s has completed.", broadcast.Name),
+		Body:     fmt.Sprintf("Your broadcast %s has completed sending to a total %d recipients. Check the broadcast recipients page to see any individual messages that fail to send.", broadcast.Name, broadcast.RecipientCount),
+		URL:      fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),
+		ToUserId: userDTO.Id,
 	}
 	_ = createNotification.Handle(ctx, &userDTO, dependencies)
 	return nil

@@ -27,3 +27,25 @@ const (
 	NotificationTypeWarning NotificationType = "WARNING"
 	NotificationTypeError   NotificationType = "ERROR"
 )
+
+type NotificationCategory string
+
+const (
+	NotificationCategoryPending  NotificationCategory = "PENDING"
+	NotificationCategoryHandsOff NotificationCategory = "HANDS-OFF"
+)
+
+type NotificationIconType string
+
+const (
+	NotificationIconTypeCustomer  NotificationIconType = "CUSTOMER"
+	NotificationIconTypeBroadcast NotificationIconType = "BROADCAST"
+	NotificationIconTypeWebsite   NotificationIconType = "WEBSITE"
+	NotificationIconTypeChat      NotificationIconType = "CHAT"
+	NotificationIconTypeJoin      NotificationIconType = "JOIN"
+	NotificationIconTypeTemplate  NotificationIconType = "TEMPLATE"
+	NotificationIconTypeTODO      NotificationIconType = "TODO"
+	NotificationIconTypeSuccess   NotificationIconType = "SUCCESS"
+	NotificationIconTypeError     NotificationIconType = "ERROR"
+	NotificationIconTypeWarning   NotificationIconType = "WARNING"
+)

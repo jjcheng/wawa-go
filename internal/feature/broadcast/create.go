@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -16,6 +15,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -23,7 +23,7 @@ import (
 
 type Create struct {
 	Name         string              `json:"name"`
-	SendDate     *time.Time          `json:"send_date"`
+	SendDate     *time.Time          `json:"send_date"` // with timezone
 	WATemplateId string              `json:"wa_template_id"`
 	SendTemplate dto_wa.SendTemplate `json:"send_template"`
 	CustomerIds  []int32             `json:"customer_ids"` // send to who
@@ -187,11 +187,25 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	}
 	committed = true
 	// process after commit because this is like a process of event which happens in fc task
-	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
-		err := Start(ctx, broadcast.Id, 1, dependencies)
-		if err != nil {
-			dependencies.Logger.Warnf("failed to run broadcast worker locally: broadcast_id=%d err=%v", broadcast.Id, err)
+	// if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+	// 	err := Start(ctx, broadcast.Id, 1, dependencies)
+	// 	if err != nil {
+	// 		dependencies.Logger.Warnf("failed to run broadcast worker locally: broadcast_id=%d err=%v", broadcast.Id, err)
+	// 	}
+	// }
+	// create notification
+	if create.SendDate != nil {
+		formattedDateTime := create.SendDate.Format("2006-01-02 15:04 MST")
+		createNotification := feature_account_notification.Create{
+			Category: types.NotificationCategoryHandsOff,
+			Type:     types.NotificationTypeInfo,
+			IconType: types.NotificationIconTypeBroadcast,
+			Title:    fmt.Sprintf("Your broadcast %s is scheduled at %s", broadcast.Name, formattedDateTime),
+			Body:     fmt.Sprintf("We have scheduled your broadcast %s to be sent to %d recipients at %s. We will notify you again when the broadcast started and completed, you can check the status of the broadcast and its individual message status when it starts.", broadcast.Name, broadcast.RecipientCount, formattedDateTime),
+			URL:      "/broadcasts",
+			ToUserId: user.Id,
 		}
+		_ = createNotification.Handle(ctx, user, dependencies)
 	}
 	result := dto_customer.NewBroadcast(broadcast)
 	return dto.NewSuccessResponse(&result)

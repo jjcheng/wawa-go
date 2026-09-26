@@ -3,6 +3,7 @@ package dto_customer
 import (
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
@@ -25,6 +26,8 @@ type Customer struct {
 	LatestMessageContent string               `json:"latest_message_content"`
 	LatestMessageId      *int32               `json:"latest_message_id"`
 	LastMessageTimestamp *int64               `json:"last_message_timestamp"`
+	// lazy loaded
+	SendingPhoneNumber *dto_wa.PhoneNumber `json:"sending_phone_number"`
 }
 
 func NewCustomer(customer dao_customer.Customer) Customer {

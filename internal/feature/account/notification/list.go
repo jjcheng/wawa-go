@@ -13,10 +13,11 @@ import (
 )
 
 type List struct {
-	Type     types.NotificationType `form:"type" description:"type of the notifications to filter"`
-	Read     *bool                  `form:"read" description:"true only return read, false only return unread"`
-	Page     int                    `form:"page" description:"page number from 1"`
-	PageSize int                    `form:"page_size" description:"page size, default 25"`
+	Category types.NotificationCategory `form:"category" val:"required" description:"category of the notification to filter"`
+	Type     types.NotificationType     `form:"type" description:"type of the notifications to filter"`
+	Read     *bool                      `form:"read" description:"true only return read, false only return unread"`
+	Page     int                        `form:"page" description:"page number from 1"`
+	PageSize int                        `form:"page_size" description:"page size, default 25"`
 }
 
 func (list *List) Validate() []exception.InputException {
@@ -36,7 +37,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto.ListResponse[dto_account.Notification]](inputErrors)
 	}
-	notifications, totalCount, totalPages, err := dependencies.UnitOfWork.AccountNotificationRepository().ListByUserId(ctx, user.Id, list.Type, list.Read, list.Page, list.PageSize)
+	notifications, totalCount, totalPages, err := dependencies.UnitOfWork.AccountNotificationRepository().ListByUserId(ctx, user.Id, list.Category, list.Type, list.Read, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_account.Notification]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

@@ -76,10 +76,13 @@ func (accountNotificationRepository *AccountNotificationRepository) GetUnreadCou
 	return int(count), nil
 }
 
-func (accountNotificationRepository *AccountNotificationRepository) ListByUserId(ctx context.Context, userId int32, typ types.NotificationType, read *bool, page int, pageSize int) (notifications []dao_account.Notification, totalCount int, totalPages int, err error) {
+func (accountNotificationRepository *AccountNotificationRepository) ListByUserId(ctx context.Context, userId int32, category types.NotificationCategory, typ types.NotificationType, read *bool, page int, pageSize int) (notifications []dao_account.Notification, totalCount int, totalPages int, err error) {
 	query := accountNotificationRepository.db.WithContext(ctx).
 		Model(&dao_account.Notification{}).
 		Where("user_id = ?", userId)
+	if category != "" {
+		query = query.Where("category = ?", category)
+	}
 	if typ != "" {
 		query = query.Where("type = ?", typ)
 	}

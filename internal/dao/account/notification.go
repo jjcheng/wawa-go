@@ -7,12 +7,14 @@ import (
 
 type Notification struct {
 	dao.DAOBase
-	UserId int32                  `gorm:"column:user_id"`
-	Title  string                 `gorm:"column:title"`
-	Body   string                 `gorm:"column:body"`
-	Type   types.NotificationType `gorm:"column:type"`
-	URL    string                 `gorm:"column:url"`
-	Read   bool                   `gorm:"column:read"`
+	UserId   int32                      `gorm:"column:user_id"`
+	IconType types.NotificationIconType `gorm:"column:icon_type"`
+	Category types.NotificationCategory `gorm:"column:category"`
+	Title    string                     `gorm:"column:title"`
+	Body     string                     `gorm:"column:body"`
+	Type     types.NotificationType     `gorm:"column:type"`
+	URL      string                     `gorm:"column:url"`
+	Read     bool                       `gorm:"column:read"`
 }
 
 func (Notification) TableName() string {
