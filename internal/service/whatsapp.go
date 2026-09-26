@@ -197,9 +197,6 @@ func (err *WhatsAppRateLimitError) Error() string {
 }
 
 func (err *WhatsAppAPIError) Error() string {
-	if err.GraphError.ErrorData != nil {
-		return fmt.Sprintf("WhatsApp API error: %s", err.GraphError.ErrorData.Details)
-	}
 	var errors []string
 	if err.GraphError.ErrorUserTitle != "" {
 		errors = append(errors, err.GraphError.ErrorUserTitle)
@@ -209,7 +206,7 @@ func (err *WhatsAppAPIError) Error() string {
 	}
 	if len(errors) == 0 {
 		if err.GraphError.ErrorData != nil {
-			errors = append(errors, err.GraphError.ErrorData.Details)
+			return fmt.Sprintf("WhatsApp API error: %s", err.GraphError.ErrorData.Details)
 		}
 	}
 	if len(errors) == 0 {

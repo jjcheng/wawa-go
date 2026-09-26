@@ -19,11 +19,7 @@ type GetBusinessProfile struct {
 }
 
 func (getBusinessProfile *GetBusinessProfile) Validate() []exception.InputException {
-	var errors []exception.InputException
-	if getBusinessProfile.PhoneNumberId <= 0 {
-		errors = append(errors, exception.NewInputException("phone_number_id", "missing phone number id"))
-	}
-	return errors
+	return nil
 }
 
 func (getBusinessProfile GetBusinessProfile) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*service.WhatsAppPhoneNumberBusinessProfileData] {
@@ -35,6 +31,9 @@ func (getBusinessProfile GetBusinessProfile) Handle(ctx context.Context, user *d
 	}
 	if errors := getBusinessProfile.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[*service.WhatsAppPhoneNumberBusinessProfileData](errors)
+	}
+	if getBusinessProfile.PhoneNumberId <= 0 {
+		getBusinessProfile.PhoneNumberId = user.WA.PhoneNumbers[0].Id
 	}
 	phoneNumber := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
 		return pn.Id == getBusinessProfile.PhoneNumberId
@@ -56,7 +55,7 @@ func (GetBusinessProfile) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get business profile",
 		"Get business profile using WhatsApp phone number.",
-		types.HttpRequestTypeNone,
+		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/phone-numbers/business-profile",
 		true,
