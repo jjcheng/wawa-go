@@ -80,6 +80,7 @@ func handleEvent(ctx context.Context, raw []byte) {
 	case <-ctx.Done(): // if timeout or canceled
 		return
 	}
+	log.Printf("worker received raw message: %s", raw)
 	// sometimes body if an array, need to process one by one
 	if body := bytes.TrimSpace(raw); len(body) > 0 && body[0] == '[' {
 		var messages []json.RawMessage
@@ -173,7 +174,9 @@ func deleteMessage(message *service.MessageQueueMessage) error {
 		return nil
 	}
 	if strings.TrimSpace(message.ReceiptHandle) == "" {
-		return fmt.Errorf("queue message %s has no receipt handle", message.MessageID)
+		// return fmt.Errorf("queue message %s has no receipt handle", message.MessageID)
+		//
+		return nil
 	}
 	err := dependencies.MessageQueue.DeleteMessage(message.ReceiptHandle)
 	if err != nil {

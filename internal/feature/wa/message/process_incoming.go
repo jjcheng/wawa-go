@@ -55,6 +55,10 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				if err := json.Unmarshal(change.Value, &templateStatus); err != nil {
 					return fmt.Errorf("invalid message template status change value value=%v error=%w", change.Value, err)
 				}
+				// if not approved but no reason, it maybe deleted
+				if templateStatus.Event != "APPROVED" && templateStatus.Reason != "NONE" {
+					return nil
+				}
 				// do not store it into db, create a notification to inform user
 				key := helper.GetTemplateStatusChangeCacheKey(fmt.Sprint(templateStatus.MessageTemplateId))
 				cachedValue, err := dependencies.Cache.Get(ctx, key)
@@ -86,7 +90,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 					notificationCategory = types.NotificationCategoryHandsOff
 					url = "/chats"
 				} else {
-					title = fmt.Sprintf("Your template %s (%s) has been %s by Meta.", templateStatus.Event, templateStatus.MessageTemplateName, templateStatus.MessageTemplateLanguage)
+					title = fmt.Sprintf("Your template %s (%s) status changed to %s by Meta.", templateStatus.Event, templateStatus.MessageTemplateName, templateStatus.MessageTemplateLanguage)
 					body = fmt.Sprintf("Reason returned by Meta is: %s", templateStatus.Reason)
 					notificationType = types.NotificationTypeWarning
 					notificationIconType = types.NotificationIconTypeWarning

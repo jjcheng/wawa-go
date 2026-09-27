@@ -153,11 +153,11 @@ CREATE TABLE "wa"."messages" (
   "token" text NOT NULL,
   "next_attempt_at" timestamptz NULL,
   "payload_encrypted" text NOT NULL,
-  "user_id" integer NOT NULL,
+  "sender_user_id" integer NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "fk_messages_customer" FOREIGN KEY ("customer_id") REFERENCES "customer"."customers" ("id") ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT "messages_phone_number_id_fkey" FOREIGN KEY ("phone_number_id") REFERENCES "wa"."phone_numbers" ("id") ON UPDATE CASCADE ON DELETE RESTRICT,
-  CONSTRAINT "messages_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "account"."users" ("id") ON UPDATE CASCADE ON DELETE RESTRICT
+  CONSTRAINT "messages_user_id_fkey" FOREIGN KEY ("sender_user_id") REFERENCES "account"."users" ("id") ON UPDATE CASCADE ON DELETE RESTRICT
 );
 CREATE UNIQUE INDEX "idx_wa_messages_wa_message_id_unique" ON "wa"."messages" ("wa_message_id") WHERE ((wa_message_id IS NOT NULL) AND (wa_message_id <> ''::text));
 CREATE INDEX "token_1789435127328_index" ON "wa"."messages" ("token");
@@ -286,6 +286,8 @@ CREATE TABLE "account"."notifications" (
   "added_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "last_updated_at" timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "read" boolean NOT NULL,
+  "category" text NOT NULL,
+  "icon_type" text NOT NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "account"."users" ("id") ON UPDATE CASCADE ON DELETE CASCADE
 );

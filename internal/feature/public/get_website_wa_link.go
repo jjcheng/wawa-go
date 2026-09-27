@@ -50,7 +50,6 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 		if !errors.Is(err, service.CacheNotFoundError) {
 			// don't return error
 			dependencies.Logger.Error(err)
-
 		}
 	}
 	var user dao_account.User

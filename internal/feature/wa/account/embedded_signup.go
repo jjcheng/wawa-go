@@ -163,7 +163,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		PhoneNumber: storePhoneNumberResponse.Data,
 	}
 	// for new user, create todos
-	if storeUserResponse.Data.New {
+	if storeUserResponse.Data != nil && storeUserResponse.Data.New {
 		// interact with customer
 		if html, err := helper.ReadFromFile("www/todos/chat_with_customer.html"); err == nil {
 			createNotification := feature_account_notification.Create{
