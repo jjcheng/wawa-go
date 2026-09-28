@@ -44,9 +44,6 @@ func main() {
 		waitGroup.Go(func() {
 			dispatchRetryMessages(ctx, dependencies)
 		})
-		waitGroup.Go(func() {
-			cleanUpExpiredCaches(ctx, dependencies)
-		})
 		waitGroup.Wait()
 		return nil
 	})
@@ -96,8 +93,4 @@ func dispatchRetryMessages(ctx context.Context, dependencies *service.Dependenci
 			dependencies.Logger.ErrorFunction(err, pendingMessage.Id)
 		}
 	}
-}
-
-func cleanUpExpiredCaches(ctx context.Context, dependencies *service.Dependencies) {
-	dependencies.Cache.CleanUp(ctx)
 }

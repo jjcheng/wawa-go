@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -88,10 +87,11 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	if err != nil {
 		return dto.NewFailedResponse[*dto_wa.Template](http.StatusBadGateway, err.Error(), err)
 	}
-	// insert cache for template_id_user_id, expires in 48 hours
+	// insert cache for template_id_user_id, expires in 1 hour
 	cacheKey := helper.GetTemplateStatusChangeCacheKey(template.ID)
 	cacheValue := fmt.Sprint(user.Id)
-	err = dependencies.Cache.Set(ctx, cacheKey, cacheValue, time.Now().Add(time.Hour*48))
+	// expires in 1 hours
+	err = dependencies.Cache.Set(ctx, cacheKey, cacheValue, 60*60)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, store.Id)
 	}

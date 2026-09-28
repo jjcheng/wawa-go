@@ -86,6 +86,9 @@ type CommerceConfig struct {
 
 type Cloudflare struct {
 	TurnstileSecretKey string
+	AccountID          string
+	KVReadWriteAPIKey  string
+	KVNamespaceID      string
 }
 
 var configInstance *Config
@@ -158,6 +161,9 @@ func Default() *Config {
 			},
 			Cloudflare: Cloudflare{
 				TurnstileSecretKey: os.Getenv("TURNSTILE_SECRET_KEY"),
+				AccountID:          os.Getenv("CLOUDFLARE_ACCOUNT_ID"),
+				KVReadWriteAPIKey:  os.Getenv("CLOUDFLARE_KV_READWRITE_API_KEY"),
+				KVNamespaceID:      os.Getenv("CLOUDFLARE_KV_NAMESPACE_ID"),
 			},
 		}
 	})

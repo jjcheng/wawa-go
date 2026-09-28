@@ -31,6 +31,9 @@ env:
 	sed -i '' "s|\$${META_APP_SECRET}|$${META_APP_SECRET//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ABLY_API_KEY}|$${ABLY_API_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${TURNSTILE_SECRET_KEY}|$${TURNSTILE_SECRET_KEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${CLOUDFLARE_ACCOUNT_ID}|$${CLOUDFLARE_ACCOUNT_ID//&/\\&}|g" .env; \
+	sed -i '' "s|\$${CLOUDFLARE_KV_NAMESPACE_ID}|$${CLOUDFLARE_KV_NAMESPACE_ID//&/\\&}|g" .env; \
+	sed -i '' "s|\$${CLOUDFLARE_KV_READWRITE_API_KEY}|$${CLOUDFLARE_KV_READWRITE_API_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${COMMERCE_WEBSITE_DOMAIN}|$${COMMERCE_WEBSITE_DOMAIN//&/\\&}|g" .env;
 	@echo ".env generated from $(ENV_SOURCE)"
 run-api:

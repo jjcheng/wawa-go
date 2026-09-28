@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -64,7 +63,11 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 		user = *u
 	} else {
 		// get user id
-		userId, err := strconv.Atoi(cache)
+		dic, err := helper.DeserializeJSON[map[string]string](cache)
+		if err != nil {
+			return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
+		userId, err := strconv.Atoi((*dic)["value"])
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, cache)
 		}
@@ -78,7 +81,7 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 		user = *nextActiveUser
 	}
 	// set cache key for 1 year, ignore error
-	_ = dependencies.Cache.Set(ctx, cacheKey, fmt.Sprint(user.Id), time.Now().Add(time.Hour*24*360))
+	_ = dependencies.Cache.Set(ctx, cacheKey, fmt.Sprint(user.Id), 30*24*360)
 	// get phone number
 	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
 	if err != nil {
