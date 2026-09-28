@@ -1013,7 +1013,7 @@ func (whatsapp *Whatsapp) StartTyping(ctx context.Context, phoneNumberID string,
 		},
 	}
 	var response WhatsAppMessageResponse
-	err := whatsapp.doJSONRequest(ctx, "start_typeing", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
+	err := whatsapp.doJSONRequest(ctx, "start_typing", http.MethodPost, whatsapp.buildEndpoint(phoneNumberID, "messages"), request, &response, businessAccessToken)
 	if err != nil {
 		return nil, err
 	}

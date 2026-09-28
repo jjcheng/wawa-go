@@ -47,6 +47,8 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*service.AblyTokenRequest, feature_wa_message.CreateAblyToken](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto.ListResponse[dto_wa.Message], feature_wa_message.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*feature_wa_message.Media, feature_wa_message.GetMedia](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_message.MarkRead](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_message.StartTyping](routerGroup, dependencies, apiGenerator)
 	registerMediaUploadRoute(routerGroup, dependencies, apiGenerator)
 	// template
 	registerRoute[*dto.ListResponse[dto_wa.Template], feature_wa_template.List](routerGroup, dependencies, apiGenerator)
