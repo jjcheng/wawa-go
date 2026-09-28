@@ -20,9 +20,10 @@ type Customer struct {
 	Tags                pq.StringArray       `gorm:"column:tags;type:text[]"`
 	Status              types.CustomerStatus `gorm:"column:status"`
 	Remarks             string               `gorm:"column:remarks"`
-	AdditionalData      map[string]any       `gorm:"-"`            // not a db column
-	ImportedPhoneNumber string               `gorm:"-"`            // to prevent duplicate when importing, not a db column
-	Token               string               `gorm:"column:token"` // uuid to identify customer
+	AdditionalData      map[string]any       `gorm:"-"`                     // not a db column
+	ImportedPhoneNumber string               `gorm:"-"`                     // to prevent duplicate when importing, not a db column
+	Token               string               `gorm:"column:token"`          // uuid to identify customer
+	FromIncomingMessage bool                 `gorm:"from_incoming_message"` // if it's created from incoming message
 	// encryption
 	PhoneNumberEncrypted         string `gorm:"column:phone_number_encrypted"`
 	PhoneNumberHash              string `gorm:"column:phone_number_hash"`

@@ -30,7 +30,7 @@ type Create struct {
 	Remarks       string   `json:"remarks" description:"for your own reference"`
 	WAId          string   `json:"wa_id" description:"optional waId from incoming messages"`
 	PhoneNumberId int32    `json:"phone_number_id" val:"required" description:"which phone number to assign this customer to"`
-	FromIncoming  bool     `json:"-"` // if from incoming, there is no user
+	FromIncoming  bool     `json:"-"` // if from incoming WA message, there is no user in Handle()
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -120,6 +120,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Remarks:             create.Remarks,
 		ImportedPhoneNumber: waId,
 		Token:               uuid.NewString(),
+		FromIncomingMessage: create.FromIncoming,
 	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
