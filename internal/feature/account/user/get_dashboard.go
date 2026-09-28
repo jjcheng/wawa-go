@@ -51,7 +51,7 @@ func (getDashboard GetDashboard) Handle(ctx context.Context, user *dto_account.U
 			return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		// get active customer count by WABA
-		activeCustomers, err = dependencies.UnitOfWork.CustomerRepository().CountActiveByBusinessAccountId(ctx, user.WA.BusinessAccount.Id)
+		activeCustomers, err = dependencies.UnitOfWork.CustomerRepository().CountActiveByBusinessAccountId(ctx, user.BusinessAccountId)
 		if err != nil {
 			return dto.NewFailedResponse[*Dashboard](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}

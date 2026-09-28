@@ -49,7 +49,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// if user is master, it must be belong to business account; non-master already check earlier
-	if storedPhoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if storedPhoneNumber.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// get phone number from meta

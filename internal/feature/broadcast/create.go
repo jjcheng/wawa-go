@@ -205,7 +205,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			URL:      "/broadcasts",
 			ToUserId: user.Id,
 		}
-		_ = createNotification.Handle(ctx, user, dependencies)
+		_ = createNotification.Handle(ctx, dependencies)
 	}
 	result := dto_customer.NewBroadcast(broadcast)
 	return dto.NewSuccessResponse(&result)

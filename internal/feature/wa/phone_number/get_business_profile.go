@@ -2,16 +2,16 @@ package feature_wa_phone_number
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type GetBusinessProfile struct {
@@ -35,10 +35,14 @@ func (getBusinessProfile GetBusinessProfile) Handle(ctx context.Context, user *d
 	if getBusinessProfile.PhoneNumberId <= 0 {
 		getBusinessProfile.PhoneNumberId = user.WA.PhoneNumbers[0].Id
 	}
-	phoneNumber := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
-		return pn.Id == getBusinessProfile.PhoneNumberId
-	})
-	if phoneNumber == nil {
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, getBusinessProfile.PhoneNumberId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[*service.WhatsAppPhoneNumberBusinessProfileData](http.StatusNotFound, "phone number not found", nil)
+		}
+		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberBusinessProfileData](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	if phoneNumber == nil || phoneNumber.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberBusinessProfileData](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	businessProfile, err := dependencies.Whatsapp.GetPhoneNumberBusinessProfile(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)

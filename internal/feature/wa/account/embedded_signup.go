@@ -175,7 +175,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 				URL:      "/chats",
 				ToUserId: finalUser.Id,
 			}
-			_ = createNotification.Handle(ctx, user, dependencies)
+			_ = createNotification.Handle(ctx, dependencies)
 		}
 		if storeUserResponse.Data.Type == types.UserTypeMaster {
 			// create websites
@@ -189,7 +189,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 					URL:      "/catalogs",
 					ToUserId: finalUser.Id,
 				}
-				_ = createNotification.Handle(ctx, user, dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// broadcast to customers
 			if html, err := helper.ReadFromFile("www/todos/broadcast_to_customers.html"); err == nil {
@@ -202,7 +202,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 					URL:      "/chats",
 					ToUserId: finalUser.Id,
 				}
-				_ = createNotification.Handle(ctx, user, dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// create templates
 			if html, err := helper.ReadFromFile("www/todos/create_templates.html"); err == nil {
@@ -215,7 +215,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 					URL:      "/templates",
 					ToUserId: finalUser.Id,
 				}
-				_ = createNotification.Handle(ctx, user, dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// add customers
 			if html, err := helper.ReadFromFile("www/todos/add_customers.html"); err == nil {
@@ -228,7 +228,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 					URL:      "/chats",
 					ToUserId: finalUser.Id,
 				}
-				_ = createNotification.Handle(ctx, user, dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// onbard more members
 			if html, err := helper.ReadFromFile("www/todos/onboard_phone_numbers.html"); err == nil {
@@ -241,7 +241,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 					URL:      "/users",
 					ToUserId: finalUser.Id,
 				}
-				_ = createNotification.Handle(ctx, user, dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 			}
 		} else {
 			// broadcast to customers
@@ -255,7 +255,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 					URL:      "/chats",
 					ToUserId: finalUser.Id,
 				}
-				_ = createNotification.Handle(ctx, user, dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// add customers
 			if html, err := helper.ReadFromFile("www/todos/add_customers.html"); err == nil {
@@ -268,7 +268,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 					URL:      "/chats",
 					ToUserId: finalUser.Id,
 				}
-				_ = createNotification.Handle(ctx, user, dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 			}
 		}
 	}

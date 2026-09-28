@@ -29,6 +29,9 @@ func (reconnect Reconnect) Handle(ctx context.Context, user *dto_account.User, d
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if inputErrors := reconnect.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
@@ -39,7 +42,7 @@ func (reconnect Reconnect) Handle(ctx context.Context, user *dto_account.User, d
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil || phoneNumber.BusinessAccountId != user.WA.BusinessAccount.Id {
+	if phoneNumber.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	phoneDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)

@@ -11,9 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jjcheng/wawa-go/internal/cfg"
-	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
-	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
@@ -73,11 +71,6 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 					dependencies.Logger.ErrorFunction(err, cachedValue)
 					return nil
 				}
-				user, err := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, int32(userId))
-				if err != nil {
-					// no need to return error, just skip
-					dependencies.Logger.ErrorFunction(err, userId)
-				}
 				var title, body, url string
 				var notificationType types.NotificationType
 				var notificationIconType types.NotificationIconType
@@ -104,8 +97,9 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 					Title:    title,
 					Body:     body,
 					URL:      url,
+					ToUserId: int32(userId),
 				}
-				_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(*user)), dependencies)
+				_ = createNotification.Handle(ctx, dependencies)
 				err = dependencies.Cache.Remove(ctx, key)
 				if err != nil {
 					dependencies.Logger.ErrorFunction(err, key)
@@ -419,7 +413,9 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 		}
 		// send notification to user
 		message.ErrorMessage = strings.Join(errorMessages, "\n")
-		createNotification := feature_account_notification.Create{}
+		createNotification := feature_account_notification.Create{
+			ToUserId: *message.SenderUserId,
+		}
 		if message.Attempts < int32(cfg.Default().AliyunSMQ.MaxDequeueCount) {
 			message.Status = types.WAMessageStatusRejected
 			minutes := 5 * message.Attempts
@@ -444,22 +440,8 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 		})
 		// if no error, find out the user and send him/her notification
 		if err == nil {
-			if message.SenderUserId != nil {
-				var senderUser *dao_account.User
-				err = retry(ctx, 3, func() error {
-					u, e := dependencies.UnitOfWork.AccountUserRepository().GetById(ctx, *message.SenderUserId)
-					if e != nil {
-						return e
-					}
-					senderUser = u
-					return nil
-				})
-				if senderUser != nil {
-					// send user the notification, ignore any error
-					_ = createNotification.Handle(ctx, helper.ConvertToPointer(dto_account.NewUser(*senderUser)), dependencies)
-				}
-			}
-
+			// send user the notification, ignore any error
+			_ = createNotification.Handle(ctx, dependencies)
 		} else {
 			dependencies.Logger.ErrorFunction(err, message.Id)
 		}

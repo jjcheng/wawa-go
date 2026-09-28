@@ -122,13 +122,13 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 // 	}
 // 	// check how many users left in business account
 // 	if user.WA != nil && user.WA.BusinessAccount != nil {
-// 		users, err := transaction.AccountUserRepository().ListByBusinessAccountId(ctx, user.WA.BusinessAccount.Id, nil, true)
+// 		users, err := transaction.AccountUserRepository().ListByBusinessAccountId(ctx, user.BusinessAccountId, nil, true)
 // 		if err != nil {
 // 			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 // 		}
 // 		if len(users) == 0 {
 // 			// if no more user, delete business account
-// 			if err := transaction.WABusinessAccountRepository().DeleteById(ctx, user.WA.BusinessAccount.Id); err != nil {
+// 			if err := transaction.WABusinessAccountRepository().DeleteById(ctx, user.BusinessAccountId); err != nil {
 // 				return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 // 			}
 // 			// if only business portfolio has no business account, delete it

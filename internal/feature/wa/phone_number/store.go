@@ -75,38 +75,6 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, existing); err != nil {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
-		// // assign to users
-		// // get existing assignments
-		// existingAssignments, err := transaction.AccountUserPhoneNumberRepository().ListByPhoneNumberId(ctx, existing.Id)
-		// if err != nil {
-		// 	return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		// }
-		// for _, userId := range store.UserIds {
-		// 	if existingAssignmentIndex := helper.IndexOf(existingAssignments, func(assignment dao_account.UserPhoneNumber) bool {
-		// 		return assignment.UserId == userId
-		// 	}); existingAssignmentIndex != nil {
-		// 		// already assigned, skip
-		// 		existingAssignments[*existingAssignmentIndex].Processed = true
-		// 		continue
-		// 	}
-		// 	// insert new
-		// 	newUserPhoneNumber := dao_account.UserPhoneNumber{
-		// 		UserId:        userId,
-		// 		PhoneNumberId: existing.Id,
-		// 		Processed:     true,
-		// 	}
-		// 	if err := transaction.AccountUserPhoneNumberRepository().Insert(ctx, &newUserPhoneNumber); err != nil {
-		// 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		// 	}
-		// }
-		// for i := range existingAssignments {
-		// 	if existingAssignments[i].Processed {
-		// 		continue
-		// 	}
-		// 	if err := transaction.AccountUserPhoneNumberRepository().DeleteById(ctx, existingAssignments[i].Id); err != nil {
-		// 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		// 	}
-		// }
 		d := dto_wa.NewPhoneNumber(*existing)
 		return dto.NewSuccessResponse(&d)
 	}
@@ -115,6 +83,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		BusinessAccountId:  store.BusinessAccountId,
 		MetaPhoneNumberId:  store.MetaPhoneNumberId,
 		DisplayPhoneNumber: store.DisplayPhoneNumber,
+		Status:             types.WAPhoneNumberStatusConnected,
 		Name:               store.Name,
 		WAId:               helper.NormalizeWAId(store.DisplayPhoneNumber),
 	}

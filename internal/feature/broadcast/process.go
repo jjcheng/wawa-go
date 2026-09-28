@@ -90,7 +90,7 @@ func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencie
 				URL:      "/broadcasts",
 				ToUserId: userDTO.Id,
 			}
-			createNotification.Handle(ctx, &userDTO, dependencies)
+			_ = createNotification.Handle(ctx, dependencies)
 		}
 		if err := try(ctx, func() error {
 			broadcast.ErrorMessage = strings.Join(errorMessages, "\n")
@@ -136,7 +136,7 @@ func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencie
 			URL:      fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),
 			ToUserId: userDTO.Id,
 		}
-		_ = createNotification.Handle(ctx, &userDTO, dependencies)
+		_ = createNotification.Handle(ctx, dependencies)
 	}
 	// send in batches, record down the failed recipients
 	var failedRecipientErrorMessages []string
@@ -217,7 +217,7 @@ func Start(ctx context.Context, broadcastId int32, dequeueCount int, dependencie
 		URL:      fmt.Sprintf("/broadcasts/recipients?broadcast_id=%d", broadcastId),
 		ToUserId: userDTO.Id,
 	}
-	_ = createNotification.Handle(ctx, &userDTO, dependencies)
+	_ = createNotification.Handle(ctx, dependencies)
 	return nil
 }
 

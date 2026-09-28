@@ -53,7 +53,7 @@ func (create *Create) Validate() []exception.InputException {
 	return inputErrors
 }
 
-func (create Create) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_account.Notification] {
+func (create Create) Handle(ctx context.Context, dependencies *service.Dependencies) dto.Response[*dto_account.Notification] {
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_account.Notification](inputErrors)
 	}

@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -34,9 +33,6 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if user.Type != types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if user.WA == nil || user.WA.BusinessAccount == nil {
-		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
-	}
 	if errors := delete.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[any](errors)
 	}
@@ -47,22 +43,26 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
-		return pn.Id == delete.Id
-	}) {
+	// just check they are under 1 business account
+	if phoneNumber == nil || phoneNumber.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	phoneNumberDetails, err := dependencies.Whatsapp.GetPhoneNumber(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)
 	if err != nil {
-		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
-	}
-	if phoneNumber.Status != types.WAPhoneNumberStatus(phoneNumberDetails.Status) {
-		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().UpdateFields(ctx, phoneNumber.Id, map[string]any{"status": phoneNumberDetails.Status}); err != nil {
-			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		if !strings.Contains(err.Error(), "does not exist") && !strings.Contains(err.Error(), "has been deleted") {
+			return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 		}
 	}
-	if phoneNumberDetails.Status != "DISCONNECTED" {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "you need to disconnect your phone number first", nil)
+	// if phoneNumberDetails is nil now, means it does not exist, no need to check
+	if phoneNumberDetails != nil {
+		if phoneNumber.Status != types.WAPhoneNumberStatus(phoneNumberDetails.Status) {
+			if err := dependencies.UnitOfWork.WAPhoneNumberRepository().UpdateFields(ctx, phoneNumber.Id, map[string]any{"status": phoneNumberDetails.Status}); err != nil {
+				return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+		}
+		if phoneNumberDetails.Status != "DISCONNECTED" {
+			return dto.NewFailedResponse[any](http.StatusBadRequest, "you need to disconnect your phone number first", nil)
+		}
 	}
 	// remove using meta API, but don't delete from db
 	// Meta don't allow removing phone number via API
