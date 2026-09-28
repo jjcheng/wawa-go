@@ -48,6 +48,8 @@ type SiteConfig struct {
 	HTTPHeaderUserAccessTokenKey string // to retrieve user access token string from context, used in authenticate\\
 	SessionExpirySeconds         int
 	GoogleMapAPIKey              string
+	GoogleDarkMapID              string
+	GoogleLightMapID             string
 	GlobalKeys                   *helper.CryptoKeys
 	GlobalKeyRing                *helper.CryptoKeyRing
 }
@@ -126,6 +128,8 @@ func Default() *Config {
 				HTTPRequestWebsiteKey:        "HTTP_REQUEST_WEBSITE",
 				HTTPHeaderUserAccessTokenKey: "x-user-access-token",
 				GoogleMapAPIKey:              os.Getenv("GOOGLE_MAP_APIKEY"),
+				GoogleDarkMapID:              os.Getenv("GOOGLE_DARK_MAP_ID"),
+				GoogleLightMapID:             os.Getenv("GOOGLE_LIGHT_MAP_ID"),
 				SessionExpirySeconds:         14 * 24 * 60 * 60, // 14 days
 				GlobalKeys:                   loadGlobalKeys(environment),
 				GlobalKeyRing:                loadGlobalKeyRing(environment),

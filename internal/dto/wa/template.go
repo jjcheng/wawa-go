@@ -338,11 +338,16 @@ func (templateComponent *TemplateComponent) HTML(withExample bool, dark bool) (s
 			mapQuery := url.Values{}
 			mapQuery.Set("center", fmt.Sprintf("%f,%f", location.Latitude, location.Longitude))
 			mapQuery.Set("zoom", "15")
-			mapQuery.Set("size", "450x170")
+			mapQuery.Set("size", "450x300")
 			mapQuery.Set("scale", "2")
 			mapQuery.Set("maptype", "roadmap")
 			mapQuery.Set("markers", fmt.Sprintf("color:red|%f,%f", location.Latitude, location.Longitude))
 			mapQuery.Set("key", cfg.Default().Site.GoogleMapAPIKey)
+			if dark {
+				mapQuery.Set("map_id", cfg.Default().Site.GoogleDarkMapID)
+			} else {
+				mapQuery.Set("map_id", cfg.Default().Site.GoogleLightMapID)
+			}
 			mapURL := "https://maps.googleapis.com/maps/api/staticmap?" + mapQuery.Encode()
 			return fmt.Sprintf("<div style='padding:0;'><img src='%s' alt='Location map' style='display:block;width:100%%;height:170px;object-fit:cover;border-radius:0;'><div style='padding:8px 9px;background:%s;border-radius:0;'><div style='font-weight:600;font-size:13.5px;line-height:18px;color:%s;'>%s</div><div style='margin-top:2px;font-size:12px;line-height:16px;color:%s;'>%s</div></div></div>", mapURL, theme.MutedBackground, theme.TextPrimary, html.EscapeString(location.Name), theme.TextSecondary, html.EscapeString(location.Address)), nil
 		default:

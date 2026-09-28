@@ -17,6 +17,8 @@ env:
 	sed -i '' "s|\$${ENCRYPTION_MASTER_KEY_V1}|$${ENCRYPTION_MASTER_KEY_V1//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ENCRYPTION_SALT_V1}|$${ENCRYPTION_SALT_V1//&/\\&}|g" .env; \
 	sed -i '' "s|\$${GOOGLE_MAP_APIKEY}|$${GOOGLE_MAP_APIKEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${GOOGLE_DARK_MAP_ID}|$${GOOGLE_DARK_MAP_ID//&/\\&}|g" .env; \
+	sed -i '' "s|\$${GOOGLE_LIGHT_MAP_ID}|$${GOOGLE_LIGHT_MAP_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_ID}|$${ALIYUN_OSS_ACCESS_KEY_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_OSS_ACCESS_KEY_SECRET}|$${ALIYUN_OSS_ACCESS_KEY_SECRET//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_SMQ_ENDPOINT}|$${ALIYUN_SMQ_ENDPOINT//&/\\&}|g" .env; \
