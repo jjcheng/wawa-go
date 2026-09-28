@@ -69,7 +69,7 @@ func (updateUser UpdateUser) Handle(ctx context.Context, user *dto_account.User,
 	if existing.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if existing.Type == types.UserTypeMaster {
+	if existing.Type == types.UserTypeMaster && existing.Id != user.Id {
 		return dto.NewFailedResponse[*dto_account.User](http.StatusUnauthorized, "you cannot edit a MASTER user", nil)
 	}
 	// check name exists

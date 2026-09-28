@@ -67,7 +67,18 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if newStatus != "" {
 		storedPhoneNumber.Status = newStatus
 		// ignore any error
-		dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, storedPhoneNumber)
+		_ = dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, storedPhoneNumber)
+	}
+	// get assigned users
+	assignedUsers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByPhoneNumberId(ctx, storedPhoneNumber.Id)
+	if err != nil {
+		return dto.NewFailedResponse[*service.WhatsAppPhoneNumberDetailsResponse](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	for _, assignedUser := range assignedUsers {
+		metaPhoneNumber.AssignedUsers = append(metaPhoneNumber.AssignedUsers, dto_wa.AssignedUser{
+			Id:   assignedUser.UserId,
+			Name: assignedUser.User.Name,
+		})
 	}
 	return dto.NewSuccessResponse(metaPhoneNumber)
 }

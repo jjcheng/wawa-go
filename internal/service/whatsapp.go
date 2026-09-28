@@ -297,6 +297,8 @@ type WhatsAppPhoneNumberDetailsResponse struct {
 	NameStatus             string                            `json:"name_status"`
 	Throughput             *WhatsAppPhoneNumberThroughput    `json:"throughput,omitempty"`
 	WebhookConfiguration   *WhatsAppPhoneNumberWebhookConfig `json:"webhook_configuration,omitempty"`
+	// lazy loaded
+	AssignedUsers []dto_wa.AssignedUser `json:"assigned_users"`
 }
 
 type WhatsAppPhoneNumberThroughput struct {

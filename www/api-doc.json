@@ -26969,6 +26969,21 @@
                     "data": {
                       "description": "the actual API returned data, empty if not success",
                       "properties": {
+                        "assigned_users": {
+                          "items": {
+                            "properties": {
+                              "id": {
+                                "format": "int32",
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
                         "code_verification_status": {
                           "type": "string"
                         },
