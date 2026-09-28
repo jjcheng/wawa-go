@@ -128,6 +128,7 @@ CREATE TABLE "customer"."customers" (
   "imported_phone_number_encrypted" text NOT NULL,
   "imported_phone_number_hash" text NOT NULL,
   "phone_number_id" integer NOT NULL,
+  "from_incoming_message" boolean NOT NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "customers_phone_number_id_fkey" FOREIGN KEY ("phone_number_id") REFERENCES "wa"."phone_numbers" ("id") ON UPDATE CASCADE ON DELETE RESTRICT
 );

@@ -11,6 +11,7 @@ import (
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -31,11 +32,15 @@ func (upload *UploadExample) Validate() []exception.InputException {
 	contentType, _, err := mime.ParseMediaType(upload.ContentType)
 	if err != nil || !strings.Contains(contentType, "/") {
 		inputErrors = append(inputErrors, exception.NewInputException("content_type", "invalid content type"))
+	} else if !helper.IsAllowedUploadContentType(contentType) {
+		inputErrors = append(inputErrors, exception.NewInputException("content_type", "unsupported content type, only images, videos, audio and documents are allowed"))
 	} else {
 		upload.ContentType = contentType
 	}
 	if len(upload.Content) == 0 {
 		inputErrors = append(inputErrors, exception.NewInputException("body", "sample content is required"))
+	} else if len(upload.Content) > helper.MaxUploadFileSizeBytes {
+		inputErrors = append(inputErrors, exception.NewInputException("body", "sample content exceeds the 15MB size limit"))
 	}
 	return inputErrors
 }

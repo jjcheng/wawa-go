@@ -43,6 +43,9 @@ func (deleteUser DeleteUser) Handle(ctx context.Context, user *dto_account.User,
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
+	if existingUser.BusinessAccountId != user.BusinessAccountId {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	if existingUser.Type == types.UserTypeMaster {
 		return dto.NewFailedResponse[any](http.StatusBadRequest, "master user cannot be deleted", nil)
 	}

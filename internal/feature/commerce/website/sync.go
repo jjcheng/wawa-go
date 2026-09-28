@@ -47,6 +47,9 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
+	if website.BusinessAccountId != user.BusinessAccountId {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	// get catalog from db
 	catalog, err := dependencies.UnitOfWork.CommerceCatalogRepository().GetByWebsiteId(ctx, website.Id)
 	if err != nil {

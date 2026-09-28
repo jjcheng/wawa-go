@@ -14525,6 +14525,9 @@
                               "display_name": {
                                 "type": "string"
                               },
+                              "from_incoming_message": {
+                                "type": "boolean"
+                              },
                               "id": {
                                 "example": 1,
                                 "format": "int32",
@@ -14955,6 +14958,9 @@
                         },
                         "display_name": {
                           "type": "string"
+                        },
+                        "from_incoming_message": {
+                          "type": "boolean"
                         },
                         "id": {
                           "example": 1,
@@ -16261,6 +16267,9 @@
                         "display_name": {
                           "type": "string"
                         },
+                        "from_incoming_message": {
+                          "type": "boolean"
+                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -16766,6 +16775,9 @@
                         },
                         "display_name": {
                           "type": "string"
+                        },
+                        "from_incoming_message": {
+                          "type": "boolean"
                         },
                         "id": {
                           "example": 1,
@@ -17263,6 +17275,9 @@
                         "display_name": {
                           "type": "string"
                         },
+                        "from_incoming_message": {
+                          "type": "boolean"
+                        },
                         "id": {
                           "example": 1,
                           "format": "int32",
@@ -17768,6 +17783,9 @@
                         },
                         "display_name": {
                           "type": "string"
+                        },
+                        "from_incoming_message": {
+                          "type": "boolean"
                         },
                         "id": {
                           "example": 1,

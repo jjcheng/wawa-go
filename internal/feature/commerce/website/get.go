@@ -40,6 +40,9 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 		}
 		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
+	if website.BusinessAccountId != user.BusinessAccountId {
+		return dto.NewFailedResponse[*dto_commerce.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
 	catalog, err := dependencies.UnitOfWork.CommerceCatalogRepository().GetByWebsiteId(ctx, website.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

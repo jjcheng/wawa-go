@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"net/http"
+
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -70,6 +72,7 @@ func bindQueryRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 func bindJSONRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 	return func(context *gin.Context) {
 		var requestObject T
+		context.Request.Body = http.MaxBytesReader(context.Writer, context.Request.Body, helper.MaxJSONBodySizeBytes)
 		contentEncodingHeader := context.GetHeader("Content-Encoding")
 		switch contentEncodingHeader {
 		case "gzip":
@@ -100,6 +103,7 @@ func bindURIAndJSONRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 			context.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 			return
 		}
+		context.Request.Body = http.MaxBytesReader(context.Writer, context.Request.Body, helper.MaxJSONBodySizeBytes)
 		if err := context.ShouldBindJSON(&requestObject); err != nil {
 			responseObject := dto.NewInvalidInputResponse[any]([]exception.InputException{{Field: "body", Message: err.Error()}})
 			context.AbortWithStatusJSON(responseObject.StatusCode, responseObject)

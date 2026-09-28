@@ -11,6 +11,9 @@ import (
 	"github.com/gin-gonic/gin/binding"
 )
 
+// MaxJSONBodySizeBytes caps any request JSON body (before or after gzip decompression) to guard against memory-exhaustion/decompression-bomb DoS.
+const MaxJSONBodySizeBytes = 5 * 1024 * 1024
+
 type GzipJSONBinding struct {
 }
 
@@ -26,7 +29,7 @@ func (GzipJSONBinding) Bind(req *http.Request, obj any) error {
 	if err != nil {
 		return err
 	}
-	raw, err := io.ReadAll(r)
+	raw, err := readLimited(r)
 	if err != nil {
 		return err
 	}
@@ -38,7 +41,23 @@ func (GzipJSONBinding) BindBody(body []byte, obj any) error {
 	if err != nil {
 		return err
 	}
-	return decodeJSON(r, obj)
+	raw, err := readLimited(r)
+	if err != nil {
+		return err
+	}
+	return decodeJSON(bytes.NewReader(raw), obj)
+}
+
+// readLimited reads at most MaxJSONBodySizeBytes+1 so oversized decompressed payloads are rejected rather than fully buffered.
+func readLimited(r io.Reader) ([]byte, error) {
+	raw, err := io.ReadAll(io.LimitReader(r, MaxJSONBodySizeBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > MaxJSONBodySizeBytes {
+		return nil, errors.New("decompressed body too large")
+	}
+	return raw, nil
 }
 
 func decodeJSON(r io.Reader, obj any) error {

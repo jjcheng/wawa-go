@@ -23,6 +23,9 @@ func SetupRouter(logger *service.Logger) *gin.Engine {
 		router.Use(middleware.Recovery(logger))
 	}
 	router.Use(middleware.Log(logger))
-	pprof.Register(router)
+	// go tool pprof only on localhost
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		pprof.Register(router)
+	}
 	return router
 }

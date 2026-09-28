@@ -114,9 +114,10 @@ func registerTemplateSampleUploadRoute(routerGroup *gin.RouterGroup, dependencie
 	_ = apiGenerator.AddEndpoint(feature_wa_template.UploadExample{}, reflect.TypeFor[*service.WhatsAppTemplateHeaderSampleUploadResponse]())
 	routerGroup.POST(settings.Path, func(ctx *gin.Context) {
 		startAt := time.Now()
+		ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, helper.MaxUploadFileSizeBytes)
 		content, err := ctx.GetRawData()
 		if err != nil {
-			response := dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusBadRequest, "failed to read sample content", err)
+			response := dto.NewFailedResponse[*service.WhatsAppTemplateHeaderSampleUploadResponse](http.StatusBadRequest, "failed to read sample content, it may exceed the 15MB size limit", err)
 			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
 			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return
@@ -141,6 +142,7 @@ func registerMediaUploadRoute(routerGroup *gin.RouterGroup, dependencies *servic
 	_ = apiGenerator.AddEndpoint(feature_wa_message.UploadMedia{}, reflect.TypeFor[*feature_wa_message.Media]())
 	routerGroup.POST(settings.Path, func(ctx *gin.Context) {
 		startAt := time.Now()
+		ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, helper.MaxUploadFileSizeBytes)
 		content, err := ctx.GetRawData()
 		if err != nil {
 			response := feature_wa_message.UploadMediaRequestError(err)
