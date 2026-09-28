@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -19,7 +20,7 @@ import (
 	"gorm.io/gorm"
 )
 
-// do a rotation of user to be featured as the whatsapp contact
+// do a rotation of user to be featured as the whatsapp contact, it roates to the next user's first phone number
 type GetWebsiteWALink struct {
 }
 
@@ -62,12 +63,7 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 		}
 		user = *u
 	} else {
-		// get user id
-		dic, err := helper.DeserializeJSON[map[string]string](cache)
-		if err != nil {
-			return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		}
-		userId, err := strconv.Atoi((*dic)["value"])
+		userId, err := strconv.Atoi(cache)
 		if err != nil {
 			dependencies.Logger.ErrorFunction(err, cache)
 		}
@@ -80,8 +76,8 @@ func (getWebsiteWALink GetWebsiteWALink) Handle(ctx context.Context, _ *dto_acco
 		}
 		user = *nextActiveUser
 	}
-	// set cache key for 1 year, ignore error
-	_ = dependencies.Cache.Set(ctx, cacheKey, fmt.Sprint(user.Id), 30*24*360)
+	// set cache key for 30 days, ignore error
+	_ = dependencies.Cache.Set(ctx, cacheKey, fmt.Sprint(user.Id), time.Hour*24*30)
 	// get phone number
 	phoneNumbers, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByUserId(ctx, user.Id)
 	if err != nil {

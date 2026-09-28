@@ -4,78 +4,72 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"time"
 
-	cloudflare "github.com/cloudflare/cloudflare-go/v4"
-	"github.com/cloudflare/cloudflare-go/v4/kv"
-	"github.com/cloudflare/cloudflare-go/v4/option"
-	"github.com/jjcheng/wawa-go/internal/cfg"
+	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/repository"
+	"gorm.io/gorm"
 )
 
 type Cache struct {
-	client      *cloudflare.Client
-	accountID   string
-	namespaceID string
+	unitOfWork repository.UnitOfWork
 }
 
 func NewCache(unitOfWork repository.UnitOfWork) *Cache {
-	cacheService := &Cache{
-		accountID:   cfg.Default().Cloudflare.AccountID,
-		namespaceID: cfg.Default().Cloudflare.KVNamespaceID,
+	return &Cache{
+		unitOfWork: unitOfWork,
 	}
-	cacheService.client = cloudflare.NewClient(option.WithAPIToken(cfg.Default().Cloudflare.KVReadWriteAPIKey))
-	return cacheService
 }
 
 func (cacheService *Cache) Get(ctx context.Context, key string) (string, error) {
-	resp, err := cacheService.client.KV.Namespaces.Values.Get(ctx, cacheService.namespaceID, key, kv.NamespaceValueGetParams{AccountID: cloudflare.F(cacheService.accountID)})
+	cache, err := cacheService.unitOfWork.AccountCacheRepository().GetByKey(ctx, key)
 	if err != nil {
-		if isCloudflareNotFoundError(err) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", CacheNotFoundError
 		}
 		return "", fmt.Errorf("Cache.Get key=%s error=%w", key, err)
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("Cache.Get key=%s read error=%w", key, err)
-	}
-	return string(body), nil
+	return cache.Value, nil
 }
 
-func (cacheService *Cache) Set(ctx context.Context, key string, value string, expiresInSeconds int) error {
-	params := kv.NamespaceValueUpdateParams{
-		AccountID: cloudflare.F(cacheService.accountID),
-		Value:     cloudflare.String(value),
+func (cacheService *Cache) Set(ctx context.Context, key string, value string, expiresInDuration time.Duration) error {
+	cache := dao_account.Cache{
+		Key:       key,
+		Value:     value,
+		ExpiresAt: time.Now().Add(expiresInDuration),
 	}
-	if expiresInSeconds > 0 {
-		params.ExpirationTTL = cloudflare.Float(float64(expiresInSeconds))
-	} else {
-		params.ExpirationTTL = cloudflare.Float(float64(300))
-	}
-	_, err := cacheService.client.KV.Namespaces.Values.Update(ctx, cacheService.namespaceID, key, params)
+	existing, err := cacheService.unitOfWork.AccountCacheRepository().GetByKey(ctx, key)
 	if err != nil {
-		return fmt.Errorf("Cache.Set key=%s value=%s expiresInSeconds=%v error=%w", key, value, expiresInSeconds, err)
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("Cache.Set index=0 key=%s value=%s expiresInDuration=%v error=%w", key, value, expiresInDuration, err)
+		}
+	}
+	if existing == nil {
+		err = cacheService.unitOfWork.AccountCacheRepository().Insert(ctx, &cache)
+	} else {
+		err = cacheService.unitOfWork.AccountCacheRepository().UpdateFields(ctx, existing.Id, map[string]any{"value": value})
+	}
+	if err != nil {
+		return fmt.Errorf("Cache.Set index=1 key=%s value=%s expiresInDuration=%v error=%w", key, value, expiresInDuration, err)
 	}
 	return nil
 }
 
-// when key expires, will be deleted automatically
 func (cacheService *Cache) Remove(ctx context.Context, key string) error {
-	_, err := cacheService.client.KV.Namespaces.Values.Delete(ctx, cacheService.namespaceID, key, kv.NamespaceValueDeleteParams{AccountID: cloudflare.F(cacheService.accountID)})
-	if err != nil && !isCloudflareNotFoundError(err) {
+	err := cacheService.unitOfWork.AccountCacheRepository().DeleteByKey(ctx, key)
+	if err != nil {
 		return fmt.Errorf("Cache.Remove key=%s error=%w", key, err)
 	}
 	return nil
 }
 
-func isCloudflareNotFoundError(err error) bool {
-	var apiErr *cloudflare.Error
-	if !errors.As(err, &apiErr) {
-		return false
+// is scheduled at cmd/dispatcher/main.go
+func (cacheService *Cache) CleanUp(ctx context.Context) error {
+	err := cacheService.unitOfWork.AccountCacheRepository().DeleteExpired(ctx)
+	if err != nil {
+		return fmt.Errorf("Cache.CleanUp error=%w", err)
 	}
-	return apiErr.StatusCode == 404
+	return nil
 }
 
 var CacheNotFoundError = errors.New("cache key not found")

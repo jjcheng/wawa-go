@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -91,7 +92,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	cacheKey := helper.GetTemplateStatusChangeCacheKey(template.ID)
 	cacheValue := fmt.Sprint(user.Id)
 	// expires in 1 hours
-	err = dependencies.Cache.Set(ctx, cacheKey, cacheValue, 60*60)
+	err = dependencies.Cache.Set(ctx, cacheKey, cacheValue, time.Hour*1)
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, store.Id)
 	}
