@@ -1,0 +1,34 @@
+{
+  "request": {
+    "body": null,
+    "method": "GET",
+    "url": "https://api.facebook.com/1404376646082523/agent_config/faq"
+  },
+  "response": [
+    {
+      "answer": "6590909090",
+      "created_at": 1790685028,
+      "id": "pfbid0HPniwk2ppaqhiddQCTRVP3fQNEKGCVuqLH6Vah7mHfwN4YWGDDPbpcuHWQySRvxrB14XVvnjvnNodT6QsRAHzNVcxiWXyeji5Nl",
+      "question": "What’s your phone number"
+    },
+    {
+      "answer": "Not at the moment",
+      "created_at": 1790685024,
+      "id": "pfbid06t365FrU2gp4DXAFgVWvkPeEEyizjnFnkCTwJvQAxuQWhy47iTfeNSK7ccVDFf2ckKnQmsxcAdVHB4wE5Mw7zR9xeBd7Q8qQf1B7l",
+      "question": "Do you have any offer"
+    },
+    {
+      "answer": "Yes we do",
+      "created_at": 1790685020,
+      "id": "pfbid0sF9paC2LHox8fof4zYCsaMC9gvja6CqtYNvaFn41tLaiAoH2xLfGHbEiEJtF5Ju69TzCkjjDtAnXzHHwwtaPv8BYmFgYfnEzePNl",
+      "question": "Do you ship to china"
+    },
+    {
+      "answer": "Yes of course, we ship to indonesia, vietnam, thailand, singapore and china.",
+      "created_at": 1790684162,
+      "id": "pfbid04CBaRHSu3js1vZHLDQfbhj4TkMtStTJMKrH6z84yCw8DWsXs7LkM7mEZQkgSAsdvgq1LJHGMUU1ZyqWPE7A4W7kcgQhW6vjEjC2Yl",
+      "question": "Do you ship to malaysia?"
+    }
+  ],
+  "type": "list_agent_faqs"
+}

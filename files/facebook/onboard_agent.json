@@ -1,0 +1,11 @@
+{
+  "request": {
+    "body": {},
+    "method": "POST",
+    "url": "https://api.facebook.com/1404376646082523/agent_onboarding/"
+  },
+  "response": {
+    "agent_id": "pfbid0Tg65XarYBtRkV3hs7AwM8BS6Lci3vubKzLeBvdiG7nHWHEWpgXfbMp34BnUFcZ2VTxo8eLXLu6YMfHku6HmLfhch9YnbeNFG7pGbXl"
+  },
+  "type": "onboard_agent"
+}

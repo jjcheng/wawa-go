@@ -1,17 +1,21 @@
 package controller
 
 import (
+	"io"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
+	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_account "github.com/jjcheng/wawa-go/internal/feature/wa/account"
 	feature_wa_business_account "github.com/jjcheng/wawa-go/internal/feature/wa/business_account"
+	feature_wa_business_agent "github.com/jjcheng/wawa-go/internal/feature/wa/business_agent"
 	feature_wa_catalog "github.com/jjcheng/wawa-go/internal/feature/wa/catalog"
 	feature_wa_message "github.com/jjcheng/wawa-go/internal/feature/wa/message"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
@@ -36,6 +40,7 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*dto_wa.BusinessAccount, feature_wa_business_account.Update](routerGroup, dependencies, apiGenerator)
 	// phone number
 	registerRoute[*service.WhatsAppPhoneNumberDetailsResponse, feature_wa_phone_number.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_wa.PhoneNumber, feature_wa_phone_number.GetLocal](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_phone_number.Disconnect](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_phone_number.Reconnect](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto.ListResponse[dto_wa.PhoneNumber], feature_wa_phone_number.List](routerGroup, dependencies, apiGenerator)
@@ -70,6 +75,96 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*dto_wa.MessageAnalytics, feature_wa_business_account.GetUsage](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.MessageAnalytics, feature_wa_phone_number.GetUsage](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]dto_wa.TemplateAnalytics, feature_wa_template.GetUsage](routerGroup, dependencies, apiGenerator)
+	// business agent
+	registerRoute[any, feature_wa_business_agent.TurnOn](routerGroup, dependencies, apiGenerator)
+	registerRoute[*feature_wa_business_agent.CheckEligibilityResult, feature_wa_business_agent.CheckEligibility](routerGroup, dependencies, apiGenerator)
+	registerRoute[*feature_wa_business_agent.OnboardResult, feature_wa_business_agent.Onboard](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.Offboard](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentBudget, feature_wa_business_agent.ListBudgets](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentBudget, feature_wa_business_agent.StoreBudgets](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentPhoneNumberBusinessInfo, feature_wa_business_agent.GetBusinessInfo](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.UpdateBusinessInfo](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentFAQ, feature_wa_business_agent.ListFAQs](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentFAQ, feature_wa_business_agent.UpdateFAQ](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.DeleteFAQ](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentFAQ, feature_wa_business_agent.CreateFAQ](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentFile, feature_wa_business_agent.ListFiles](routerGroup, dependencies, apiGenerator)
+	registerCreateAgentFileRoute(routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.DeleteFile](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentWebsite, feature_wa_business_agent.ListWebsites](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentWebsite, feature_wa_business_agent.UpdateWebsite](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentWebsite, feature_wa_business_agent.CreateWebsite](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.DeleteWebsite](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentWebsite, feature_wa_business_agent.GetWebsite](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentSkill, feature_wa_business_agent.ListSkills](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentSkill, feature_wa_business_agent.UpdateSkill](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentSkill, feature_wa_business_agent.CreateSkill](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.DeleteSkill](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentUISkill, feature_wa_business_agent.ListUISkills](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentUISkill, feature_wa_business_agent.CreateUISkill](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentTestResponse, feature_wa_business_agent.Test](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentSetting, feature_wa_business_agent.GetSetting](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentSetting, feature_wa_business_agent.UpdateSetting](routerGroup, dependencies, apiGenerator)
+}
+
+func registerCreateAgentFileRoute(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
+	request := feature_wa_business_agent.CreateFile{}
+	settings := request.APISettings()
+	_ = apiGenerator.AddEndpoint(request, reflect.TypeFor[*service.AgentFile]())
+	routerGroup.POST(settings.Path, func(ctx *gin.Context) {
+		startAt := time.Now()
+		ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, helper.MaxUploadFileSizeBytes)
+		if err := ctx.Request.ParseMultipartForm(1 << 20); err != nil {
+			response := dto.NewInvalidInputResponse[*service.AgentFile]([]exception.InputException{{Field: "body", Message: "expected multipart form data with a file part"}})
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
+			ctx.AbortWithStatusJSON(response.StatusCode, response)
+			return
+		}
+		if ctx.Request.MultipartForm != nil {
+			defer ctx.Request.MultipartForm.RemoveAll()
+		}
+		request := feature_wa_business_agent.CreateFile{}
+		if err := ctx.ShouldBindQuery(&request); err != nil {
+			response := dto.NewInvalidInputResponse[*service.AgentFile]([]exception.InputException{{Field: "query", Message: err.Error()}})
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
+			ctx.AbortWithStatusJSON(response.StatusCode, response)
+			return
+		}
+		fileHeader, err := ctx.FormFile("file")
+		if err != nil {
+			response := dto.NewInvalidInputResponse[*service.AgentFile]([]exception.InputException{{Field: "file", Message: "file part is required"}})
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
+			ctx.AbortWithStatusJSON(response.StatusCode, response)
+			return
+		}
+		file, err := fileHeader.Open()
+		if err != nil {
+			response := dto.NewInvalidInputResponse[*service.AgentFile]([]exception.InputException{{Field: "file", Message: "failed to open uploaded file"}})
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
+			ctx.AbortWithStatusJSON(response.StatusCode, response)
+			return
+		}
+		content, err := io.ReadAll(file)
+		_ = file.Close()
+		if err != nil {
+			response := dto.NewInvalidInputResponse[*service.AgentFile]([]exception.InputException{{Field: "file", Message: "failed to read uploaded file"}})
+			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
+			ctx.AbortWithStatusJSON(response.StatusCode, response)
+			return
+		}
+		request.FileName = ctx.PostForm("file_name")
+		if strings.TrimSpace(request.FileName) == "" {
+			request.FileName = fileHeader.Filename
+		}
+		request.Content = content
+		var user *dto_account.User
+		if userValue, exists := ctx.Get(cfg.Default().Site.HTTPRequestUserKey); exists {
+			user = userValue.(*dto_account.User)
+		}
+		response := request.Handle(ctx.Request.Context(), user, dependencies)
+		finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
+		ctx.JSON(response.StatusCode, response)
+	})
 }
 
 func registerWebhookVerifyRoute(routerGroup *gin.RouterGroup, dependencies *service.Dependencies) {

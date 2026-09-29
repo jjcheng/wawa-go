@@ -29,7 +29,7 @@ func main() {
 		if err != nil {
 			return
 		}
-		dependencies = setup.SetupServices(unitOfWork, logger)
+		dependencies = service.NewDependencies(unitOfWork, logger)
 	})
 
 	// Standard Function Compute runtime handler, dispatcher function can only be triggered by time-trigger every x min

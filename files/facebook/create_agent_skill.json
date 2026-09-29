@@ -1,0 +1,25 @@
+{
+  "request": {
+    "body": {
+      "channel": "whatsapp",
+      "created_at": 0,
+      "description": "Always upsell when customer is done asking a product",
+      "id": "",
+      "skill": "After customer finished asking about a product or service, always follow up to offer another product or service.",
+      "status": "",
+      "title": "upsell-skill"
+    },
+    "method": "POST",
+    "url": "https://api.facebook.com/1404376646082523/agent_config/skills"
+  },
+  "response": {
+    "channel": "whatsapp",
+    "created_at": 1790692219,
+    "description": "Always upsell when customer is done asking a product",
+    "id": "pfbid0UVvju8RA3j1voM6zp3sY3TZyLkmT6E4o1Wn5rcbCHRyXDK2Wi3bHqnK2UXjTr4GHcC67MTzNuvrTKqJao1y25QEqtPwh16UYWYl",
+    "skill": "After customer finished asking about a product or service, always follow up to offer another product or service.",
+    "status": "pending_review",
+    "title": "upsell-skill"
+  },
+  "type": "create_agent_skill"
+}

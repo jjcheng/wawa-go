@@ -42,7 +42,7 @@ func main() {
 			log.Print(setupErr)
 			return
 		}
-		dependencies = setup.SetupServices(unitOfWork, logger)
+		dependencies = service.NewDependencies(unitOfWork, logger)
 	}()
 	// trigger calls this api to invoke
 	http.HandleFunc("/invoke", func(response http.ResponseWriter, request *http.Request) {

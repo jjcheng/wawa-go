@@ -1,0 +1,39 @@
+{
+  "request": {
+    "body": {
+      "crawl_error": "",
+      "crawl_status": "",
+      "created_at": 0,
+      "excluded_sub_domains": [],
+      "excluded_url_patterns": [],
+      "id": "pfbid03b1VrdNdhidKLHs9XX1ysVyQwRvo8yitAG4NbDEL6nn1vfuTUJeJpSg4Ch52oBE3E4yzXPFGbmCT7jaiEMfpdRb5d9PesM2167RUl",
+      "included_sub_domains": [],
+      "included_url_patterns": [],
+      "last_crawled_at": 0,
+      "pages_crawled": 0,
+      "single_urls": [
+        "https://www.beccas.cafe/demo"
+      ],
+      "url": "https://test.beccas.cafe/"
+    },
+    "method": "PUT",
+    "url": "https://api.facebook.com/1404376646082523/agent_config/websites/pfbid03b1VrdNdhidKLHs9XX1ysVyQwRvo8yitAG4NbDEL6nn1vfuTUJeJpSg4Ch52oBE3E4yzXPFGbmCT7jaiEMfpdRb5d9PesM2167RUl"
+  },
+  "response": {
+    "crawl_error": "",
+    "crawl_status": "pending",
+    "created_at": 1790688769,
+    "excluded_sub_domains": [],
+    "excluded_url_patterns": [],
+    "id": "pfbid03b1VrdNdhidKLHs9XX1ysVyQwRvo8yitAG4NbDEL6nn1vfuTUJeJpSg4Ch52oBE3E4yzXPFGbmCT7jaiEMfpdRb5d9PesM2167RUl",
+    "included_sub_domains": [],
+    "included_url_patterns": [],
+    "last_crawled_at": 1790689591,
+    "pages_crawled": 0,
+    "single_urls": [
+      "https://www.beccas.cafe/demo"
+    ],
+    "url": "https://test.beccas.cafe/"
+  },
+  "type": "update_agent_website"
+}

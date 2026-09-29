@@ -18,7 +18,7 @@ import (
 type List struct {
 	Status   types.WAPhoneNumberStatus `form:"status" description:"status of the phone number"`
 	Page     int                       `form:"page" description:"page number from 1"`
-	PageSize int                       `form:"page_size" description:"page size, default 10"`
+	PageSize int                       `form:"page_size" description:"page size, default 25"`
 }
 
 func (list *List) Validate() []exception.InputException {
@@ -26,7 +26,7 @@ func (list *List) Validate() []exception.InputException {
 		list.Page = 1
 	}
 	if list.PageSize <= 0 {
-		list.PageSize = 10
+		list.PageSize = 25
 	}
 	return nil
 }

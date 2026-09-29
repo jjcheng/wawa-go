@@ -19,4 +19,5 @@ type WAPhoneNumberRepository interface {
 	// used in authenticate middleware
 	GetByUserId(ctx context.Context, userId int32) ([]dao_wa.PhoneNumber, *dao_wa.BusinessAccount, *dao_wa.BusinessPortfolio, error)
 	ListUnassigned(ctx context.Context, businessAccountId int32) ([]dao_wa.PhoneNumber, error)
+	// business agent
 }

@@ -1,0 +1,11 @@
+{
+  "request": {
+    "body": {},
+    "method": "DELETE",
+    "url": "https://api.facebook.com/1404376646082523/delete_agent/"
+  },
+  "response": {
+    "deleted_agent_id": "pfbid04ngXwaYbgeNBMiNSG6CBn4jPNGKsTcVGqCkMjE2C5Gg25FVWxAjBT3ov3xyCPfwt4rHnrtVA4QSLqd4n8RrDdYhStgy49VYEUsDEhl"
+  },
+  "type": "offboard_agent"
+}

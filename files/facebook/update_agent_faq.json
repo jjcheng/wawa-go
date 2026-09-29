@@ -1,0 +1,19 @@
+{
+  "request": {
+    "body": {
+      "answer": "Yes of course, we ship to indonesia, vietnam, thailand, singapore and china.",
+      "created_at": 0,
+      "id": "pfbid04CBaRHSu3js1vZHLDQfbhj4TkMtStTJMKrH6z84yCw8DWsXs7LkM7mEZQkgSAsdvgq1LJHGMUU1ZyqWPE7A4W7kcgQhW6vjEjC2Yl",
+      "question": "Do you ship to malaysia?"
+    },
+    "method": "PUT",
+    "url": "https://api.facebook.com/1404376646082523/agent_config/faq/pfbid04CBaRHSu3js1vZHLDQfbhj4TkMtStTJMKrH6z84yCw8DWsXs7LkM7mEZQkgSAsdvgq1LJHGMUU1ZyqWPE7A4W7kcgQhW6vjEjC2Yl"
+  },
+  "response": {
+    "answer": "Yes of course, we ship to indonesia, vietnam, thailand, singapore and china.",
+    "created_at": 1790684162,
+    "id": "pfbid04CBaRHSu3js1vZHLDQfbhj4TkMtStTJMKrH6z84yCw8DWsXs7LkM7mEZQkgSAsdvgq1LJHGMUU1ZyqWPE7A4W7kcgQhW6vjEjC2Yl",
+    "question": "Do you ship to malaysia?"
+  },
+  "type": "update_agent_faq"
+}

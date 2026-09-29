@@ -1,0 +1,24 @@
+{
+  "request": {
+    "body": null,
+    "method": "GET",
+    "url": "https://api.facebook.com/967693769603545/agent_budget/"
+  },
+  "response": {
+    "budgets": [
+      {
+        "budget_id": "043a80cf-b4b0-4006-9826-7038ade7a96d",
+        "max_budget": 10000,
+        "time_window": "one_day",
+        "unit_type": "token"
+      },
+      {
+        "budget_id": "729ff8c9-3b65-41f1-aeb3-d6e464f9782b",
+        "max_budget": 500,
+        "time_window": "one_day",
+        "unit_type": "ai_turn"
+      }
+    ]
+  },
+  "type": "list_agent_budgets"
+}

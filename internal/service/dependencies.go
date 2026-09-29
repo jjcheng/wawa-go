@@ -11,19 +11,21 @@ type Dependencies struct {
 	MessageQueue *MessageQueue
 	Ably         *Ably
 	Whatsapp     *Whatsapp
+	Facebook     *Facebook
 	AuthCache    *AuthCache
 	Cache        *Cache
 	Cloudflare   *Cloudflare
 }
 
-func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger, file *File, messageQueue *MessageQueue, ably *Ably, whatsapp *Whatsapp) *Dependencies {
+func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger) *Dependencies {
 	return &Dependencies{
 		UnitOfWork:   unitOfWork,
 		Logger:       logger,
-		File:         file,
-		MessageQueue: messageQueue,
-		Ably:         ably,
-		Whatsapp:     whatsapp,
+		File:         NewFileService(logger),
+		MessageQueue: NewMessageQueue(logger),
+		Ably:         NewAbly(logger),
+		Whatsapp:     NewWhatsapp(logger),
+		Facebook:     NewFacebook(logger),
 		AuthCache:    NewAuthCache(),
 		Cache:        NewCache(unitOfWork),
 		Cloudflare:   NewCloudflare(logger),

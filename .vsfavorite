@@ -60,6 +60,10 @@
     {
       "filePath": "internal/setup/services.go",
       "group": "Default"
+    },
+    {
+      "filePath": "internal/middleware/authenticate.go",
+      "group": "Default"
     }
   ],
   "groups": [

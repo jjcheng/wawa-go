@@ -1,0 +1,21 @@
+{
+  "request": {
+    "body": {
+      "conversation_id": "3dac5c1e-1b3c-45cc-8cb4-52011807cabc",
+      "user_msg": "which is your latest offering"
+    },
+    "method": "POST",
+    "url": "https://api.facebook.com/1404376646082523/agent_test"
+  },
+  "response": {
+    "agent_response": "Good afternoon! I'd be happy to help you with that.\nOur latest rising star is the *Coconut Latte* ($5), which features our bold signature espresso with creamy coconut milk. You might also enjoy our innovative *Mocha Blueberry* ($6), a unique blend of velvety chocolate and a vibrant burst of real blueberry.\nWhat can I do to help you today?",
+    "conversation_id": "pfbid02VfatvS4tZZf5AZVxMbvk2PeBqtXNqzXyHkntPP7YrAeKsN9eaMdBCDCcV7u2g39zl",
+    "handoff_reason": null,
+    "message_id": "pfbid02VfatvS4tZZf5AZVxMbvk2PeBqtXNqzXyHkntPP7YrAeKsN9eaMdBCDCcV7u2g39zl_1790695304677",
+    "no_response_reason": null,
+    "product_variant_ids": [],
+    "quick_replies": [],
+    "timestamp": 1790695304
+  },
+  "type": "test_agent"
+}

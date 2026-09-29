@@ -1,0 +1,19 @@
+{
+  "request": {
+    "body": null,
+    "method": "GET",
+    "url": "https://api.facebook.com/1404376646082523/agent_config/websites"
+  },
+  "response": [
+    {
+      "crawl_error": "",
+      "crawl_status": "in_progress",
+      "created_at": 1790689790,
+      "id": "pfbid06nWuTa1YyhqJMkQW97jS7gVQyrjwE5t3uFNAimZ1rqhbobfDJhKxFth7jDKYoAQzoy4RssT6p4GdA2EFrG52XQx4qvEaZyScGVX9l",
+      "last_crawled_at": 1790690399,
+      "pages_crawled": 0,
+      "url": "https://www.wawago.app/"
+    }
+  ],
+  "type": "list_agent_websites"
+}

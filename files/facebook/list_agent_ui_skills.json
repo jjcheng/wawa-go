@@ -1,0 +1,11 @@
+{
+  "request": {
+    "body": null,
+    "method": "GET",
+    "url": "https://api.facebook.com/1404376646082523/agent-ui-skills"
+  },
+  "response": {
+    "data": []
+  },
+  "type": "list_agent_ui_skills"
+}

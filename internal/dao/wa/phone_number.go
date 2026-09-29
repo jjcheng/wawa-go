@@ -13,6 +13,8 @@ type PhoneNumber struct {
 	WAId               string                    `gorm:"-"` // not a db column
 	Name               string                    `gorm:"column:name"`
 	Status             types.WAPhoneNumberStatus `gorm:"column:status"`
+	MetaAgentId        string                    `gorm:"column:meta_agent_id"`
+	AgentRunning       bool                      `gorm:"column:agent_running"`
 	// two-step verification PIN set at registration, required to re-register the number later
 	RegistrationPin string `gorm:"-"` // not a db column
 	// encryption

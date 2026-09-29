@@ -214,6 +214,8 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetBusinessPortfolioAndAcc
 	return &businessPortfolio, &businessAccount, nil
 }
 
+// business agent
+
 func (phoneNumberRepository *WAPhoneNumberRepository) decryptSecrets(phoneNumber *dao_wa.PhoneNumber) error {
 	if phoneNumber.DisplayPhoneNumberEncrypted != "" {
 		displayPhoneNumber, err := decryptSecret(phoneNumber.DisplayPhoneNumberEncrypted, phoneNumberRepository.phoneNumberAAD(phoneNumber, "display_phone_number"))

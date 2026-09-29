@@ -1,0 +1,25 @@
+{
+  "request": {
+    "body": {
+      "channel": "whatsapp",
+      "created_at": 0,
+      "description": "How agent should greet the customer",
+      "id": "pfbid0Bt5MznnUhb2FFLRT6Qpc7vfMfDvrZnZ8rmPaRVzMEvNpgAmi5PusNNX8AQMk3tNR6yoL3pC8ahpUKZJ5qm3TzqBUNKKKpjV8rxBBl",
+      "skill": "always greet by the name, say good morning, afternoon, evening, night, ask what can we do to help",
+      "status": "",
+      "title": "greeting-skill"
+    },
+    "method": "PUT",
+    "url": "https://api.facebook.com/1404376646082523/agent_config/skills/pfbid0Bt5MznnUhb2FFLRT6Qpc7vfMfDvrZnZ8rmPaRVzMEvNpgAmi5PusNNX8AQMk3tNR6yoL3pC8ahpUKZJ5qm3TzqBUNKKKpjV8rxBBl"
+  },
+  "response": {
+    "channel": "whatsapp",
+    "created_at": 1790691895,
+    "description": "How agent should greet the customer",
+    "id": "pfbid0Bt5MznnUhb2FFLRT6Qpc7vfMfDvrZnZ8rmPaRVzMEvNpgAmi5PusNNX8AQMk3tNR6yoL3pC8ahpUKZJ5qm3TzqBUNKKKpjV8rxBBl",
+    "skill": "always greet by the name, say good morning, afternoon, evening, night, ask what can we do to help",
+    "status": "active",
+    "title": "greeting-skill"
+  },
+  "type": "update_agent_skill"
+}

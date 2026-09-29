@@ -29,7 +29,7 @@ func main() {
 		panic(err.Error())
 	}
 	// setup services
-	dependencies := setup.SetupServices(unitOfWork, loggerService)
+	dependencies := service.NewDependencies(unitOfWork, loggerService)
 	// setup router
 	router := setup.SetupRouter(dependencies.Logger)
 	// setup controllers

@@ -97,6 +97,8 @@ func Authenticate(dependencies *service.Dependencies) gin.HandlerFunc {
 						DisplayPhoneNumber: pn.DisplayPhoneNumber,
 						MetaPhoneNumberId:  pn.MetaPhoneNumberId,
 						Name:               pn.Name,
+						AgentRunning:       pn.AgentRunning,
+						MetaAgentId:        pn.MetaAgentId,
 					}
 				})
 			} else {

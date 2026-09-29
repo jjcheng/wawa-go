@@ -25,6 +25,8 @@ func BindRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 		return bindJSONRequest[R, T]()
 	} else if requestObject.APISettings().Type == types.HttpRequestTypeUriJSON {
 		return bindURIAndJSONRequest[R, T]()
+	} else if requestObject.APISettings().Type == types.HttpRequestTypeQueryJSON {
+		return bindQueryAndJSONRequest[R, T]()
 	} else {
 		return bindURIAndQueryRequest[R, T]()
 	}
@@ -108,6 +110,37 @@ func bindURIAndJSONRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
 			responseObject := dto.NewInvalidInputResponse[any]([]exception.InputException{{Field: "body", Message: err.Error()}})
 			context.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
 			return
+		}
+		// validation is done at Handle()
+		context.Set(cfg.Default().Site.HTTPRequestItemKey, requestObject)
+		context.Next()
+	}
+}
+
+// handles /intent?filter=active {"label":"xxx"} which contains both query and JSON
+func bindQueryAndJSONRequest[R any, T feature.Request[R]]() gin.HandlerFunc {
+	return func(context *gin.Context) {
+		var requestObject T
+		if err := context.ShouldBindQuery(&requestObject); err != nil {
+			responseObject := dto.NewInvalidInputResponse[any]([]exception.InputException{{Field: "query", Message: err.Error()}})
+			context.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+			return
+		}
+		context.Request.Body = http.MaxBytesReader(context.Writer, context.Request.Body, helper.MaxJSONBodySizeBytes)
+		contentEncodingHeader := context.GetHeader("Content-Encoding")
+		switch contentEncodingHeader {
+		case "gzip":
+			if err := context.ShouldBindBodyWith(&requestObject, helper.GzipJSONBinding{}); err != nil {
+				responseObject := dto.NewInvalidInputResponse[any]([]exception.InputException{{Field: "body", Message: err.Error()}})
+				context.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+				return
+			}
+		default:
+			if err := context.ShouldBindJSON(&requestObject); err != nil {
+				responseObject := dto.NewInvalidInputResponse[any]([]exception.InputException{{Field: "body", Message: err.Error()}})
+				context.AbortWithStatusJSON(responseObject.StatusCode, responseObject)
+				return
+			}
 		}
 		// validation is done at Handle()
 		context.Set(cfg.Default().Site.HTTPRequestItemKey, requestObject)

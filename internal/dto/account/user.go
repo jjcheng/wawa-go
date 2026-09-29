@@ -37,6 +37,8 @@ type AssignedPhoneNumber struct {
 	MetaPhoneNumberId  string `json:"meta_phone_number_id"`
 	DisplayPhoneNumber string `json:"display_phone_number"`
 	Name               string `json:"name"`
+	MetaAgentId        string `json:"meta_agent_id"`
+	AgentRunning       bool   `json:"agent_running"`
 }
 
 type UserWA struct {
