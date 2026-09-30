@@ -65,15 +65,15 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 					}
 				}
 				// message echos is sent from the business agent
-				for _, messageEcho := range incomingValue.Standby.MessageEchoes {
-					if err := insertIncomingMessageEcho(ctx, dependencies, messageEcho, incomingValue.Metadata); err != nil {
-						// if already stored, it's not really an error
-						if strings.Contains(err.Error(), "duplicate") {
-							continue
-						}
-						return err
-					}
-				}
+				// for _, messageEcho := range incomingValue.Standby.MessageEchoes {
+				// 	if err := insertIncomingMessageEcho(ctx, dependencies, messageEcho, incomingValue.Metadata); err != nil {
+				// 		// if already stored, it's not really an error
+				// 		if strings.Contains(err.Error(), "duplicate") {
+				// 			continue
+				// 		}
+				// 		return err
+				// 	}
+				// }
 				// check statuses
 				for _, status := range incomingValue.Standby.Statuses {
 					if err := insertIncomingStatus(ctx, dependencies, status); err != nil {
@@ -159,6 +159,14 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 						return err
 					}
 				}
+				// proces statuses
+				for _, status := range incomingValue.Statuses {
+					if err := insertIncomingStatus(ctx, dependencies, status); err != nil {
+						return err
+					}
+				}
+			} else if change.Field == "smb_app_state_sync" {
+
 			} else if change.Field == "messaging_handovers" {
 				fmt.Println("messaging_handovers")
 				var incomingValue dto_wa.IncomingValue
@@ -458,7 +466,7 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		return fmt.Errorf("failed to get user's phone number %s: %w", metadata.PhoneNumberID, err)
 	}
 	// check customer exists based on waId or metaUserId
-	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.Id, incomingMessageEcho.Message.To, incomingMessageEcho.Message.Recipient)
+	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.Id, incomingMessageEcho.To, incomingMessageEcho.Recipient)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to get customer error=%w", err)
@@ -468,12 +476,12 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 	var customerDTO dto_customer.Customer
 	if existingCustomer == nil {
 		var countryCode, phoneNumber string
-		if incomingMessageEcho.Message.To != "" {
-			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessageEcho.Message.To)
+		if incomingMessageEcho.To != "" {
+			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessageEcho.To)
 			if err != nil {
 				dependencies.Logger.ErrorFunction(err)
 				cc = "."
-				pn = incomingMessageEcho.Message.To
+				pn = incomingMessageEcho.To
 			}
 			countryCode = cc
 			phoneNumber = pn
@@ -483,8 +491,8 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 			WADisplayName: "Unknown name",
 			CountryCode:   countryCode,
 			PhoneNumber:   phoneNumber,
-			MetaUserId:    incomingMessageEcho.Message.Recipient,
-			WAId:          incomingMessageEcho.Message.To,
+			MetaUserId:    incomingMessageEcho.Recipient,
+			WAId:          incomingMessageEcho.To,
 			Remarks:       "created from incoming WhatsApp message echo",
 			PhoneNumberId: userPhoneNumber.Id,
 			FromIncoming:  true,
@@ -496,12 +504,12 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		customerDTO = *createCustomerResponse.Data
 	} else {
 		var hasChange bool
-		if incomingMessageEcho.Message.Recipient != "" && existingCustomer.MetaUserId != incomingMessageEcho.Message.Recipient {
-			existingCustomer.MetaUserId = incomingMessageEcho.Message.Recipient
+		if incomingMessageEcho.Recipient != "" && existingCustomer.MetaUserId != incomingMessageEcho.Recipient {
+			existingCustomer.MetaUserId = incomingMessageEcho.Recipient
 			hasChange = true
 		}
-		if incomingMessageEcho.Message.To != "" && existingCustomer.WAId != incomingMessageEcho.Message.To {
-			existingCustomer.WAId = incomingMessageEcho.Message.To
+		if incomingMessageEcho.To != "" && existingCustomer.WAId != incomingMessageEcho.To {
+			existingCustomer.WAId = incomingMessageEcho.To
 			hasChange = true
 		}
 		if hasChange {
@@ -517,7 +525,7 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		PhoneNumberId: userPhoneNumber.Id,
 		WAMessageId:   incomingMessageEcho.ID,
 		Timestamp:     timestamp,
-		Type:          incomingMessageEcho.Message.Type,
+		Type:          incomingMessageEcho.Type,
 		Payload:       incomingMessageEcho.Payload,
 		Token:         uuid.NewString(),
 	}

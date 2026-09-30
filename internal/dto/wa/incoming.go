@@ -61,21 +61,27 @@ type IncomingMessage struct {
 	Payload    map[string]any `json:"-"`
 }
 
-type IncomingStandby struct {
-	Contacts      []IncomingContact     `json:"contacts"`
-	Messages      []IncomingMessage     `json:"messages"`
-	MessageEchoes []IncomingMessageEcho `json:"message_echoes"`
-	Statuses      []Status              `json:"statuses"`
-}
-
 type IncomingMessageEcho struct {
-	ID        string                     `json:"id"`
-	Timestamp string                     `json:"timestamp"`
-	Message   IncomingMessageEchoMessage `json:"message"`
-	Payload   map[string]any             `json:"payload"`
+	IncomingMessage
+	To        string `json:"to"`
+	Recipient string `json:"recipient"`
 }
 
-type IncomingMessageEchoMessage struct {
+type IncomingStandby struct {
+	Contacts      []IncomingContact            `json:"contacts"`
+	Messages      []IncomingMessage            `json:"messages"`
+	MessageEchoes []IncomingMessageStandbyEcho `json:"message_echoes"`
+	Statuses      []Status                     `json:"statuses"`
+}
+
+type IncomingMessageStandbyEcho struct {
+	ID        string                            `json:"id"`
+	Timestamp string                            `json:"timestamp"`
+	Message   IncomingMessageStandbyEchoMessage `json:"message"`
+	Payload   map[string]any                    `json:"payload"`
+}
+
+type IncomingMessageStandbyEchoMessage struct {
 	To                    string                     `json:"to"`
 	Recipient             string                     `json:"recipient"` // metaUserId
 	Type                  string                     `json:"type"`
