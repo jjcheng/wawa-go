@@ -40,6 +40,7 @@ node_modules
 files/wa
 files/receive*
 files/scraper
+files/facebook
 # Google service account credentials
 google_service_account_json.json
 *service_account*.json

@@ -22,13 +22,17 @@ type IncomingChange struct {
 }
 
 type IncomingValue struct {
-	MessagingProduct string            `json:"messaging_product"`
-	Metadata         IncomingMetadata  `json:"metadata"`
-	Contacts         []IncomingContact `json:"contacts,omitempty"`
-	Messages         []IncomingMessage `json:"messages,omitempty"`
-	Statuses         []Status          `json:"statuses,omitempty"`
-	SyncStatus       string            `json:"sync_status,omitempty"`
-	ChunkNumber      int               `json:"chunk_number,omitempty"`
+	MessagingProduct string                `json:"messaging_product"`
+	Metadata         IncomingMetadata      `json:"metadata"`
+	Contacts         []IncomingContact     `json:"contacts,omitempty"`
+	Messages         []IncomingMessage     `json:"messages,omitempty"`
+	Standby          *IncomingStandby      `json:"standby,omitempty"`
+	Statuses         []Status              `json:"statuses,omitempty"`
+	MessageEchoes    []IncomingMessageEcho `json:"message_echoes,omitempty"`
+	SyncStatus       string                `json:"sync_status,omitempty"`
+	ChunkNumber      int                   `json:"chunk_number,omitempty"`
+	// messaing_handovers
+	*IncomingHandovers
 }
 
 type IncomingMetadata struct {
@@ -55,6 +59,68 @@ type IncomingMessage struct {
 	Type       string         `json:"type"`
 	Errors     []StatusError  `json:"errors,omitempty"`
 	Payload    map[string]any `json:"-"`
+}
+
+type IncomingStandby struct {
+	Contacts      []IncomingContact     `json:"contacts"`
+	Messages      []IncomingMessage     `json:"messages"`
+	MessageEchoes []IncomingMessageEcho `json:"message_echoes"`
+	Statuses      []Status              `json:"statuses"`
+}
+
+type IncomingMessageEcho struct {
+	ID        string                     `json:"id"`
+	Timestamp string                     `json:"timestamp"`
+	Message   IncomingMessageEchoMessage `json:"message"`
+	Payload   map[string]any             `json:"payload"`
+}
+
+type IncomingMessageEchoMessage struct {
+	To                    string                     `json:"to"`
+	Recipient             string                     `json:"recipient"` // metaUserId
+	Type                  string                     `json:"type"`
+	RecipientType         string                     `json:"recipient_type"` // individual, group
+	BizOpaqueCallbackData string                     `json:"biz_opaque_callback_data"`
+	Errors                []StatusError              `json:"errors,omitempty"`
+	Revoke                *IncomingMessageEchoRevoke `json:"rovoke,omitempty"`
+	Edit                  *IncomingMessageEchoEdit   `json:"edit,omitempty"`
+}
+
+type IncomingMessageEchoRevoke struct {
+	OriginalMessageId string `json:"original_message_id"`
+}
+
+type IncomingMessageEchoEdit struct {
+	OriginalMessageId string                         `json:"original_message_id"`
+	Message           IncomingMessageEchoEditMessage `json:"message"`
+}
+
+type IncomingMessageEchoEditMessage struct {
+	Context IncomingMessageEchoEditMessageContext `json:"context"`
+	Type    string                                `json:"type"`
+	Payload map[string]any                        `json:"-"`
+}
+
+type IncomingMessageEchoEditMessageContext struct {
+	ID string `json:"id"`
+}
+
+type IncomingHandovers struct {
+	Recipient     IncomingMetadata                `json:"recipient"`
+	Sender        IncomingHandoversSender         `json:"sender"`
+	Timestamp     string                          `json:"timestamp"`
+	Type          string                          `json:"type"`
+	ControlPassed *IncomingHandoversControlPassed `json:"control_passed"`
+	ControlTaken  *IncomingHandoversControlPassed `json:"control_taken"`
+}
+
+type IncomingHandoversSender struct {
+	PhoneNumber string `json:"phone_number"`
+}
+
+type IncomingHandoversControlPassed struct {
+	NewOwnerRole      string `json:"new_owner_role"`
+	PreviousOwnerRole string `json:"previous_owner_role"`
 }
 
 type IncomingTemplateStatusChange struct {
@@ -89,6 +155,21 @@ func (message *IncomingMessage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	*message = IncomingMessage(decoded)
+	message.Payload = payload
+	return nil
+}
+
+func (message *IncomingMessageEcho) UnmarshalJSON(data []byte) error {
+	type incomingMessageAlias IncomingMessageEcho
+	var decoded incomingMessageAlias
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	*message = IncomingMessageEcho(decoded)
 	message.Payload = payload
 	return nil
 }

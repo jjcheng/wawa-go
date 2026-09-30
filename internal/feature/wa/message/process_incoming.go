@@ -16,6 +16,7 @@ import (
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
 	feature_customer "github.com/jjcheng/wawa-go/internal/feature/customer"
+	feature_wa_business_agent "github.com/jjcheng/wawa-go/internal/feature/wa/business_agent"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -48,13 +49,44 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 						return err
 					}
 				}
+			} else if change.Field == "standby" { // customer sent message via business agent is on
+				var incomingValue dto_wa.IncomingValue
+				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
+					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
+				}
+				// standby.messages and standby.contacts are only available if customer send in via business agent is active
+				for _, message := range incomingValue.Standby.Messages {
+					if err := insertIncomingMessage(ctx, dependencies, message, incomingValue.Standby.Contacts, incomingValue.Metadata); err != nil {
+						// if already stored, it's not really an error
+						if strings.Contains(err.Error(), "duplicate") {
+							continue
+						}
+						return err
+					}
+				}
+				// message echos is sent from the business agent
+				for _, messageEcho := range incomingValue.Standby.MessageEchoes {
+					if err := insertIncomingMessageEcho(ctx, dependencies, messageEcho, incomingValue.Metadata); err != nil {
+						// if already stored, it's not really an error
+						if strings.Contains(err.Error(), "duplicate") {
+							continue
+						}
+						return err
+					}
+				}
+				// check statuses
+				for _, status := range incomingValue.Standby.Statuses {
+					if err := insertIncomingStatus(ctx, dependencies, status); err != nil {
+						return err
+					}
+				}
 			} else if change.Field == "message_template_status_update" {
 				var templateStatus dto_wa.IncomingTemplateStatusChange
 				if err := json.Unmarshal(change.Value, &templateStatus); err != nil {
 					return fmt.Errorf("invalid message template status change value value=%v error=%w", change.Value, err)
 				}
 				// if not approved but no reason, it maybe deleted
-				if templateStatus.Event != "APPROVED" && templateStatus.Reason != "NONE" {
+				if templateStatus.Event != "APPROVED" && templateStatus.Reason != "NONE" && templateStatus.Reason != "" {
 					return nil
 				}
 				// do not store it into db, create a notification to inform user
@@ -112,6 +144,60 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				if productFeed.Status == "finished" {
 					// TODO: sync catalog db
 				}
+			} else if change.Field == "smb_message_echoes" { // messages sent by user from business app
+				var incomingValue dto_wa.IncomingValue
+				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
+					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
+				}
+				// process incoming messages echoes
+				for _, incomingMessageEcho := range incomingValue.MessageEchoes {
+					if err := insertIncomingMessageEcho(ctx, dependencies, incomingMessageEcho, incomingValue.Metadata); err != nil {
+						// if already stored, it's not really an error
+						if strings.Contains(err.Error(), "duplicate") {
+							continue
+						}
+						return err
+					}
+				}
+			} else if change.Field == "messaging_handovers" {
+				fmt.Println("messaging_handovers")
+				var incomingValue dto_wa.IncomingValue
+				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
+					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
+				}
+				// get phone number
+				phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, incomingValue.IncomingHandovers.Recipient.PhoneNumberID)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						return nil
+					}
+					return err
+				}
+				// get customer
+				customer, err := dependencies.UnitOfWork.CustomerRepository().GetByWAIdOrMetaUserId(ctx, phoneNumber.Id, incomingValue.Sender.PhoneNumber, incomingValue.Sender.PhoneNumber)
+				if err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						return nil
+					}
+					return err
+				}
+				// get user
+				var passToAgent bool
+				if incomingValue.IncomingHandovers.Type == "control_passed" {
+					if incomingValue.IncomingHandovers.ControlPassed.NewOwnerRole == "ai_agent" {
+						passToAgent = true
+					}
+				} else {
+					if incomingValue.IncomingHandovers.ControlTaken.NewOwnerRole == "ai_agent" {
+						passToAgent = true
+					}
+				}
+				passControl := feature_wa_business_agent.PassControl{
+					CustomerId:  customer.Id,
+					ToAgent:     passToAgent,
+					FromWebhook: true,
+				}
+				_ = passControl.Handle(ctx, nil, dependencies)
 			}
 		}
 	}
@@ -347,6 +433,104 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, phoneNumberChannelName)
 	}
+	return nil
+}
+
+func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Dependencies, incomingMessageEcho dto_wa.IncomingMessageEcho, metadata dto_wa.IncomingMetadata) error {
+	timestamp, err := strconv.ParseInt(incomingMessageEcho.Timestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("incoming message echo timestamp invalid: %s", incomingMessageEcho.Timestamp)
+	}
+	transaction := dependencies.UnitOfWork.BeginTransaction()
+	committed := false
+	defer func() {
+		if !committed {
+			transaction.Rollback()
+		}
+	}()
+	transactionDependencies := *dependencies
+	transactionDependencies.UnitOfWork = transaction
+	userPhoneNumber, err := transaction.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, metadata.PhoneNumberID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("user's phone number not found %s", metadata.PhoneNumberID)
+		}
+		return fmt.Errorf("failed to get user's phone number %s: %w", metadata.PhoneNumberID, err)
+	}
+	// check customer exists based on waId or metaUserId
+	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.Id, incomingMessageEcho.Message.To, incomingMessageEcho.Message.Recipient)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to get customer error=%w", err)
+		}
+	}
+	// if no existing customer, create new
+	var customerDTO dto_customer.Customer
+	if existingCustomer == nil {
+		var countryCode, phoneNumber string
+		if incomingMessageEcho.Message.To != "" {
+			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessageEcho.Message.To)
+			if err != nil {
+				dependencies.Logger.ErrorFunction(err)
+				cc = "."
+				pn = incomingMessageEcho.Message.To
+			}
+			countryCode = cc
+			phoneNumber = pn
+		}
+		createCustomer := feature_customer.Create{
+			DisplayName:   "Unknown name",
+			WADisplayName: "Unknown name",
+			CountryCode:   countryCode,
+			PhoneNumber:   phoneNumber,
+			MetaUserId:    incomingMessageEcho.Message.Recipient,
+			WAId:          incomingMessageEcho.Message.To,
+			Remarks:       "created from incoming WhatsApp message echo",
+			PhoneNumberId: userPhoneNumber.Id,
+			FromIncoming:  true,
+		}
+		createCustomerResponse := createCustomer.Handle(ctx, nil, &transactionDependencies)
+		if !createCustomerResponse.Success {
+			return createCustomerResponse.Error
+		}
+		customerDTO = *createCustomerResponse.Data
+	} else {
+		var hasChange bool
+		if incomingMessageEcho.Message.Recipient != "" && existingCustomer.MetaUserId != incomingMessageEcho.Message.Recipient {
+			existingCustomer.MetaUserId = incomingMessageEcho.Message.Recipient
+			hasChange = true
+		}
+		if incomingMessageEcho.Message.To != "" && existingCustomer.WAId != incomingMessageEcho.Message.To {
+			existingCustomer.WAId = incomingMessageEcho.Message.To
+			hasChange = true
+		}
+		if hasChange {
+			if err := transaction.CustomerRepository().Update(ctx, existingCustomer); err != nil {
+				return fmt.Errorf("failed update existing customer %d: %w", existingCustomer.Id, err)
+			}
+		}
+		customerDTO = dto_customer.NewCustomer(*existingCustomer)
+	}
+	message := dao_wa.Message{
+		Sending:       true, // message echos are messages sent by business agent
+		CustomerId:    customerDTO.Id,
+		PhoneNumberId: userPhoneNumber.Id,
+		WAMessageId:   incomingMessageEcho.ID,
+		Timestamp:     timestamp,
+		Type:          incomingMessageEcho.Message.Type,
+		Payload:       incomingMessageEcho.Payload,
+		Token:         uuid.NewString(),
+	}
+	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return errors.New("duplicate message entry")
+		}
+		return fmt.Errorf("failed to insert message customerId=%d phoneNumberId=%d waMessageId=%s timestamp=%v error=%w", message.CustomerId, userPhoneNumber.Id, message.WAMessageId, message.Timestamp, err)
+	}
+	if err := transaction.CommitTransaction(); err != nil {
+		return fmt.Errorf("failed to commit transaction error=%w", err)
+	}
+	committed = true
 	return nil
 }
 

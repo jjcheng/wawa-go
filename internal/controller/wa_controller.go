@@ -105,6 +105,7 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[*service.AgentTestResponse, feature_wa_business_agent.Test](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentSetting, feature_wa_business_agent.GetSetting](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentSetting, feature_wa_business_agent.UpdateSetting](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.PassControl](routerGroup, dependencies, apiGenerator)
 }
 
 func registerCreateAgentFileRoute(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {

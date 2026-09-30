@@ -20,7 +20,7 @@ import (
 type Test struct {
 	PhoneNumberId  int32  `form:"phone_number_id" val:"required" description:"id of the phone number"`
 	UserMessage    string `json:"user_message" val:"required" description:"user's latest message"`
-	ConversationId string `json:"conversation_id" val:"required" description:"id of the conversation"`
+	ConversationId string `json:"conversation_id" description:"id of the conversation, empty if it's a new conversation"`
 }
 
 func (test *Test) Validate() []exception.InputException {
@@ -33,9 +33,6 @@ func (test *Test) Validate() []exception.InputException {
 		inputErrors = append(inputErrors, exception.NewInputException("user_message", "missing user message"))
 	}
 	test.ConversationId = strings.TrimSpace(test.ConversationId)
-	if test.ConversationId == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("conversation_id", "missing conversation ID"))
-	}
 	return inputErrors
 }
 

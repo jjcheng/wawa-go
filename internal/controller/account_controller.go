@@ -11,7 +11,6 @@ import (
 )
 
 func registerAccountController(routerGroup *gin.RouterGroup, dependencies *service.Dependencies, apiGenerator *feature.APIGenerator) {
-	registerRoute[*feature_account_user.Dashboard, feature_account_user.GetDashboard](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_account.User, feature_account_user.UpdateProfile](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_account.User, feature_account_user.ChangePassword](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_account.User, feature_account_user.SetPassword](routerGroup, dependencies, apiGenerator)

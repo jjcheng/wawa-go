@@ -245,10 +245,10 @@ func (setting *AgentSetting) Validate() []exception.InputException {
 	setting.Followup.Message = strings.TrimSpace(setting.Followup.Message)
 	setting.Handoff.Message = strings.TrimSpace(setting.Handoff.Message)
 	var errors []exception.InputException
-	if setting.Followup.Message == "" {
+	if setting.Followup.Enabled && setting.Followup.Message == "" {
 		errors = append(errors, exception.NewInputException("followup.message", "missing followup message"))
 	}
-	if setting.Handoff.Message == "" {
+	if setting.Handoff.Enabled && setting.Handoff.Message == "" {
 		errors = append(errors, exception.NewInputException("handoff.message", "missing handoff message"))
 	}
 	//300, 900, 1800, 3600, 7200, 28800, 86400
@@ -421,7 +421,7 @@ func (facebook *Facebook) CreateAgentFile(ctx context.Context, metaPhoneNumberId
 		}
 	}
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return nil, facebook.parseAPIError(response.StatusCode, &responseText)
+		return nil, facebook.parseAPIError(response.StatusCode, &responseText, false)
 	}
 	var agentFile AgentFile
 	if err := json.Unmarshal(responseBody, &agentFile); err != nil {
@@ -603,6 +603,24 @@ func (facebook *Facebook) TurnAgentOnOff(ctx context.Context, metaPhoneNumberId 
 	return nil
 }
 
+func (facebook *Facebook) PassControl(ctx context.Context, metaPhoneNumberId string, waId string, businessAccessToken string, toAgent bool) error {
+	endpoint := fmt.Sprintf("%s/business/whatsapp/phone_numbers/%s/thread_control", facebook.baseURL, metaPhoneNumberId)
+	body := map[string]any{
+		"messaging_product": "whatsapp",
+	}
+	if toAgent {
+		body["action"] = "release"
+		body["to"] = waId
+	} else {
+		body["action"] = "take"
+		body["to"] = waId
+	}
+	if err := facebook.doRequest(ctx, "pass_control", http.MethodPost, endpoint, body, nil, businessAccessToken); err != nil {
+		return err
+	}
+	return nil
+}
+
 // #endregion
 
 func (facebook *Facebook) doRequest(ctx context.Context, requestType string, method string, endpoint string, payload any, target any, businessAccessToken string) error {
@@ -614,7 +632,13 @@ func (facebook *Facebook) doRequest(ctx context.Context, requestType string, met
 	if userAgent := helper.GetUserAgent(ctx); userAgent != nil && strings.TrimSpace(*userAgent) != "" {
 		headers["User-Agent"] = *userAgent
 	}
-	headers["X-API-Version"] = "2.0.0"
+	// skip those still in 1.0.0
+	var v1 bool
+	if requestType != "pass_control" {
+		headers["X-API-Version"] = "2.0.0"
+	} else {
+		v1 = true
+	}
 	var bodyMap *map[string]any
 	if payload != nil {
 		data, err := json.Marshal(payload)
@@ -642,7 +666,7 @@ func (facebook *Facebook) doRequest(ctx context.Context, requestType string, met
 		// 		return &WhatsAppRateLimitError{RetryAfterSeconds: retryAfterSeconds}
 		// 	}
 		// }
-		return facebook.parseAPIError(statusCode, responseBody)
+		return facebook.parseAPIError(statusCode, responseBody, v1)
 	}
 	if target == nil || responseBody == nil || strings.TrimSpace(*responseBody) == "" {
 		return nil
@@ -653,15 +677,23 @@ func (facebook *Facebook) doRequest(ctx context.Context, requestType string, met
 	return nil
 }
 
-func (facebook *Facebook) parseAPIError(statusCode int, responseBody *string) error {
+func (facebook *Facebook) parseAPIError(statusCode int, responseBody *string, v1 bool) error {
 	if responseBody == nil || strings.TrimSpace(*responseBody) == "" {
 		return fmt.Errorf("Facebook API request failed with status %d", statusCode)
 	}
-	parsed, err := helper.DeserializeJSON[APIErrorResponse](*responseBody)
-	if err != nil || parsed == nil {
-		return fmt.Errorf("Facebook API request failed with status %d: %s", statusCode, strings.TrimSpace(*responseBody))
+	if v1 {
+		parsed, err := helper.DeserializeJSON[*APIErrorResponseV1](*responseBody)
+		if err != nil || parsed == nil {
+			return fmt.Errorf("Facebook API request failed with status %d: %s", statusCode, strings.TrimSpace(*responseBody))
+		}
+		return *parsed
+	} else {
+		parsed, err := helper.DeserializeJSON[*APIErrorResponse](*responseBody)
+		if err != nil || parsed == nil {
+			return fmt.Errorf("Facebook API request failed with status %d: %s", statusCode, strings.TrimSpace(*responseBody))
+		}
+		return *parsed
 	}
-	return parsed
 }
 
 // error
@@ -675,6 +707,21 @@ type APIErrorResponse struct {
 
 func (apiErrorResponse *APIErrorResponse) Error() string {
 	return fmt.Sprintf("Facebook API Error: %s\n%s", apiErrorResponse.Title, apiErrorResponse.Detail)
+}
+
+type APIErrorResponseV1 struct {
+	ErrorV1 APIErrorResponseV1Error `json:"error"`
+}
+
+type APIErrorResponseV1Error struct {
+	Message   string `json:"message"`
+	Code      int    `json:"code"`
+	Type      string `json:"type"`
+	FBTraceId string `json:"fbtrace_id"`
+}
+
+func (apiErrorResponseV1 APIErrorResponseV1) Error() string {
+	return apiErrorResponseV1.ErrorV1.Message
 }
 
 func (facebook *Facebook) saveRawResponse(requestType string, endpoint string, method string, requestBody any, responseBody string) error {
