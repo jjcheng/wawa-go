@@ -4,7 +4,7 @@ WAWAGO is an open source WhatsApp based messaging system. The name comes from _W
 
 ## Background
 
-Today's SAAS solutions are getting fancier and facier, most of the micro-small companies, sole priprtors who do not have enough manpower or time, find them overly complicated, too expensive and full of irelevant features. As a result they keep their traditional ways of conducting business. However, as AI coding gets 普及的, software development and maintenance cost has come down drastically. I argue that today's SAAS solutions should be cheap to free, offering the 20% essential functionalities, thus enticing an expanded group of potential users who previously relucant to onboard. While running the software may not be profitable, bulding and solving problems to this new group by business is potentially extremely valuable.
+Today's SAAS solutions are getting fancier and facier, most of the micro-small companies, sole priprtors who do not have enough manpower or time, find them overly complicated, too expensive and full of irelevant features. As a result they keep their traditional ways of conducting business. However, as AI coding gets popular, software development cost has come down drastically. I argue that today's SAAS solutions should be cheap to free, offering the 20% essential functionalities, thus enticing an expanded group of potential users who previously relucant to onboard. While running the software may not be profitable, bulding and solving problems to this new group by business is potentially extremely valuable.
 
 WAWAGO is such a simple WhatsApp messaging system which only covers the most essential features such a system should have. I spent slightly over 1 month time building it. The front end of this project WAWAWEB is written in react+next.js, it is 100% AI coded (I have no piror knowledge of react projects). The back end of this project WAWAGO is about 30% assisted by AI.
 
@@ -47,10 +47,11 @@ WAWAGO is primarily running on Alibaba Cloud.
 - Database is running on Aliabab RDS Serverless for Postgres, structure is in migration folder
 - Object storage is on Alibaba OSS
 - Real time messages are pushed through Ably
+- Captcha check via Cloudflare Turnstile
 - Caching is done using Postgres unlogged table instead of Redis, to save cost
 - Logging is through built-in golang slog
 
-The reason to invoke the Worker always by SMQ is for fail-safe auto retry and throtling purposes.
+The reason to invoke the Worker always by SMQ is for fail-safe auto retry and throttling purposes.
 
 ## Encryption and Secret Protection
 
@@ -73,8 +74,7 @@ The API description is generated from the same request objects used to register 
 
 ## Database Migration
 
-Migration files live in [`migration/`](migration/). The initial schema is in `000001_schema.up.sql` and its rollback is in `000001_schema.down.sql`. Migrations are applied with the `golang-migrate` CLI and use a dedicated migration database configuration when needed.
-
+Migration files live in [`migration/`](migration/). 
 Useful database commands are:
 
 ```sh
@@ -85,20 +85,6 @@ make deploy-staging-db      # Apply migrations to the configured staging databas
 
 ## Local Development
 
-### Prerequisites
-
-- Go `1.25.4` or newer.
-- PostgreSQL with the extensions required by the migration.
-- A populated environment source file `.env.local`.
-- Credentials for any external services needed by the feature being exercised.
-
-Generate the working `.env` file from an environment source:
-
-```sh
-make env
-make env target=staging
-```
-
 Run the API, worker, or CLI locally:
 
 ```sh
@@ -107,19 +93,9 @@ make run-worker
 make run-cli
 ```
 
-The API listens on `http://localhost:9000` by default. Check `GET /health` for the running version and environment. In development, the generated API document is available at `www/api-doc.json` and the Gin pprof routes are registered.
-
-Run the repository checks with:
-
-```sh
-make test
-```
-
-This runs `go vet ./...` and the controller package tests. Focused package tests can be run directly with `go test ./...`.
-
 ## Deployment
 
-Staging deployments target Aliyun Function Compute in `ap-southeast-1`. Please make sure you have the necessary services setup already in Alibaba Cloud and Ably.
+Staging deployments target Aliyun Function Compute in `ap-southeast-1`. Please make sure you have the necessary services setup already in Alibaba Cloud, Ably and Cloudflare.
 
 Deploy the individual functions with:
 

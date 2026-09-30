@@ -162,10 +162,10 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		User:        finalUser,
 		PhoneNumber: storePhoneNumberResponse.Data,
 	}
-	// for new user, create todos
+	// for new user, create tasks
 	if storeUserResponse.Data != nil && storeUserResponse.Data.New {
 		// interact with customer
-		if html, err := helper.ReadFromFile("www/todos/chat_with_customer.html"); err == nil {
+		if html, err := helper.ReadFromFile("www/tasks/chat_with_customer.html"); err == nil {
 			createNotification := feature_account_notification.Create{
 				Category: types.NotificationCategoryPending,
 				IconType: types.NotificationIconTypeChat,
@@ -179,7 +179,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 		}
 		if storeUserResponse.Data.Type == types.UserTypeMaster {
 			// create websites
-			if html, err := helper.ReadFromFile("www/todos/create_websites.html"); err == nil {
+			if html, err := helper.ReadFromFile("www/tasks/create_websites.html"); err == nil {
 				createNotification := feature_account_notification.Create{
 					Category: types.NotificationCategoryPending,
 					IconType: types.NotificationIconTypeWebsite,
@@ -192,7 +192,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// broadcast to customers
-			if html, err := helper.ReadFromFile("www/todos/broadcast_to_customers.html"); err == nil {
+			if html, err := helper.ReadFromFile("www/tasks/broadcast_to_customers.html"); err == nil {
 				createNotification := feature_account_notification.Create{
 					Category: types.NotificationCategoryPending,
 					Type:     types.NotificationTypeInfo,
@@ -205,7 +205,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// create templates
-			if html, err := helper.ReadFromFile("www/todos/create_templates.html"); err == nil {
+			if html, err := helper.ReadFromFile("www/tasks/create_templates.html"); err == nil {
 				createNotification := feature_account_notification.Create{
 					Category: types.NotificationCategoryPending,
 					Type:     types.NotificationTypeInfo,
@@ -218,7 +218,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// add customers
-			if html, err := helper.ReadFromFile("www/todos/add_customers.html"); err == nil {
+			if html, err := helper.ReadFromFile("www/tasks/add_customers.html"); err == nil {
 				createNotification := feature_account_notification.Create{
 					Category: types.NotificationCategoryPending,
 					Type:     types.NotificationTypeInfo,
@@ -231,7 +231,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// onbard more members
-			if html, err := helper.ReadFromFile("www/todos/onboard_phone_numbers.html"); err == nil {
+			if html, err := helper.ReadFromFile("www/tasks/onboard_phone_numbers.html"); err == nil {
 				createNotification := feature_account_notification.Create{
 					Category: types.NotificationCategoryPending,
 					IconType: types.NotificationIconTypeJoin,
@@ -245,7 +245,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 			}
 		} else {
 			// broadcast to customers
-			if html, err := helper.ReadFromFile("www/todos/broadcast_to_customers.html"); err == nil {
+			if html, err := helper.ReadFromFile("www/tasks/broadcast_to_customers.html"); err == nil {
 				createNotification := feature_account_notification.Create{
 					Category: types.NotificationCategoryPending,
 					Type:     types.NotificationTypeInfo,
@@ -258,7 +258,7 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 				_ = createNotification.Handle(ctx, dependencies)
 			}
 			// add customers
-			if html, err := helper.ReadFromFile("www/todos/add_customers.html"); err == nil {
+			if html, err := helper.ReadFromFile("www/tasks/add_customers.html"); err == nil {
 				createNotification := feature_account_notification.Create{
 					Category: types.NotificationCategoryPending,
 					Type:     types.NotificationTypeInfo,

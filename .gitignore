@@ -24,9 +24,8 @@ dist/
 main
 temp/
 .env
-.env.local*
-.env.cloud
-.env.staging
+.env.*
+!.env.template
 main
 __debug_bin*
 profiles/profile*
