@@ -104,6 +104,8 @@ CREATE TABLE "wa"."phone_numbers" (
   "display_phone_number_encrypted" text NOT NULL,
   "wa_id_encrypted" text NOT NULL,
   "wa_id_hash" text NOT NULL,
+  "meta_agent_id" text NOT NULL,
+  "agent_running" boolean NOT NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "phone_numbers_business_account_id_fkey" FOREIGN KEY ("business_account_id") REFERENCES "wa"."business_accounts" ("id") ON UPDATE CASCADE ON DELETE RESTRICT
 );
@@ -129,6 +131,7 @@ CREATE TABLE "customer"."customers" (
   "imported_phone_number_hash" text NOT NULL,
   "phone_number_id" integer NOT NULL,
   "from_incoming_message" boolean NOT NULL,
+  "agent_running" boolean NOT NULL,
   PRIMARY KEY ("id"),
   CONSTRAINT "customers_phone_number_id_fkey" FOREIGN KEY ("phone_number_id") REFERENCES "wa"."phone_numbers" ("id") ON UPDATE CASCADE ON DELETE RESTRICT
 );
