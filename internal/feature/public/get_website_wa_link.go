@@ -157,8 +157,8 @@ func (getWebsiteWALink *GetWebsiteWALink) getNextActiveUser(ctx context.Context,
 
 func (GetWebsiteWALink) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get WhatsApp link of the website",
-		"Use rotation strategy to get the next user's WhatsApp link for the website.",
+		"Get WhatsApp link of the public website",
+		"Use rotation strategy to get the next user's WhatsApp link for the public website.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/public/wa-link",

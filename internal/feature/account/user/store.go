@@ -171,7 +171,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 }
 
 func (Store) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Create or update a user", "Allow user to login using password", types.HttpRequestTypeJSON, "POST", "/v1/account/users", true, false, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Create or update a user", "Allow user to login using password", types.HttpRequestTypeJSON, "POST", "/v1/account/users", true, true, types.APITagUser, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("phone number already exists", http.StatusConflict)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

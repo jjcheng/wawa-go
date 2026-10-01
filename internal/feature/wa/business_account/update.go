@@ -74,8 +74,8 @@ func (Update) APISettings() feature.APISettings {
 		http.MethodPatch,
 		"/v1/wa/business-accounts",
 		true,
-		false,
-		types.APITagAccount,
+		true,
+		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("business portfolio not found", http.StatusNotFound)),

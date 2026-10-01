@@ -39,13 +39,13 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp business account",
-		"Gets a WhatsApp business account by its WABA ID.",
+		"Get a WhatsApp business account by its WABA ID.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/wa/business-accounts",
 		true,
-		false,
-		types.APITagAccount,
+		true,
+		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("business account not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),

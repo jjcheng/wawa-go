@@ -51,8 +51,8 @@ func (listSets ListSets) Handle(ctx context.Context, _ *dto_account.User, depend
 
 func (ListSets) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List product sets",
-		"Lists product sets for a user website.",
+		"List product sets in a public website",
+		"List all product sets in a public website.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/public/sets",

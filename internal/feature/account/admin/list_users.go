@@ -70,13 +70,13 @@ func (listUsers ListUsers) Handle(ctx context.Context, user *dto_account.User, d
 func (ListUsers) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List all users",
-		"Lists all users in the business account. Only master users can access this endpoint.",
+		"List all users in the business account. Only master users can access this endpoint.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/admin/users",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagAdmin,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),

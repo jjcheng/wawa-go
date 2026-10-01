@@ -81,7 +81,7 @@ func (setUserStatus SetUserStatus) Handle(ctx context.Context, user *dto_account
 }
 
 func (SetUserStatus) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Admin update user status", "Enable or disable a user. Only admin can update user status.", types.HttpRequestTypeJSON, "PATCH", "/v1/admin/user-status", true, false, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Update user status", "Enable or disable a user. Only master users can access this endpoint", types.HttpRequestTypeJSON, "PATCH", "/v1/admin/user-status", true, true, types.APITagAdmin, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("you cannot update status of yourself", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),

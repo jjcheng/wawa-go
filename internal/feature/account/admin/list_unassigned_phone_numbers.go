@@ -43,14 +43,14 @@ func (list ListUnassignedPhoneNumbers) Handle(ctx context.Context, user *dto_acc
 
 func (ListUnassignedPhoneNumbers) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List unassigned WhatsApp phone numbers",
-		"Lists WhatsApp phone numbers in the business account that are not assigned to a user.",
+		"List unassigned phone numbers",
+		"List all phone numbers in the business account that are not assigned to any user. Only master users can access this endpoint",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/admin/unassigned-phone-numbers",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagAdmin,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),

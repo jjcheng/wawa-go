@@ -56,8 +56,8 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get customer",
-		"Gets a customer by ID.",
+		"Get a customer",
+		"Get a customer by ID.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/customers/:id",

@@ -75,8 +75,8 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Delete customers",
-		"Deletes customers for the authenticated user.",
+		"Delete a customers",
+		"Delete a customer, only MASTER user can access this endpoint.",
 		types.HttpRequestTypeJSON,
 		http.MethodDelete,
 		"/v1/customers",

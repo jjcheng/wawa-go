@@ -57,8 +57,8 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 
 func (Receive) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Webhook to receive incoming WhatsApp events",
-		"Receives incoming WhatsApp webhook events and pushes incoming messages into the queue.",
+		"To receive incoming WhatsApp events",
+		"Receive incoming WhatsApp webhook events and pushes them into the queue.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/wa/receive",

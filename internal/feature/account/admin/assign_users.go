@@ -82,14 +82,14 @@ func (assignUsers AssignUsers) Handle(ctx context.Context, user *dto_account.Use
 
 func (AssignUsers) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Assign users to phone number",
-		"Replaces the users managing a phone number in the authenticated business account.",
+		"Assign users to a phone number",
+		"Assign or remove the users managing a phone number. Only master users can access this endpoint",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/admin/assign-users",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagAdmin,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),

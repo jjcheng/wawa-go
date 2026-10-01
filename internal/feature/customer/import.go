@@ -229,7 +229,7 @@ func (contact Contact) AdditionalData() map[string]any {
 func (Import) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Import customers",
-		"Imports contacts and stores profile details in additional data.",
+		"Import contacts and stores for a list of customers.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/customers/import",

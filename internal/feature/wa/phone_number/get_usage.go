@@ -97,12 +97,12 @@ func (getUsage GetUsage) Handle(ctx context.Context, user *dto_account.User, dep
 func (GetUsage) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp phone number usage",
-		"Gets message delivery usage for phone numbers in a WhatsApp Business Account.",
+		"Get message delivery usage for phone numbers by WhatsApp API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/phone-numbers/usage",
 		true,
-		false,
+		true,
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),

@@ -69,14 +69,14 @@ func (getUser GetUser) Handle(ctx context.Context, user *dto_account.User, depen
 
 func (GetUser) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get account user",
-		"Gets a user belonging to the authenticated user's business account.",
+		"Get a user",
+		"Gets a user by id. Only master users can access this endpoint",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/admin/users/:id",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagAdmin,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),

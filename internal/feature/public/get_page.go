@@ -52,8 +52,8 @@ func (getPage GetPage) Handle(ctx context.Context, _ *dto_account.User, dependen
 
 func (GetPage) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get public website page",
-		"Gets a page from a public website.",
+		"Get a public website page",
+		"Get a page from a public website.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/public/page",

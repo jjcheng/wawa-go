@@ -59,7 +59,7 @@ func (getLocal GetLocal) Handle(ctx context.Context, user *dto_account.User, dep
 func (GetLocal) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get local WhatsApp phone number",
-		"Gets a WhatsApp phone number from the local database without fetching its current Meta status.",
+		"Get a WhatsApp phone number from the local database without calling WhatsApp API.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/wa/phone-numbers/:id/local",

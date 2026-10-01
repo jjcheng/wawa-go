@@ -77,7 +77,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Remove WhatsApp phone number",
-		"Removes an assigned WhatsApp phone number from WhatsApp and the local account.",
+		"Removes an assigned WhatsApp phone number from WhatsApp and the local account. Meta does not allow removing phone number via API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeUri,
 		http.MethodDelete,
 		"/v1/wa/phone-numbers/:id",

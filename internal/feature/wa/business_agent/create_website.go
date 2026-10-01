@@ -81,7 +81,7 @@ func (CreateWebsite) APISettings() feature.APISettings {
 		"/v1/wa/business-agent/websites",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagBusinessAgent,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),

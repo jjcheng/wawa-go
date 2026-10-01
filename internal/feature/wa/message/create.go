@@ -325,7 +325,7 @@ func messagePayload(message Create) (map[string]any, error) {
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Send WhatsApp message",
-		"Sends a WhatsApp message from a phone number available to the authenticated user.",
+		"Send a WhatsApp message from a phone number available to the user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/wa/messages",

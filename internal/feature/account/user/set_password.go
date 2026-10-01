@@ -69,7 +69,7 @@ func (setPassword SetPassword) Handle(ctx context.Context, user *dto_account.Use
 }
 
 func (SetPassword) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Set initial password", "Set the first password for a user created by WhatsApp embedded signup", types.HttpRequestTypeJSON, http.MethodPatch, "/v1/account/users/me/initial-password", true, true, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Set initial password", "Set the first password for a user created by WhatsApp embedded signup", types.HttpRequestTypeJSON, http.MethodPatch, "/v1/account/users/me/initial-password", true, true, types.APITagUser, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("password is already set, use change password instead", http.StatusConflict)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

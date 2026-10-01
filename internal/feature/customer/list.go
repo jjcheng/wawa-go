@@ -76,7 +76,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List customers",
-		"Lists customers for the authenticated user.",
+		"List all customers for the user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/customers",

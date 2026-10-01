@@ -32,8 +32,8 @@ func (ping Ping) Handle(ctx context.Context, _ *dto_account.User, dependencies *
 
 func (Ping) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Ping a custom website",
-		"Will return the website object based on domain name.",
+		"Ping a public website",
+		"Return the website object based on domain name.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/public/ping",

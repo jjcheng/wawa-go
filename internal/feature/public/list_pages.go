@@ -42,7 +42,7 @@ func (listPages ListPages) Handle(ctx context.Context, _ *dto_account.User, depe
 func (ListPages) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List public website pages",
-		"Lists pages for a public website.",
+		"List all pages for a public website.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/public/pages",

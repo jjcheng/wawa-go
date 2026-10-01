@@ -56,8 +56,8 @@ func (getByMetaCatalogId GetByMetaCatalogId) Handle(ctx context.Context, user *d
 
 func (GetByMetaCatalogId) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get commerce website by catalog",
-		"Gets the website stored for a Meta catalog.",
+		"Get a website by catalog",
+		"Get awebsite stored by a Meta catalog.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/commerce/websites/by-meta-catalog-id",

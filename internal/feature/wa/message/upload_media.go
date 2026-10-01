@@ -73,7 +73,7 @@ func (upload UploadMedia) Handle(ctx context.Context, user *dto_account.User, de
 func (UploadMedia) APISettings() feature.APISettings {
 	return feature.NewBinaryAPISettings(
 		"Upload WhatsApp media",
-		"Uploads raw media bytes to OSS or Meta. Meta uploads return a media ID; OSS uploads return a permanent URL.",
+		"Upload raw media bytes to OSS or Meta. Meta uploads return a media ID; OSS uploads return a permanent URL.",
 		types.HttpRequestTypeQuery,
 		http.MethodPost,
 		"/v1/wa/media",

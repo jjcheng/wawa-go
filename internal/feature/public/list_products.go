@@ -75,7 +75,7 @@ func (listProducts ListProducts) Handle(ctx context.Context, _ *dto_account.User
 func (ListProducts) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List public website products",
-		"Lists products in a generic product set.",
+		"List products in a set of a public website.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/public/generic-products",

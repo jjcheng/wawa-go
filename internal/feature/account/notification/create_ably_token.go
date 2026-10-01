@@ -38,14 +38,14 @@ func (createAblyToken CreateAblyToken) Handle(ctx context.Context, user *dto_acc
 
 func (CreateAblyToken) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Create WhatsApp notification token",
-		"Creates a short-lived Ably token restricted to subscribe and presence on site notification.",
+		"Create realtime notification token in Ably",
+		"Creates a short-lived Ably token restricted to subscribe and presence on site-wide notification.",
 		types.HttpRequestTypeNone,
 		http.MethodPost,
 		"/v1/account/notifications/token",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagNotification,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 		},

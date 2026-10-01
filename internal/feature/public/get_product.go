@@ -61,8 +61,8 @@ func (getProduct GetProduct) Handle(ctx context.Context, _ *dto_account.User, de
 
 func (GetProduct) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get public product",
-		"Gets a product from a commerce product set.",
+		"Get a website product",
+		"Get a product belong to a public website.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/public/products/:id",

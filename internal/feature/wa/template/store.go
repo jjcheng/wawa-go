@@ -102,7 +102,7 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 func (Store) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create or update WhatsApp template",
-		"Creates a WhatsApp message template, or updates its category and components when an ID is supplied. Name and language cannot be changed.",
+		"Create a WhatsApp message template, or updates its category and components when an ID is supplied. Name and language cannot be changed. Using WhatsApp API",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/wa/templates",

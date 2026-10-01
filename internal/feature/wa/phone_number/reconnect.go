@@ -75,12 +75,12 @@ func (reconnect Reconnect) Handle(ctx context.Context, user *dto_account.User, d
 func (Reconnect) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Reconnect WhatsApp phone number",
-		"Registers a disconnected phone number again with WhatsApp Cloud API.",
+		"Registers a disconnected phone number again with WhatsApp API.",
 		types.HttpRequestTypeUri,
 		http.MethodPost,
 		"/v1/wa/phone-numbers/:id/reconnect",
 		true,
-		false,
+		true,
 		types.APITagWA,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),

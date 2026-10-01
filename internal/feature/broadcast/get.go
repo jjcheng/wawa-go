@@ -49,14 +49,14 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get WhatsApp broadcast",
-		"Gets a broadcast belonging to the authenticated user.",
+		"Get a broadcast",
+		"Get a broadcast belonging to the user.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/broadcasts/:id",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagBroadcast,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),

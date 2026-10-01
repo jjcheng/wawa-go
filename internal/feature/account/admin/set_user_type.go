@@ -72,7 +72,7 @@ func (setUserType SetUserType) Handle(ctx context.Context, user *dto_account.Use
 }
 
 func (SetUserType) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Admin update user type", "Set user to MASTER or OPERATOR. Only admin can set user type.", types.HttpRequestTypeJSON, "PATCH", "/v1/admin/user-type", true, false, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Set user type", "Set user to MASTER or OPERATOR. Only master users can access this endpoint", types.HttpRequestTypeJSON, "PATCH", "/v1/admin/user-type", true, true, types.APITagAdmin, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("you cannot update status of yourself", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),

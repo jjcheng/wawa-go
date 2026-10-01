@@ -31,5 +31,5 @@ func (logout Logout) Handle(ctx context.Context, user *dto_account.User, depende
 }
 
 func (Logout) APISettings() feature.APISettings {
-	return feature.NewAPISettings("User logout", "Ends the authenticated user's session", types.HttpRequestTypeJSON, http.MethodPost, "/v1/auth/logout", true, false, types.APITagAuth, nil)
+	return feature.NewAPISettings("User logout", "Ends the authenticated user's session", types.HttpRequestTypeJSON, http.MethodPost, "/v1/auth/logout", true, true, types.APITagAuth, nil)
 }

@@ -46,7 +46,7 @@ func (listNavbarItems ListNavbarItems) Handle(ctx context.Context, _ *dto_accoun
 func (ListNavbarItems) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List public website navigation items",
-		"Lists titles of pages shown in a public website navigation bar.",
+		"List all pages shown in a public website navigation bar.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/public/navbar-items",

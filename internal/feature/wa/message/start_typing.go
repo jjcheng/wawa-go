@@ -69,7 +69,7 @@ func (startTyping StartTyping) Handle(ctx context.Context, user *dto_account.Use
 func (StartTyping) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Start WhatsApp typing indicator",
-		"Starts the typing indicator for a WhatsApp message owned by the authenticated user.",
+		"Start the typing indicator for a WhatsApp message by the user.",
 		types.HttpRequestTypeQuery,
 		http.MethodPost,
 		"/v1/wa/messages/start-typing",

@@ -92,7 +92,7 @@ func (getMedia GetMedia) Handle(ctx context.Context, user *dto_account.User, dep
 func (GetMedia) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp media",
-		"Downloads WhatsApp media, persists it and returns its permanent URL.",
+		"Download WhatsApp media, persists it and returns its permanent URL.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/media",

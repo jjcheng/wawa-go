@@ -67,8 +67,8 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Delete commerce website page",
-		"Deletes a page belonging to a website in the authenticated user's business account.",
+		"Delete a website page",
+		"Delete a page belonging to a website in the business account.",
 		types.HttpRequestTypeUri,
 		http.MethodDelete,
 		"/v1/commerce/pages/:id",

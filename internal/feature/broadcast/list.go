@@ -53,14 +53,14 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List WhatsApp broadcasts",
-		"Lists broadcasts belonging to the authenticated user.",
+		"List all broadcasts",
+		"List all broadcasts belonging to the user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/broadcasts",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagBroadcast,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

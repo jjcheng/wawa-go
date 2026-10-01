@@ -57,7 +57,7 @@ func (deleteUser DeleteUser) Handle(ctx context.Context, user *dto_account.User,
 }
 
 func (DeleteUser) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Delete user", "Delete a user by id. Only MASTER can delete non-MASTER users.", types.HttpRequestTypeUri, "DELETE", "/v1/admin/users/:id", true, true, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Delete a user", "Delete a user by id. Only MASTER can delete non-MASTER users.", types.HttpRequestTypeUri, "DELETE", "/v1/admin/users/:id", true, true, types.APITagAdmin, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("master user cannot be deleted", http.StatusBadRequest)),
 	})
 }

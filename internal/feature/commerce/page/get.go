@@ -59,8 +59,8 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get commerce website page",
-		"Gets a page belonging to a website in the authenticated user's business account.",
+		"Get a website page",
+		"Get a page belonging to a website in the business account.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/commerce/pages/:id",

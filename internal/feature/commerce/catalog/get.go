@@ -53,8 +53,8 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get catalog",
-		"Gets a catalog belonging to the authenticated user's business account.",
+		"Get a catalog",
+		"Get a catalog belonging to the business account.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/commerce/catalogs/:id",

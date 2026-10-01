@@ -52,13 +52,13 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List notifications",
-		"List notifications for the authenticated user.",
+		"List notifications for the user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/account/notifications",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagNotification,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

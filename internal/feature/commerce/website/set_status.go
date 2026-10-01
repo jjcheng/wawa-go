@@ -58,8 +58,8 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 
 func (SetStatus) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Set commerce website status",
-		"Updates the status of a website belonging to the authenticated user's business account.",
+		"Set website status",
+		"Set the status of a website in the business account.",
 		types.HttpRequestTypeUriQuery,
 		http.MethodPatch,
 		"/v1/commerce/websites/:id/status",

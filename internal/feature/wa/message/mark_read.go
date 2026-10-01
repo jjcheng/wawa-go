@@ -63,7 +63,7 @@ func (markRead MarkRead) Handle(ctx context.Context, user *dto_account.User, dep
 func (MarkRead) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Mark WhatsApp message as read",
-		"Marks a WhatsApp message as read for the authenticated user.",
+		"Mark a WhatsApp message as read by user.",
 		types.HttpRequestTypeQuery,
 		http.MethodPost,
 		"/v1/wa/messages/mark-read",

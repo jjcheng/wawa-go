@@ -74,7 +74,7 @@ func (changePassword ChangePassword) Handle(ctx context.Context, user *dto_accou
 }
 
 func (ChangePassword) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Change password", "Change the logged in user's password", types.HttpRequestTypeJSON, http.MethodPatch, "/v1/account/users/me/password", true, true, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Change password", "Change the logged in user's password", types.HttpRequestTypeJSON, http.MethodPatch, "/v1/account/users/me/password", true, true, types.APITagUser, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("invalid old password", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

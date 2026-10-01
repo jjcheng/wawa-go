@@ -214,13 +214,13 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Start a broadcast",
-		"Start a pending broadcast by the authenticated user.",
+		"Start a pending broadcast by the user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/broadcasts",
 		true,
 		true,
-		types.APITagCustomer,
+		types.APITagBroadcast,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("error seralizing template data", http.StatusInternalServerError)),
 			feature.NewAPIError(*exception.NewCustomException("one or more customers were not found", http.StatusBadRequest)),

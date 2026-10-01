@@ -97,8 +97,8 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Create commerce website page",
-		"Creates a page for a website in the authenticated user's business account.",
+		"Create a website page",
+		"Create a page for a website in the business account.",
 		types.HttpRequestTypeUriJSON,
 		http.MethodPost,
 		"/v1/commerce/websites/:id/pages",

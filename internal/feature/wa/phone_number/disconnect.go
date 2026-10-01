@@ -85,7 +85,7 @@ func (disconnect Disconnect) Handle(ctx context.Context, user *dto_account.User,
 func (Disconnect) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Deregister WhatsApp phone number",
-		"Deregisters a phone number from WhatsApp Cloud API.",
+		"Deregisters a phone number from WhatsApp API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeUri,
 		http.MethodPost,
 		"/v1/wa/phone-numbers/:id/disconnect",

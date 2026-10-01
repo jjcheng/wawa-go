@@ -48,14 +48,14 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 
 func (SetStatus) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Set notification read status",
-		"Marks a notification as read or unread for the authenticated user.",
+		"Set notifications read status",
+		"Marks one or more notification as read or unread for the authenticated user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPatch,
 		"/v1/account/notifications/status",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagNotification,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("notification not found", http.StatusNotFound)),

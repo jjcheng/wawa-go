@@ -75,7 +75,7 @@ func (list ListSets) Handle(ctx context.Context, user *dto_account.User, depende
 func (ListSets) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List WhatsApp catalog product sets",
-		"Lists product sets in a Meta commerce catalog.",
+		"List product sets in a Meta commerce catalog by Meta API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/wa/catalogs/:id/sets",

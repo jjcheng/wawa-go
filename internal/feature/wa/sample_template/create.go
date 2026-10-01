@@ -62,7 +62,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create WhatsApp sample template",
-		"Creates a locally stored WhatsApp template sample used by your app.",
+		"Create a locally stored WhatsApp template sample to be used by other users.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/wa/sample-templates",

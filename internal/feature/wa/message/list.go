@@ -123,7 +123,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List WhatsApp messages",
-		"Lists messages for a customer and WhatsApp business phone number.",
+		"List messages for a customer.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/messages",

@@ -70,13 +70,13 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List broadcast recipients",
-		"Lists recipients belonging to an authenticated user's broadcast.",
+		"List all recipients belonging to a broadcast.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/broadcasts/recipients",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagBroadcast,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

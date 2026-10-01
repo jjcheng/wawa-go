@@ -40,8 +40,8 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List commerce websites",
-		"Lists websites stored for the authenticated user's business account.",
+		"List all websites",
+		"List all websites in the business account.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/commerce/websites",

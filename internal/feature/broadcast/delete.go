@@ -57,14 +57,14 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Delete WhatsApp broadcast",
-		"Deletes a cancelled broadcast belonging to the authenticated user.",
+		"Delete a broadcast",
+		"Delete a cancelled broadcast belonging to the user.",
 		types.HttpRequestTypeUri,
 		http.MethodDelete,
 		"/v1/broadcasts/:id",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagBroadcast,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("only cancelled broadcasts can be deleted", http.StatusBadRequest)),

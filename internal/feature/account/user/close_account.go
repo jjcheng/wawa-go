@@ -156,14 +156,14 @@ func (closeAccount CloseAccount) Handle(ctx context.Context, user *dto_account.U
 
 func (CloseAccount) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Close account",
+		"Close user's account",
 		"Delete everything of the user from DB",
 		types.HttpRequestTypeJSON,
 		http.MethodDelete,
 		"/v1/account/users/me",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagUser,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

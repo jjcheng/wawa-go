@@ -99,8 +99,8 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Update commerce website",
-		"Updates the profile information of a website belonging to the authenticated user's business account.",
+		"Update a website",
+		"Update the profile information of a website in the business account.",
 		types.HttpRequestTypeUriJSON,
 		http.MethodPatch,
 		"/v1/commerce/websites/:id",

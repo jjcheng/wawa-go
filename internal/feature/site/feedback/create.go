@@ -51,7 +51,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create site feedback",
-		"Creates feedback from the authenticated user.",
+		"Create feedback from the user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/site/feedback",

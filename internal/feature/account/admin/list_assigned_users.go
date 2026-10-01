@@ -53,14 +53,14 @@ func (list ListAssignedUsers) Handle(ctx context.Context, user *dto_account.User
 
 func (ListAssignedUsers) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List users assigned to phone number",
-		"Lists users assigned to a phone number in the authenticated business account.",
+		"List users assigned to a phone number",
+		"List all users assigned to a phone number. Only master users can access this endpoint",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/admin/assigned-users",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagAdmin,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),

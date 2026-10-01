@@ -48,7 +48,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp template",
-		"Gets a WhatsApp message template by its Meta ID.",
+		"Get a WhatsApp message template by its Meta ID by WhatsApp API.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/wa/templates/:id",

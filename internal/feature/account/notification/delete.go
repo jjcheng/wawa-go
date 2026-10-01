@@ -45,14 +45,14 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Delete notification",
-		"Deletes a notification belonging to the authenticated user.",
+		"Delete a notification",
+		"Deletes a notification of the user.",
 		types.HttpRequestTypeJSON,
 		http.MethodDelete,
 		"/v1/account/notifications",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagNotification,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("notification not found", http.StatusNotFound)),

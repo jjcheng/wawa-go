@@ -36,13 +36,13 @@ func (getUnreadCount GetUnreadCount) Handle(ctx context.Context, user *dto_accou
 func (GetUnreadCount) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get unread notification count",
-		"Gets the number of unread notifications for the authenticated user.",
+		"Gets the number of unread notifications for the user.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/account/notifications/unread-count",
 		true,
 		true,
-		types.APITagAccount,
+		types.APITagNotification,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),

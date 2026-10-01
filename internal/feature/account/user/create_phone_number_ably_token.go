@@ -48,14 +48,14 @@ func (createPhoneNumberAblyToken CreatePhoneNumberAblyToken) Handle(ctx context.
 
 func (CreatePhoneNumberAblyToken) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Create phone number Ably token",
-		"Creates a short-lived Ably token restricted to subscribe and presence on site notification.",
+		"Create real time token in Ably for the phone number",
+		"Creates a short-lived Ably token restricted to subscribe and presence on a phone number for notification.",
 		types.HttpRequestTypeUri,
 		http.MethodPost,
 		"/v1/account/phone-numbers/:phone_number_id/token",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagUser,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 		},

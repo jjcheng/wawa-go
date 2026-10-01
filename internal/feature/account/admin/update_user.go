@@ -107,7 +107,7 @@ func (updateUser UpdateUser) Handle(ctx context.Context, user *dto_account.User,
 }
 
 func (UpdateUser) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Master user updates a user", "Only MASTER user can use this to update user", types.HttpRequestTypeUriJSON, "PATCH", "/v1/admin/users/:id", true, false, types.APITagAccount, []feature.APIError{
+	return feature.NewAPISettings("Updates a user", "Update user's profile. Only master users can access this endpoint", types.HttpRequestTypeUriJSON, "PATCH", "/v1/admin/users/:id", true, true, types.APITagAdmin, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 	})

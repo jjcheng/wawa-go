@@ -55,7 +55,7 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Delete WhatsApp template",
-		"Deletes a WhatsApp message template for an authorized WABA.",
+		"Delete a WhatsApp message template by WhatsApp API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeJSON,
 		http.MethodDelete,
 		"/v1/wa/templates",

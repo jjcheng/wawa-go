@@ -95,7 +95,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List WhatsApp phone numbers",
-		"Lists WhatsApp phone numbers in pages: all numbers in a master's business portfolio, or numbers assigned to another authenticated user.",
+		"List WhatsApp phone numbers in entire business account if user is MASTER, or numbers assigned to current user.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/phone-numbers",

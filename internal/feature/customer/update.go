@@ -101,8 +101,8 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Update customer",
-		"Updates a customer for the authenticated user.",
+		"Update a customer",
+		"Update a customer for the user.",
 		types.HttpRequestTypeUriJSON,
 		http.MethodPatch,
 		"/v1/customers/:customer_id",

@@ -51,7 +51,7 @@ func (verify Verify) Handle(ctx context.Context, _ *dto_account.User, dependenci
 func (Verify) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Verify WhatsApp webhook",
-		"Verifies webhook subscription challenge from WhatsApp.",
+		"Verify webhook subscription challenge from WhatsApp.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/receive",

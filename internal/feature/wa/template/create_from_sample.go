@@ -105,7 +105,7 @@ func isTemplateHeaderMediaFormat(format types.WATemplateComponentFormat) bool {
 func (CreateFromSample) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create WhatsApp template from sample",
-		"Creates a WhatsApp message template from a locally stored sample template.",
+		"Create a WhatsApp message template from a locally stored sample template.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/wa/templates/from-sample",

@@ -131,8 +131,8 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Create customer",
-		"Creates a customer record.",
+		"Create a customer",
+		"Create a customer.",
 		types.HttpRequestTypeJSON,
 		http.MethodPost,
 		"/v1/customers",

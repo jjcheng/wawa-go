@@ -76,21 +76,3 @@ func (create Create) Handle(ctx context.Context, dependencies *service.Dependenc
 	}
 	return dto.NewSuccessResponse(&result)
 }
-
-// not a public api
-// func (Create) APISettings() feature.APISettings {
-// 	return feature.NewAPISettings(
-// 		"Create notification",
-// 		"Create a notification for the authenticated user.",
-// 		types.HttpRequestTypeJSON,
-// 		http.MethodPost,
-// 		"/v1/account/notifications",
-// 		true,
-// 		true,
-// 		types.APITagAccount,
-// 		[]feature.APIError{
-// 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
-// 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-// 		},
-// 	)
-// }

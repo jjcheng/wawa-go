@@ -63,7 +63,7 @@ func (createAblyToken CreateAblyToken) Handle(ctx context.Context, user *dto_acc
 func (CreateAblyToken) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create WhatsApp conversation realtime chat token",
-		"Creates a short-lived Ably token restricted to subscribe and presence on WhatsApp chat page.",
+		"Create a short-lived Ably token restricted to subscribe and presence on WhatsApp chat page.",
 		types.HttpRequestTypeQuery,
 		http.MethodPost,
 		"/v1/wa/messages/chat-token",

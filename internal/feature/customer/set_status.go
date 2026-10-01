@@ -78,7 +78,7 @@ func (setStatus SetStatus) Handle(ctx context.Context, user *dto_account.User, d
 func (SetStatus) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Set customer status",
-		"Updates the status of customers owned by the authenticated user.",
+		"Set the status of customers owned by the user.",
 		types.HttpRequestTypeJSON,
 		http.MethodPatch,
 		"/v1/customers/status",

@@ -59,7 +59,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List WhatsApp sample templates",
-		"Lists locally stored WhatsApp message template samples for the authenticated user.",
+		"Lists locally stored WhatsApp message template samples to be used by other users.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/wa/sample-templates",

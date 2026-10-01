@@ -219,8 +219,8 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 
 func (Sync) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Sync commerce website",
-		"Syncs the catalog, sets and products for a website belonging to the authenticated user's business account.",
+		"Sync a website",
+		"Syncs the catalog, sets and products for a website in the business account.",
 		types.HttpRequestTypeUri,
 		http.MethodPost,
 		"/v1/commerce/websites/:id/sync",

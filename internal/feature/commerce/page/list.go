@@ -56,8 +56,8 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List commerce website pages",
-		"Lists pages belonging to a website in the authenticated user's business account.",
+		"List website pages",
+		"List all pages belonging to a website in the business account.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/commerce/websites/:id/pages",

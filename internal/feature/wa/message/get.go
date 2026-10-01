@@ -73,7 +73,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp message",
-		"Gets a WhatsApp message by its local ID.",
+		"Get a WhatsApp message by ID.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/wa/messages/:id",

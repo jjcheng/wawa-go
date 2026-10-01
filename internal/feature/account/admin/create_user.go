@@ -127,9 +127,11 @@ func (createUser CreateUser) Handle(ctx context.Context, user *dto_account.User,
 }
 
 func (CreateUser) APISettings() feature.APISettings {
-	return feature.NewAPISettings("Master user creates a user", "Only MASTER user can use this to create user", types.HttpRequestTypeJSON, "POST", "/v1/admin/users", true, false, types.APITagAccount, []feature.APIError{
-		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusBadRequest)),
-		feature.NewAPIError(*exception.NewCustomException("there is an existing user with the same country code + phone number", http.StatusConflict)),
-		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-	})
+	return feature.NewAPISettings("Master user creates a user",
+		"Create a user by MASTER user, Only MASTER user can use this to create user",
+		types.HttpRequestTypeJSON, "POST", "/v1/admin/users", true, true, types.APITagAdmin, []feature.APIError{
+			feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusBadRequest)),
+			feature.NewAPIError(*exception.NewCustomException("there is an existing user with the same country code + phone number", http.StatusConflict)),
+			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
+		})
 }

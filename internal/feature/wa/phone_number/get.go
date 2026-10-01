@@ -86,7 +86,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp phone number",
-		"Gets the current WhatsApp phone number status and configuration from Meta.",
+		"Get the current WhatsApp phone number status and configuration by WhatsApp API.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/wa/phone-numbers/:id",

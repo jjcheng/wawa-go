@@ -38,8 +38,8 @@ func (listTags ListTags) Handle(ctx context.Context, user *dto_account.User, dep
 
 func (ListTags) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"List customer tags",
-		"Lists distinct customer tags for the authenticated user.",
+		"List distinct customer tags",
+		"List distinct customer tags for the user.",
 		types.HttpRequestTypeNone,
 		http.MethodGet,
 		"/v1/customers/tags",

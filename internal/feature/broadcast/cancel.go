@@ -67,14 +67,14 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Cancel) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Cancel WhatsApp broadcast",
-		"Cancels a pending broadcast belonging to the authenticated user.",
+		"Cancel a broadcast",
+		"Cancel a pending broadcast belonging to the user.",
 		types.HttpRequestTypeUri,
 		http.MethodPatch,
 		"/v1/broadcasts/:id/cancel",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagBroadcast,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("only pending broadcasts can be cancelled", http.StatusBadRequest)),

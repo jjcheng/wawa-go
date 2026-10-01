@@ -57,14 +57,14 @@ func (getStatistics GetStatistics) Handle(ctx context.Context, user *dto_account
 
 func (GetStatistics) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Get WhatsApp broadcast statistics",
-		"Gets message status statistics for a broadcast belonging to the authenticated user.",
+		"Get a broadcast statistics",
+		"Get message status statistics for a broadcast belonging to the authenticated user.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/broadcasts/:id/statistics",
 		true,
 		true,
-		types.APITagWA,
+		types.APITagBroadcast,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("broadcast not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
