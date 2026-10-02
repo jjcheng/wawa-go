@@ -69,7 +69,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Update WhatsApp business account",
-		"Refreshes and stores the WABA name from the WhatsApp API.",
+		"Refreshes and stores the WABA name from the WhatsApp API. Only MASTER user can access this endpoint",
 		types.HttpRequestTypeNone,
 		http.MethodPatch,
 		"/v1/wa/business-accounts",

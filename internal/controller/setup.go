@@ -6,6 +6,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	"github.com/jjcheng/wawa-go/internal/helper"
 
 	"context"
 	"net/http"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/feature"
-	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/middleware"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -39,6 +39,7 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 	registerCommerceController(routerGroup, dependencies, apiGenerator)
 	registerSiteController(routerGroup, dependencies, apiGenerator)
 	registerPublicController(routerGroup, dependencies, apiGenerator)
+	registerAIController(routerGroup, dependencies, apiGenerator)
 	// generate api doc
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		generateAPIDoc(apiGenerator, dependencies.Logger)

@@ -6,6 +6,7 @@ require (
 	ariga.io/atlas v0.37.0
 	github.com/JohannesKaufmann/html-to-markdown v1.6.0
 	github.com/ably/ably-go v1.4.1
+	github.com/aliyun/alibabacloud-bailian-go-sdk v1.2.0
 	github.com/aliyun/aliyun-mns-go-sdk v1.0.11
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/aliyun/fc-runtime-go-sdk v0.3.1
@@ -22,7 +23,7 @@ require (
 	github.com/nyaruka/phonenumbers v1.8.1
 	github.com/twpayne/go-polyline v1.1.1
 	github.com/xuri/excelize/v2 v2.11.0
-	golang.org/x/crypto v0.54.0
+	golang.org/x/crypto v0.55.0
 	gorm.io/driver/postgres v1.6.0
 	mvdan.cc/xurls/v2 v2.6.0
 )
@@ -45,14 +46,23 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/ably/vcdiff-go v0.0.2 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
+	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.4 // indirect
+	github.com/alibabacloud-go/bailian-20230601 v1.1.0 // indirect
+	github.com/alibabacloud-go/darabonba-openapi/v2 v2.0.2 // indirect
+	github.com/alibabacloud-go/endpoint-util v1.1.0 // indirect
+	github.com/alibabacloud-go/openapi-util v0.1.0 // indirect
+	github.com/alibabacloud-go/tea-utils v1.3.1 // indirect
+	github.com/alibabacloud-go/tea-utils/v2 v2.0.9 // indirect
+	github.com/alibabacloud-go/tea-xml v1.1.2 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.1 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
+	github.com/clbanning/mxj/v2 v2.7.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/coder/websocket v1.8.12 // indirect
+	github.com/coder/websocket v1.8.15 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
 	github.com/go-openapi/inflect v0.21.3 // indirect
@@ -92,6 +102,7 @@ require (
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
+	github.com/tjfoc/gmsm v1.3.2 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
@@ -105,12 +116,12 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	golang.org/x/arch v0.22.0 // indirect
-	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/tools v0.47.0 // indirect
+	golang.org/x/tools v0.48.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
@@ -118,6 +129,6 @@ require (
 require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	gorm.io/gorm v1.31.0 // direct
 )

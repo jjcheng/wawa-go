@@ -48,7 +48,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 func (Get) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp product catalog",
-		"Get a Meta commerce catalog in the business portfolio by Meta API.",
+		"Get a Meta commerce catalog in the business portfolio by Meta API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/wa/catalogs/:id",

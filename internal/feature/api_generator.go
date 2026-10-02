@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
@@ -20,6 +21,20 @@ import (
 
 type APIGenerator struct {
 	spec *openapi3.T
+}
+
+var apiIntentDescriptions = struct {
+	sync.RWMutex
+	values map[string]string
+}{values: make(map[string]string)}
+
+// APIIntentDescriptions returns the registered public API summaries and descriptions.
+func APIIntentDescriptions() map[string]string {
+	apiIntentDescriptions.RLock()
+	defer apiIntentDescriptions.RUnlock()
+	result := make(map[string]string, len(apiIntentDescriptions.values))
+	maps.Copy(result, apiIntentDescriptions.values)
+	return result
 }
 
 func NewAPIGenerator() *APIGenerator {
@@ -70,6 +85,11 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 	settings, ok := settingsResult[0].Interface().(APISettings)
 	if !ok {
 		return fmt.Errorf("APISettings method did not return APISettings type")
+	}
+	if settings.Public && settings.Summary != "" {
+		apiIntentDescriptions.Lock()
+		apiIntentDescriptions.values[settings.Summary] = settings.Description
+		apiIntentDescriptions.Unlock()
 	}
 	// Create operation
 	operation := &openapi3.Operation{

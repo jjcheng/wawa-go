@@ -37,4 +37,7 @@ type UnitOfWork interface {
 	CommercePageRepository() CommercePageRepository
 	// site
 	SiteFeedbackRepository() SiteFeedbackRepository
+	// ai
+	AIConversationRepository() AIConversationRepository
+	AIMessageRepository() AIMessageRepository
 }

@@ -24,7 +24,9 @@ type Config struct {
 	Ably       AblyConfig
 	WhatsApp   WhatsAppConfig
 	Commerce   CommerceConfig
-	Cloudflare Cloudflare
+	Cloudflare CloudflareConfig
+	Typesafe   TypesafeConfig
+	LLM        LLMConfig
 }
 
 type DatabaseConfig struct {
@@ -86,8 +88,20 @@ type CommerceConfig struct {
 	WebsiteDomain string
 }
 
-type Cloudflare struct {
+type CloudflareConfig struct {
 	TurnstileSecretKey string
+}
+
+type TypesafeConfig struct {
+	JevAPIKey string
+}
+
+type LLMConfig struct {
+	AccessKeyID     string
+	AccessKeySecret string
+	AgentKey        string
+	AppID           string
+	Endpoint        string
 }
 
 var configInstance *Config
@@ -160,8 +174,18 @@ func Default() *Config {
 			Commerce: CommerceConfig{
 				WebsiteDomain: os.Getenv("COMMERCE_WEBSITE_DOMAIN"),
 			},
-			Cloudflare: Cloudflare{
+			Cloudflare: CloudflareConfig{
 				TurnstileSecretKey: os.Getenv("TURNSTILE_SECRET_KEY"),
+			},
+			Typesafe: TypesafeConfig{
+				JevAPIKey: os.Getenv("JEV_API_KEY"),
+			},
+			LLM: LLMConfig{
+				AccessKeyID:     os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_ID"),
+				AccessKeySecret: os.Getenv("ALIBABA_CLOUD_ACCESS_KEY_SECRET"),
+				AgentKey:        os.Getenv("DASHSCOPE_AGENT_KEY"),
+				AppID:           os.Getenv("DASHSCOPE_APP_ID"),
+				Endpoint:        os.Getenv("DASHSCOPE_ENDPOINT"),
 			},
 		}
 	})
