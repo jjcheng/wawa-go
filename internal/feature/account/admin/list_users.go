@@ -82,6 +82,6 @@ func (ListUsers) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
-		feature.NewAIWorker(true, "To view all users in your business account, go to Assets / Users.", types.AIWorkerReturnTypeData, "", "/assets/users"),
+		feature.NewAIWorker(true, "To view all users in your business account, go to Assets -> Users.", types.AIWorkerReturnTypeData, "", "/assets/users"),
 	)
 }

@@ -80,10 +80,13 @@ func requiredFieldDescriptions(requestType reflect.Type, visited map[reflect.Typ
 	for index := 0; index < requestType.NumField(); index++ {
 		field := requestType.Field(index)
 		if hasRequiredValidationTag(field.Tag.Get("val")) {
+			filedType, values := aiInputFieldType(field.Type)
 			inputs = append(inputs, dto_ai.WorkInput{
 				Name:               requestParameterKey(field),
 				Description:        field.Tag.Get("description"),
-				Type:               aiInputFieldType(field.Type),
+				Type:               filedType,
+				Values:             values,
+				Example:            field.Tag.Get("example"),
 				ReferenceFieldName: "",
 			})
 			continue
@@ -99,21 +102,27 @@ func requiredFieldDescriptions(requestType reflect.Type, visited map[reflect.Typ
 	return inputs
 }
 
-func aiInputFieldType(fieldType reflect.Type) types.AIInputType {
+func aiInputFieldType(fieldType reflect.Type) (types.AIInputType, []string) {
 	for fieldType.Kind() == reflect.Pointer {
 		fieldType = fieldType.Elem()
 	}
+	if fieldType == reflect.TypeFor[types.UserType]() {
+		values := helper.Map(types.UserTypes, func(userType types.UserType) string {
+			return string(userType)
+		})
+		return types.AIInputFieldTypeSelect, values
+	}
 	if fieldType == reflect.TypeFor[time.Time]() {
-		return types.AIInputFieldTypeDateTime
+		return types.AIInputFieldTypeDateTime, nil
 	}
 	switch fieldType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return types.AIInputFieldTypeInt
+		return types.AIInputFieldTypeInt, nil
 	case reflect.Float32, reflect.Float64:
-		return types.AIInputFieldTypeFloat
+		return types.AIInputFieldTypeFloat, nil
 	default:
-		return types.AIInputFieldTypeText
+		return types.AIInputFieldTypeText, nil
 	}
 }
 
@@ -185,7 +194,7 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 	if !ok {
 		return fmt.Errorf("APISettings method did not return APISettings type")
 	}
-	if settings.Public && settings.Summary != "" {
+	if settings.Public && settings.Summary != "" && settings.AIWorker != nil {
 		apiIntentDescriptions.Lock()
 		apiIntentDescriptions.values[settings.Summary] = settings.Description
 		apiIntentDescriptions.settings[settings.Summary] = settings

@@ -56,5 +56,12 @@ func (ListUnassignedPhoneNumbers) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
+		feature.NewAIWorker(
+			true,
+			"To view phone numbers that are not assigned to a user, go to Assets -> Phone numbers.",
+			types.AIWorkerReturnTypeData,
+			"",
+			"/assets/phone-numbers",
+		),
 	)
 }

@@ -1,8 +1,6 @@
 package dto_ai
 
 import (
-	"strings"
-
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
@@ -12,19 +10,22 @@ type WorkResult struct {
 	URL     string           `json:"url"`
 }
 
-type WorkResultPart struct {
-	Type    types.AIWorkResultPartType `json:"type"`
-	Titles  []string                   `json:"titles,omitempty"` // for table it will be headers, for object will be the left side
-	Content any                        `json:"content"`
-	Input   *WorkInput                 `json:"input,omitempty"`
-}
-
 type WorkInput struct {
 	Name               string              `json:"name"`
 	Description        string              `json:"description"`
 	Type               types.AIInputType   `json:"type"`
 	DisplayType        types.AIDisplayType `json:"display_type"`
+	Values             []string            `json:"values,omitempty"` // if type is select, got from types.xxx
+	Example            string              `json:"example,omitempty"`
 	ReferenceFieldName string              `json:"reference_field_name,omitempty"` // if coming from another source
+}
+
+type WorkResultPart struct {
+	FieldNames []string   `json:"field_names,omitempty"` // for list to know the field names
+	Titles     []string   `json:"titles,omitempty"`      // for table it will be headers, for object will be the left side
+	Content    any        `json:"content"`               // can be text, object or array
+	Input      *WorkInput `json:"input,omitempty"`       // if this is used in a form
+	Color      string     `json:"color,omitempty"`       // to represent success, failure
 }
 
 func NewWorkResult(feature string, url string, parts ...WorkResultPart) WorkResult {
@@ -34,18 +35,4 @@ func NewWorkResult(feature string, url string, parts ...WorkResultPart) WorkResu
 		URL:     url,
 	}
 	return workResult
-}
-
-func (workResult *WorkResult) Text() string {
-	var texts []string
-	for _, part := range workResult.Parts {
-		if part.Type == types.AIWorkResultPartTypeText {
-			if text, ok := part.Content.(string); ok {
-				texts = append(texts, text)
-			}
-		} else {
-			texts = append(texts, "dynamic data")
-		}
-	}
-	return strings.Join(texts, "\n\n")
 }

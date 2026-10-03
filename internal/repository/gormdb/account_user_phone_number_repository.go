@@ -141,6 +141,12 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) GetByU
 		}
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.GetByUserIdAndPhoneNumberId userId=%d phoneNumberId=%d error=%w", userId, phoneNumberId, result.Error)
 	}
+	if userPhoneNumber.User != nil {
+		userRepository := AccountUserRepository{db: accountUserPhoneNumberRepository.db, logger: accountUserPhoneNumberRepository.logger}
+		if err := userRepository.decryptSensitiveFields(userPhoneNumber.User); err != nil {
+			return nil, fmt.Errorf("AccountUserPhoneNumberRepository.GetByUserIdAndPhoneNumberId userId=%d phoneNumberId=%d user error=%w", userId, phoneNumberId, err)
+		}
+	}
 	if userPhoneNumber.PhoneNumber != nil {
 		phoneNumberRepository := WAPhoneNumberRepository{db: accountUserPhoneNumberRepository.db, logger: accountUserPhoneNumberRepository.logger}
 		if err := phoneNumberRepository.decryptSecrets(userPhoneNumber.PhoneNumber); err != nil {
@@ -152,10 +158,18 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) GetByU
 
 func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) decryptPhoneNumbers(userPhoneNumbers []dao_account.UserPhoneNumber) error {
 	phoneNumberRepository := WAPhoneNumberRepository{db: accountUserPhoneNumberRepository.db, logger: accountUserPhoneNumberRepository.logger}
+	userRepository := AccountUserRepository{db: accountUserPhoneNumberRepository.db, logger: accountUserPhoneNumberRepository.logger}
 	for i := range userPhoneNumbers {
+		// decrypt user
+		if userPhoneNumbers[i].User != nil {
+			if err := userRepository.decryptSensitiveFields(userPhoneNumbers[i].User); err != nil {
+				return fmt.Errorf("index=%d userId=%d error=%w", i, userPhoneNumbers[i].UserId, err)
+			}
+		}
 		if userPhoneNumbers[i].PhoneNumber == nil {
 			continue
 		}
+		// decrypt phone number
 		if err := phoneNumberRepository.decryptSecrets(userPhoneNumbers[i].PhoneNumber); err != nil {
 			return fmt.Errorf("index=%d phoneNumberId=%d error=%w", i, userPhoneNumbers[i].PhoneNumberId, err)
 		}

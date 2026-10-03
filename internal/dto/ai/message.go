@@ -24,11 +24,8 @@ func NewMessage(message dao_ai.Message) Message {
 		var part WorkResultPart
 		err := json.Unmarshal([]byte(serializedPart), &part)
 		// Parts no longer require a type, so only fall back to text for non-part strings.
-		if err != nil || (part.Type == "" && part.Input == nil && part.Content == nil) {
-			part = WorkResultPart{
-				Type:    types.AIWorkResultPartTypeText,
-				Content: serializedPart,
-			}
+		if err != nil || (part.Input == nil && part.Content == nil) {
+			continue
 		}
 		parts = append(parts, part)
 	}
@@ -60,14 +57,24 @@ func SerializeWorkResultParts(parts []WorkResultPart) ([]string, error) {
 
 func (message Message) Text() string {
 	var texts []string
+	// for _, part := range message.Parts {
+	// 	switch part.Type {
+	// 	case types.AIWorkResultPartTypeText:
+	// 		if text, ok := part.Content.(string); ok {
+	// 			texts = append(texts, text)
+	// 		}
+	// 	default:
+	// 		texts = append(texts, "data is successfully retrieved but ommitted here")
+	// 	}
+	// }
 	for _, part := range message.Parts {
-		switch part.Type {
-		case types.AIWorkResultPartTypeText:
-			if text, ok := part.Content.(string); ok {
+		if text, ok := part.Content.(string); ok {
+			if (strings.HasPrefix(text, "[") && strings.HasSuffix(text, "]")) ||
+				(strings.HasPrefix(text, "{") && strings.HasSuffix(text, "}")) {
+				texts = append(texts, "data is successfully retrieved but ommitted here")
+			} else {
 				texts = append(texts, text)
 			}
-		default:
-			texts = append(texts, "data is successfully retrieved but ommitted here")
 		}
 	}
 	return strings.Join(texts, "\n\n")

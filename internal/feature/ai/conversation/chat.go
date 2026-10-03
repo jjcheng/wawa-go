@@ -69,7 +69,6 @@ func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}
 	// insert this message first
 	userContent, err := dto_ai.SerializeWorkResultParts([]dto_ai.WorkResultPart{{
-		Type:    types.AIWorkResultPartTypeText,
 		Content: strings.TrimSpace(chat.Message),
 	}})
 	if err != nil {

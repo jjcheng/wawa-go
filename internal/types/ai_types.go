@@ -24,10 +24,9 @@ var AIWorkerActions []string = []string{
 type AIWorkResultPartType string
 
 const (
-	AIWorkResultPartTypeText    AIWorkResultPartType = "TEXT"
-	AIWorkerResultPartTypeInput AIWorkResultPartType = "INPUT"
-	AIWorkResultPartTypeObject  AIWorkResultPartType = "OBJECT"
-	AIWorkResultPartTypeList    AIWorkResultPartType = "LIST"
+	AIWorkResultPartTypeTitle AIWorkResultPartType = "TITLE"
+	AIWorkResultPartTypeText  AIWorkResultPartType = "TEXT"
+	AIWorkResultPartTypeData  AIWorkResultPartType = "DATA"
 )
 
 type AIWorkerInputStatus string
@@ -53,6 +52,7 @@ const (
 	AIInputFieldTypeDate     AIInputType = "DATE"
 	AIInputFieldTypeDateTime AIInputType = "DATETIME"
 	AIInputFieldTypeBool     AIInputType = "BOOL"
+	AIInputFieldTypeSelect   AIInputType = "SELECT"
 )
 
 type AIWorkerReturnType string

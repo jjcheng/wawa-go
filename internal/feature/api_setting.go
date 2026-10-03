@@ -91,7 +91,6 @@ func NewAIWorker(executable bool, howToMessage string, returnType types.AIWorker
 
 type AIWorkerRequire struct {
 	Title   string
-	Type    types.AIWorkResultPartType
 	Handler func(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any]
 	Input   dto_ai.WorkInput
 }

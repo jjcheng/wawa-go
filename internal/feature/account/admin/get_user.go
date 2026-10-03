@@ -8,6 +8,7 @@ import (
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -83,5 +84,18 @@ func (GetUser) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
+		feature.NewAIWorker(true,
+			"To view a user's details, go to Assets -> Users and select the user.",
+			types.AIWorkerReturnTypeData,
+			"",
+			"/assets/users",
+			feature.NewAIWorkerRequire("Select a user", ListUsers{}, dto_ai.WorkInput{
+				Name:               "id",
+				Description:        "user to view",
+				Type:               types.AIInputFieldTypeInt,
+				ReferenceFieldName: "id",
+				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+			}),
+		),
 	)
 }

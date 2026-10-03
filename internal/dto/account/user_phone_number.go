@@ -11,7 +11,7 @@ type UserPhoneNumber struct {
 	dto.DTOBase
 	UserId        int32               `json:"user_id"`
 	PhoneNumberId int32               `json:"phone_number_id"`
-	PhoneNumber   *dto_wa.PhoneNumber `json:"phone_number"`
+	PhoneNumber   *dto_wa.PhoneNumber `json:"phone_number" title:"Phone number"`
 }
 
 func NewUserPhoneNumber(userPhoneNumber *dao_account.UserPhoneNumber) UserPhoneNumber {

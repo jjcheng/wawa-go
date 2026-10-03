@@ -118,17 +118,18 @@ func (AssignPhoneNumbers) APISettings() feature.APISettings {
 				Description:        "id of the user",
 				Type:               types.AIInputFieldTypeInt,
 				ReferenceFieldName: "id",
+				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 			},
 		),
 		feature.NewAIWorkerRequire(
 			"Please select phone numbers to assign to this user",
 			feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected},
 			dto_ai.WorkInput{
-				Name:               "phone_number_id",
+				Name:               "phone_number_ids",
 				Description:        "id of the phone number",
 				Type:               types.AIInputFieldTypeInt,
 				ReferenceFieldName: "id",
-				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+				DisplayType:        types.AIWorkerDisplayTypeMultiChoiceTable,
 			},
 		),
 	)

@@ -55,13 +55,13 @@ func (execute Execute) Handle(ctx context.Context, user *dto_account.User, depen
 	}
 	var result dto_ai.WorkResult
 	if apiSettings.AIWorker.ReturnType == types.AIWorkerReturnTypeText {
-		result = dto_ai.NewWorkResult(execute.Feature, apiSettings.AIWorker.URL,
-			dto_ai.WorkResultPart{Type: types.AIWorkResultPartTypeText, Content: apiSettings.AIWorker.ReturnText},
+		result = dto_ai.NewWorkResult(execute.Feature, "",
+			dto_ai.WorkResultPart{Content: apiSettings.AIWorker.ReturnText, Color: "green"},
 		)
 	} else {
-		result = dto_ai.NewWorkResult(execute.Feature, apiSettings.AIWorker.URL,
-			dto_ai.WorkResultPart{Type: types.AIWorkResultPartTypeText, Content: "Here is the data you have requested:"},
-			renderFeatureResult(featureResponse.Data, types.AIWorkResultPartTypeList, nil),
+		result = dto_ai.NewWorkResult(execute.Feature, "",
+			dto_ai.WorkResultPart{Content: "Here is the data you have requested:"},
+			RenderFeatureResult(featureResponse.Data, nil),
 		)
 	}
 	return dto.NewSuccessResponse(&result)

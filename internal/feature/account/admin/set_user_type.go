@@ -7,6 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -79,5 +80,17 @@ func (SetUserType) APISettings() feature.APISettings {
 		feature.NewAPIError(*exception.NewCustomException("you are not authorized to update this user", http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("Meta business portfolio not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-	})
+	}, feature.NewAIWorker(true,
+		"To change a user's type, go to Assets -> Users and select the user. Only MASTER users can do this; you cannot change your own type or the type of an existing MASTER user.",
+		types.AIWorkerReturnTypeText,
+		"User type successfully updated.",
+		"/assets/users",
+		feature.NewAIWorkerRequire("Select a user", ListUsers{}, dto_ai.WorkInput{
+			Name:               "id",
+			Description:        "user whose type to update",
+			Type:               types.AIInputFieldTypeInt,
+			ReferenceFieldName: "id",
+			DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+		}),
+	))
 }

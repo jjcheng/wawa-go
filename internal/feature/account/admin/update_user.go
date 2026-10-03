@@ -8,6 +8,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -20,8 +21,8 @@ type UpdateUser struct {
 	Id             int32            `uri:"id" val:"required" description:"id of the user"`
 	Name           string           `json:"name" val:"required" description:"name of the new user" example:"John Doe"`
 	Email          string           `json:"email" description:"email address of the user"`
-	Type           types.UserType   `json:"type" val:"required" description:"type of the user" example:"PUBLIC"`
-	Status         types.UserStatus `json:"status" val:"required" description:"status of the user"`
+	Type           types.UserType   `json:"type" val:"required" description:"type of the user" example:"OPERATOR"`
+	Status         types.UserStatus `json:"status" val:"required" description:"status of the user" example:"ACTIVE"`
 	Description    string           `json:"description" description:"for your reference" example:"created by account department"`
 	PhoneNumberIds []int32          `json:"phone_number_ids" description:"phone numbers assigned to this user"`
 }
@@ -110,5 +111,17 @@ func (UpdateUser) APISettings() feature.APISettings {
 	return feature.NewAPISettings("Updates a user", "Update user's profile. Only master users can access this endpoint", types.HttpRequestTypeUriJSON, "PATCH", "/v1/admin/users/:id", true, true, types.APITagAdmin, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusBadRequest)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-	})
+	}, feature.NewAIWorker(true,
+		"To update a user, go to Assets -> Users and select the user, key in any new profile, press Save. Only MASTER users can do this.",
+		types.AIWorkerReturnTypeText,
+		"User profile successfully updated",
+		"/assets/users",
+		feature.NewAIWorkerRequire("Select a user to update", ListUsers{}, dto_ai.WorkInput{
+			Name:               "id",
+			Description:        "user to update",
+			Type:               types.AIInputFieldTypeInt,
+			ReferenceFieldName: "id",
+			DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+		}),
+	))
 }

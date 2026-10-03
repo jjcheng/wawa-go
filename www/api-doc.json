@@ -4218,9 +4218,58 @@
                       "description": "the actual API returned data, empty if not success",
                       "items": {
                         "properties": {
+                          "access_token": {
+                            "description": "only returned during login",
+                            "type": "string"
+                          },
+                          "access_token_expiry": {
+                            "description": "access token expiry time",
+                            "format": "date-time",
+                            "type": "string"
+                          },
                           "added_at": {
                             "example": "2025-10-01T08:08:00Z",
                             "format": "date-time",
+                            "type": "string"
+                          },
+                          "assigned_phone_numbers": {
+                            "items": {
+                              "properties": {
+                                "agent_running": {
+                                  "type": "boolean"
+                                },
+                                "display_phone_number": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "format": "int32",
+                                  "type": "integer"
+                                },
+                                "meta_agent_id": {
+                                  "type": "string"
+                                },
+                                "meta_phone_number_id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "business_account_id": {
+                            "format": "int32",
+                            "type": "integer"
+                          },
+                          "country_code": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "email": {
                             "type": "string"
                           },
                           "id": {
@@ -4233,78 +4282,17 @@
                             "format": "date-time",
                             "type": "string"
                           },
+                          "name": {
+                            "type": "string"
+                          },
                           "phone_number": {
-                            "properties": {
-                              "added_at": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "agent_running": {
-                                "type": "boolean"
-                              },
-                              "assigned_users": {
-                                "items": {
-                                  "properties": {
-                                    "id": {
-                                      "format": "int32",
-                                      "type": "integer"
-                                    },
-                                    "name": {
-                                      "type": "string"
-                                    }
-                                  },
-                                  "type": "object"
-                                },
-                                "type": "array"
-                              },
-                              "business_account_id": {
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              "display_phone_number": {
-                                "type": "string"
-                              },
-                              "id": {
-                                "example": 1,
-                                "format": "int32",
-                                "type": "integer"
-                              },
-                              "last_updated_at": {
-                                "example": "2025-10-01T08:08:00Z",
-                                "format": "date-time",
-                                "type": "string"
-                              },
-                              "meta_agent_id": {
-                                "type": "string"
-                              },
-                              "meta_phone_number_id": {
-                                "type": "string"
-                              },
-                              "name": {
-                                "type": "string"
-                              },
-                              "status": {
-                                "type": "string"
-                              },
-                              "wa_id": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "added_at",
-                              "last_updated_at"
-                            ],
-                            "type": "object"
+                            "type": "string"
                           },
-                          "phone_number_id": {
-                            "format": "int32",
-                            "type": "integer"
+                          "status": {
+                            "type": "string"
                           },
-                          "user_id": {
-                            "format": "int32",
-                            "type": "integer"
+                          "type": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -4937,7 +4925,8 @@
                     "type": "integer"
                   },
                   "status": {
-                    "description": "new status of the user",
+                    "description": "new status of the user (ACTIVE or INACTIVE)",
+                    "example": "ACTIVE",
                     "type": "string"
                   }
                 },
@@ -5831,6 +5820,7 @@
                   },
                   "country_code": {
                     "description": "country code number",
+                    "example": "65",
                     "type": "string"
                   },
                   "description": {
@@ -5841,6 +5831,7 @@
                   },
                   "email": {
                     "description": "email address of the user",
+                    "example": "john@example.com",
                     "nullable": true,
                     "type": "string"
                   },
@@ -5855,11 +5846,12 @@
                   },
                   "phone_number": {
                     "description": "phone number of the user, without country code",
+                    "example": "91234567",
                     "type": "string"
                   },
                   "type": {
                     "description": "type of the user",
-                    "example": "PUBLIC",
+                    "example": "MASTER, OPERATOR",
                     "type": "string"
                   }
                 },
@@ -6874,11 +6866,12 @@
                   },
                   "status": {
                     "description": "status of the user",
+                    "example": "ACTIVE",
                     "type": "string"
                   },
                   "type": {
                     "description": "type of the user",
-                    "example": "PUBLIC",
+                    "example": "OPERATOR",
                     "type": "string"
                   }
                 },
@@ -7536,8 +7529,17 @@
                         "parts": {
                           "items": {
                             "properties": {
+                              "color": {
+                                "type": "string"
+                              },
                               "content": {
                                 "type": "object"
+                              },
+                              "field_names": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
                               },
                               "input": {
                                 "properties": {
@@ -7545,6 +7547,9 @@
                                     "type": "string"
                                   },
                                   "display_type": {
+                                    "type": "string"
+                                  },
+                                  "example": {
                                     "type": "string"
                                   },
                                   "name": {
@@ -7555,6 +7560,12 @@
                                   },
                                   "type": {
                                     "type": "string"
+                                  },
+                                  "values": {
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "type": "array"
                                   }
                                 },
                                 "type": "object"
@@ -7564,9 +7575,6 @@
                                   "type": "string"
                                 },
                                 "type": "array"
-                              },
-                              "type": {
-                                "type": "string"
                               }
                             },
                             "type": "object"
@@ -7838,8 +7846,17 @@
                           "parts": {
                             "items": {
                               "properties": {
+                                "color": {
+                                  "type": "string"
+                                },
                                 "content": {
                                   "type": "object"
+                                },
+                                "field_names": {
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
                                 },
                                 "input": {
                                   "properties": {
@@ -7847,6 +7864,9 @@
                                       "type": "string"
                                     },
                                     "display_type": {
+                                      "type": "string"
+                                    },
+                                    "example": {
                                       "type": "string"
                                     },
                                     "name": {
@@ -7857,6 +7877,12 @@
                                     },
                                     "type": {
                                       "type": "string"
+                                    },
+                                    "values": {
+                                      "items": {
+                                        "type": "string"
+                                      },
+                                      "type": "array"
                                     }
                                   },
                                   "type": "object"
@@ -7866,9 +7892,6 @@
                                     "type": "string"
                                   },
                                   "type": "array"
-                                },
-                                "type": {
-                                  "type": "string"
                                 }
                               },
                               "type": "object"
@@ -8526,8 +8549,17 @@
                         "parts": {
                           "items": {
                             "properties": {
+                              "color": {
+                                "type": "string"
+                              },
                               "content": {
                                 "type": "object"
+                              },
+                              "field_names": {
+                                "items": {
+                                  "type": "string"
+                                },
+                                "type": "array"
                               },
                               "input": {
                                 "properties": {
@@ -8535,6 +8567,9 @@
                                     "type": "string"
                                   },
                                   "display_type": {
+                                    "type": "string"
+                                  },
+                                  "example": {
                                     "type": "string"
                                   },
                                   "name": {
@@ -8545,6 +8580,12 @@
                                   },
                                   "type": {
                                     "type": "string"
+                                  },
+                                  "values": {
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "type": "array"
                                   }
                                 },
                                 "type": "object"
@@ -8554,9 +8595,6 @@
                                   "type": "string"
                                 },
                                 "type": "array"
-                              },
-                              "type": {
-                                "type": "string"
                               }
                             },
                             "type": "object"

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -59,5 +60,18 @@ func (deleteUser DeleteUser) Handle(ctx context.Context, user *dto_account.User,
 func (DeleteUser) APISettings() feature.APISettings {
 	return feature.NewAPISettings("Delete a user", "Delete a user by id. Only MASTER can delete non-MASTER users.", types.HttpRequestTypeUri, "DELETE", "/v1/admin/users/:id", true, true, types.APITagAdmin, []feature.APIError{
 		feature.NewAPIError(*exception.NewCustomException("master user cannot be deleted", http.StatusBadRequest)),
-	})
+	}, feature.NewAIWorker(true,
+		"To delete a user, go to Assets -> Users and select the user to delete. Only MASTER users can do this, and MASTER users cannot be deleted.",
+		types.AIWorkerReturnTypeText,
+		"User successfully deleted.",
+		"/assets/users",
+		feature.NewAIWorkerRequire("Select a user to delete",
+			ListUsers{}, dto_ai.WorkInput{
+				Name:               "id",
+				Description:        "user to delete",
+				Type:               types.AIInputFieldTypeInt,
+				ReferenceFieldName: "id",
+				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+			}),
+	))
 }

@@ -81,8 +81,7 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadRequest, "sorry, we are unable to detect your intent", nil)
 	}
 	if apiSettings.AIWorker == nil {
-		result := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai.WorkResultPart{
-			Type:    types.AIWorkResultPartTypeText,
+		result := dto_ai.NewWorkResult(apiSettings.Summary, "", dto_ai.WorkResultPart{
 			Content: "Sorry, this feature is not available to the AI worker yet.",
 		})
 		return dto.NewSuccessResponse(&result)
@@ -90,7 +89,6 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 	// if not executable, just return the how to message
 	if !apiSettings.AIWorker.Executable {
 		result := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai.WorkResultPart{
-			Type:    types.AIWorkResultPartTypeText,
 			Content: apiSettings.AIWorker.HowToMessage,
 		})
 		return dto.NewSuccessResponse(&result)
@@ -122,17 +120,23 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 		// if asking, present the how to use message
 		var message string = apiSettings.AIWorker.HowToMessage
 		if apiSettings.AIWorker.Executable {
-			message += "\nOr would you like me to show you the form here?"
+			inputs, exists := feature.APIRequiredFieldsBySummary(detectedIndent.Choice)
+			if !exists {
+				return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+			}
+			if len(inputs) == 0 {
+				message += "\nDo you want me to pull the data directly here?"
+			} else {
+				message += "\nOr would you like me to show you the form here?"
+			}
 		}
 		workResult := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai.WorkResultPart{
-			Type:    types.AIWorkResultPartTypeText,
 			Content: message,
 		})
 		return dto.NewSuccessResponse(&workResult)
 	case types.AIWorkerActionReport:
 		// if user is reporting an issue using this feature, store in feedback and return sorry message
 		workResult := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai.WorkResultPart{
-			Type:    types.AIWorkResultPartTypeText,
 			Content: "we have received your feedback and will work on it soon!",
 		})
 		return dto.NewSuccessResponse(&workResult)
@@ -153,8 +157,7 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if len(inputs) > 0 {
 		var parts []dto_ai.WorkResultPart
 		parts = append(parts, dto_ai.WorkResultPart{
-			Type:    types.AIWorkResultPartTypeText,
-			Content: fmt.Sprintf("To %s, please fill up this form:\n", strings.ToLower(detectedIndent.Choice)),
+			Content: fmt.Sprintf("To %s, use this form:\n", strings.ToLower(detectedIndent.Choice)),
 		})
 		// check for any pre-requisits
 		if len(apiSettings.AIWorker.Requires) > 0 {
@@ -164,88 +167,28 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 					return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, requiredDataResponse.Error)
 				}
 				parts = append(parts, dto_ai.WorkResultPart{
-					Type:    types.AIWorkResultPartTypeText,
 					Content: require.Title,
-					Input:   &require.Input,
 				})
-				parts = append(parts, renderFeatureResult(requiredDataResponse.Data, require.Type, &require.Input))
+				parts = append(parts, RenderFeatureResult(requiredDataResponse.Data, &require.Input))
 			}
 		}
 		for _, input := range inputs {
+			// check requires alread have this
+			if helper.Any(apiSettings.AIWorker.Requires, func(r feature.AIWorkerRequire) bool {
+				return r.Input.ReferenceFieldName == input.Name
+			}) {
+				continue
+			}
 			parts = append(parts, dto_ai.WorkResultPart{
-				Type:    types.AIWorkResultPartTypeText,
 				Content: input.Description,
 			})
 			input.DisplayType = types.AIWorkerDisplayTypeTextbox
 			// add inputs
 			parts = append(parts, dto_ai.WorkResultPart{
-				Type:    types.AIWorkerResultPartTypeInput,
 				Content: "",
 				Input:   &input,
 			})
 		}
-		// criteria = map[string]string{}
-		// for i := range types.AIWorkerInputStatuss {
-		// 	criteria[fmt.Sprint(i)] = types.AIWorkerInputStatuss[i]
-		// }
-		// questions = map[string]service.TypeSafeChoiceQuestion{
-		// 	"user_input_status": {
-		// 		Type:         "noul",
-		// 		Instructions: fmt.Sprintf("User refers to %s feature. The required inputs from the user are:\n%s\nDid user provide all the required inputs?", detectedIndent.Choice, strings.Join(requiredInputs, "\n")),
-		// 		Criteria: map[string]string{
-		// 			"true":  "All required inputs are provided by the user",
-		// 			"false": "Some or all required inputs are not provided by the user",
-		// 		},
-		// 	},
-		// }
-		// questions = map[string]service.TypeSafeChoiceQuestion{
-		// 	"user_input_status": {
-		// 		Type:         "choice",
-		// 		Instructions: fmt.Sprintf("User refers to %s feature. The required inputs from the user are:\n%s\nDid user provide all the required inputs?", detectedIndent.Choice, strings.Join(requiredInputs, "\n")),
-		// 		Criteria:     criteria,
-		// 	},
-		// }
-		// detectedNoul, err := dependencies.TypeSafe.DetectChoice(ctx, messageDTOs, questions)
-		// if err != nil {
-		// 	return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadGateway, types.ExceptionMessageBadGateway, err)
-		// }
-		// noul := detectedNoul.Answers["user_input_status"]
-		// answers, err := dependencies.TypeSafe.DetectChoice(ctx, messageDTOs, questions)
-		// if err != nil {
-		// 	return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadGateway, types.ExceptionMessageBadGateway, err)
-		// }
-		// answersAnswer := answers.Answers["user_input_status"]
-		// userInputStatus := types.AIWorkerInputStatus(criteria[answersAnswer.Choice])
-		//var userInputStatus types.AIWorkerInputStatus
-		// if noul.Noul > 0.5 {
-		// 	userInputStatus = types.AIWorkerInputStatusComplete
-		// } else {
-		// 	userInputStatus = types.AIWorkerInputStatusIncomplete
-		// }
-		// switch userInputStatus {
-		// case types.AIWorkerInputStatusComplete:
-		// 	// TODO: extract entities
-		// 	// execute
-		// 	result, err := work.executeHandle(detectedIndent.Choice, ctx, user, dependencies)
-		// 	if err != nil {
-		// 		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-		// 	}
-		// 	return dto.NewSuccessResponse(result)
-		// case types.AIWorkerInputStatusEmpty:
-		// 	// parts = append(parts, dto_ai.WorkResultPart{
-		// 	// 	Type:    types.AIWorkResultPartTypeText,
-		// 	// 	Content: fmt.Sprintf("In order to execute your instruction, I need your follow inputs:\n%s", strings.Join(requiredInputs, "\n")),
-		// 	// })
-		// 	result := dto_ai.NewWorkResult(parts...)
-		// 	return dto.NewSuccessResponse(&result)
-		// default:
-		// 	// parts = append(parts, dto_ai.WorkResultPart{
-		// 	// 	Type:    types.AIWorkResultPartTypeText,
-		// 	// 	Content: fmt.Sprintf("You have missed some inputs. Please provide all of follow inputs:\n%s", strings.Join(requiredInputs, "\n")),
-		// 	// })
-		// 	result := dto_ai.NewWorkResult(parts...)
-		// 	return dto.NewSuccessResponse(&result)
-		// }
 		result := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, parts...)
 		return dto.NewSuccessResponse(&result)
 	}
@@ -260,37 +203,33 @@ func (work *Work) executeHandle(detectedSummary string, ctx context.Context, use
 	response := executor(ctx, user, dependencies, nil)
 	if !response.Success {
 		result := dto_ai.NewWorkResult(detectedSummary, "", dto_ai.WorkResultPart{
-			Type:    types.AIWorkResultPartTypeText,
 			Content: response.Message,
 		})
 		return &result, nil
 	}
 	var parts []dto_ai.WorkResultPart
 	parts = append(parts, dto_ai.WorkResultPart{
-		Type:    types.AIWorkResultPartTypeText,
-		Content: "Here is the data you have requested:",
+		Content: detectedSummary,
 	})
-	parts = append(parts, renderFeatureResult(response.Data, types.AIWorkResultPartTypeList, nil))
+	parts = append(parts, RenderFeatureResult(response.Data, nil))
 	result := dto_ai.NewWorkResult(detectedSummary, "", parts...)
 	return &result, nil
 }
 
-func renderFeatureResult(data any, listType types.AIWorkResultPartType, input *dto_ai.WorkInput) dto_ai.WorkResultPart {
+func RenderFeatureResult(data any, input *dto_ai.WorkInput) dto_ai.WorkResultPart {
 	value := reflect.ValueOf(data)
 	value = indirectValue(value)
 	if !value.IsValid() || isEmptyResult(value) {
 		return textResultPart("Sorry, we cannot find any result.")
 	}
-
 	if value.Kind() == reflect.Struct {
 		if items := value.FieldByName("Items"); items.IsValid() && (items.Kind() == reflect.Slice || items.Kind() == reflect.Array) {
-			return renderFeatureResult(items.Interface(), listType, input)
+			return RenderFeatureResult(items.Interface(), input)
 		}
 	}
-
 	switch value.Kind() {
 	case reflect.Slice, reflect.Array:
-		return renderFeatureTable(value, listType, input)
+		return renderFeatureTable(value, input)
 	case reflect.Struct:
 		return renderFeatureObject(value)
 	default:
@@ -307,7 +246,7 @@ func isEmptyResult(value reflect.Value) bool {
 	}
 }
 
-func renderFeatureTable(rows reflect.Value, listType types.AIWorkResultPartType, input *dto_ai.WorkInput) dto_ai.WorkResultPart {
+func renderFeatureTable(rows reflect.Value, input *dto_ai.WorkInput) dto_ai.WorkResultPart {
 	if rows.Len() == 0 {
 		return textResultPart("Sorry, we cannot find any result.")
 	}
@@ -317,7 +256,7 @@ func renderFeatureTable(rows reflect.Value, listType types.AIWorkResultPartType,
 		for index := 0; index < rows.Len(); index++ {
 			items = append(items, []any{valueInterface(rows.Index(index))})
 		}
-		part := dto_ai.WorkResultPart{Type: listType, Content: items, Input: input}
+		part := dto_ai.WorkResultPart{Content: items, Input: input}
 		return part
 	}
 
@@ -327,8 +266,10 @@ func renderFeatureTable(rows reflect.Value, listType types.AIWorkResultPartType,
 	}
 
 	titles := make([]string, 0, len(columns))
+	fieldNames := make([]string, 0, len(columns))
 	for _, column := range columns {
 		titles = append(titles, column.title)
+		fieldNames = append(fieldNames, column.fieldName)
 	}
 	content := make([][]any, 0, rows.Len())
 	for rowIndex := 0; rowIndex < rows.Len(); rowIndex++ {
@@ -343,10 +284,10 @@ func renderFeatureTable(rows reflect.Value, listType types.AIWorkResultPartType,
 		content = append(content, values)
 	}
 	part := dto_ai.WorkResultPart{
-		Type:    listType,
-		Titles:  titles,
-		Content: content,
-		Input:   input,
+		FieldNames: fieldNames,
+		Titles:     titles,
+		Content:    content,
+		Input:      input,
 	}
 	return part
 }
@@ -363,19 +304,19 @@ func renderFeatureObject(object reflect.Value) dto_ai.WorkResultPart {
 		content = append(content, valueInterface(fieldByIndex(object, field.index)))
 	}
 	return dto_ai.WorkResultPart{
-		Type:    types.AIWorkResultPartTypeObject,
 		Titles:  titles,
 		Content: content,
 	}
 }
 
 func textResultPart(message string) dto_ai.WorkResultPart {
-	return dto_ai.WorkResultPart{Type: types.AIWorkResultPartTypeText, Content: message}
+	return dto_ai.WorkResultPart{Content: message}
 }
 
 type titledField struct {
-	index []int
-	title string
+	index     []int
+	fieldName string
+	title     string
 }
 
 func titledFields(structType reflect.Type) []titledField {
@@ -404,10 +345,20 @@ func collectTitledFields(structType reflect.Type, parentIndex []int, visited map
 			continue
 		}
 		if title := field.Tag.Get("title"); title != "" {
-			fields = append(fields, titledField{index: fieldIndex, title: title})
+			fields = append(fields, titledField{index: fieldIndex, fieldName: fieldTagName(field), title: title})
 		}
 	}
 	return fields
+}
+
+func fieldTagName(field reflect.StructField) string {
+	for _, tagName := range []string{"json", "form", "uri"} {
+		name := strings.Split(field.Tag.Get(tagName), ",")[0]
+		if name != "" && name != "-" {
+			return name
+		}
+	}
+	return field.Name
 }
 
 func fieldByIndex(value reflect.Value, index []int) reflect.Value {

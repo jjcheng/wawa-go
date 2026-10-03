@@ -3,6 +3,7 @@ package feature_account_admin
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -20,10 +21,10 @@ import (
 
 type CreateUser struct {
 	Name            string         `json:"name" val:"required" description:"name of the new user" example:"John Doe"`
-	CountryCode     string         `json:"country_code" val:"required" description:"country code number"`
-	PhoneNumber     string         `json:"phone_number" val:"required" description:"phone number of the user, without country code"`
-	Email           string         `json:"email" description:"email address of the user"`
-	Type            types.UserType `json:"type" val:"required" description:"type of the user" example:"PUBLIC"`
+	CountryCode     string         `json:"country_code" val:"required" description:"country code number" example:"65"`
+	PhoneNumber     string         `json:"phone_number" val:"required" description:"phone number of the user, without country code" example:"91234567"`
+	Email           string         `json:"email" description:"email address of the user" example:"john@example.com"`
+	Type            types.UserType `json:"type" val:"required" description:"type of the user" example:"MASTER, OPERATOR"`
 	Description     string         `json:"description" description:"for your reference" example:"created by account department"`
 	Password        string         `json:"password" val:"required" description:"password of the new user"`
 	ConfirmPassword string         `json:"confirm_password" val:"required" description:"confirm password of the user"`
@@ -53,7 +54,7 @@ func (createUser *CreateUser) Validate() []exception.InputException {
 	if createUser.Type == "" {
 		errors = append(errors, exception.NewInputException("type", "missing type"))
 	} else if !helper.Any(types.UserTypes, func(t types.UserType) bool { return t == createUser.Type }) {
-		errors = append(errors, exception.NewInputException("type", "invalid type"))
+		errors = append(errors, exception.NewInputException("type", fmt.Sprintf("invalid type, available types are %s", strings.Join(helper.Map(types.UserTypes, func(t types.UserType) string { return string(t) }), ", "))))
 	}
 	if strings.TrimSpace(createUser.Password) == "" {
 		errors = append(errors, exception.NewInputException("password", "missing password"))
@@ -133,5 +134,7 @@ func (CreateUser) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("there is an existing user with the same country code + phone number", http.StatusConflict)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-		})
+		},
+		feature.NewAIWorker(true, "To create a user, go to Assets -> Users and click Add user. Only MASTER users can do this.", types.AIWorkerReturnTypeText, "User successfully created.", "/assets/users"),
+	)
 }

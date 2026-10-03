@@ -7,8 +7,10 @@ import (
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -97,5 +99,34 @@ func (AssignUsers) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException("one or more users are unavailable", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
+		feature.NewAIWorker(
+			true,
+			"To assign users to a phone number, go to Assets -> Phone numbers, select a phone number. In the pop up, click Manage button, then choose the users who you want to assign it to. This feature is limited to MASTER users",
+			types.AIWorkerReturnTypeText,
+			"Users has successfully assigned to the phone number.",
+			"/assets/phone-numbers",
+			feature.NewAIWorkerRequire(
+				"Select a connected phone number",
+				feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected},
+				dto_ai.WorkInput{
+					Name:               "phone_number_id",
+					Description:        "phone number to assign users to",
+					Type:               types.AIInputFieldTypeInt,
+					ReferenceFieldName: "id",
+					DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+				},
+			),
+			feature.NewAIWorkerRequire(
+				"Select the users to assign to this phone number",
+				ListUsers{},
+				dto_ai.WorkInput{
+					Name:               "user_ids",
+					Description:        "users to assign to the phone number",
+					Type:               types.AIInputFieldTypeInt,
+					ReferenceFieldName: "id",
+					DisplayType:        types.AIWorkerDisplayTypeMultiChoiceTable,
+				},
+			),
+		),
 	)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -16,7 +17,7 @@ import (
 
 type SetUserStatus struct {
 	UserId int              `json:"id" val:"required" description:"id of the user"`
-	Status types.UserStatus `json:"status" val:"required" description:"new status of the user"`
+	Status types.UserStatus `json:"status" val:"required" description:"new status of the user (ACTIVE or INACTIVE)" example:"ACTIVE"`
 }
 
 func (setUserStatus *SetUserStatus) Validate() []exception.InputException {
@@ -88,5 +89,17 @@ func (SetUserStatus) APISettings() feature.APISettings {
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
 		feature.NewAPIError(*exception.NewCustomException("Meta business portfolio not found", http.StatusNotFound)),
 		feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-	})
+	}, feature.NewAIWorker(true,
+		"To enable or disable a user, go to Assets -> Users and select the user. Only MASTER users can do this; you cannot update your own status or another MASTER user's status.",
+		types.AIWorkerReturnTypeText,
+		"User status successfully updated.",
+		"/assets/users",
+		feature.NewAIWorkerRequire("Select a user", ListUsers{}, dto_ai.WorkInput{
+			Name:               "id",
+			Description:        "user whose status to update",
+			Type:               types.AIInputFieldTypeInt,
+			ReferenceFieldName: "id",
+			DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+		}),
+	))
 }
