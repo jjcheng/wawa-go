@@ -8,8 +8,10 @@ import (
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -85,7 +87,7 @@ func (assignPhoneNumbers AssignPhoneNumbers) Handle(ctx context.Context, user *d
 }
 
 func (AssignPhoneNumbers) APISettings() feature.APISettings {
-	return feature.NewAPISettings(
+	apiSettings := feature.NewAPISettings(
 		"Assign phone numbers to a user",
 		"Assign or remove the phone numbers managed by a user. Only master users can access this endpoint",
 		types.HttpRequestTypeJSON,
@@ -100,6 +102,36 @@ func (AssignPhoneNumbers) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException("user not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("one or more of the phone numbers are unavailable", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-		},
+		}, nil,
 	)
+	aiWorker := feature.NewAIWorker(
+		true,
+		"To assign phone numbers to a user, go to Assets -> Users, select a user, click Phone numbers, select phone numbers you want to assign to the user, click Save.",
+		types.AIWorkerReturnTypeText,
+		"Phone numbers successfully assigned to user.",
+		"/assets/users",
+		feature.NewAIWorkerRequire(
+			"Please select a user to assign phone numbers to",
+			ListUsers{},
+			dto_ai.WorkInput{
+				Name:               "user_id",
+				Description:        "id of the user",
+				Type:               types.AIInputFieldTypeInt,
+				ReferenceFieldName: "id",
+			},
+		),
+		feature.NewAIWorkerRequire(
+			"Please select phone numbers to assign to this user",
+			feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected},
+			dto_ai.WorkInput{
+				Name:               "phone_number_id",
+				Description:        "id of the phone number",
+				Type:               types.AIInputFieldTypeInt,
+				ReferenceFieldName: "id",
+				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+			},
+		),
+	)
+	apiSettings.AIWorker = aiWorker
+	return apiSettings
 }

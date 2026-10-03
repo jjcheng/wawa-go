@@ -5,6 +5,7 @@ import (
 	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_ai_conversation "github.com/jjcheng/wawa-go/internal/feature/ai/conversation"
+	feature_ai_worker "github.com/jjcheng/wawa-go/internal/feature/ai/worker"
 	"github.com/jjcheng/wawa-go/internal/service"
 )
 
@@ -13,4 +14,5 @@ func registerAIController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[[]dto_ai.Message, feature_ai_conversation.ListMessages](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_conversation.Delete](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_ai.Message, feature_ai_conversation.Chat](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_ai.WorkResult, feature_ai_worker.Execute](routerGroup, dependencies, apiGenerator)
 }

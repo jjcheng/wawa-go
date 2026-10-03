@@ -10,10 +10,12 @@ import (
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -21,7 +23,7 @@ import (
 )
 
 type Create struct {
-	DisplayName   string   `json:"display_name" val:"required" description:"display name given by user"`
+	DisplayName   string   `json:"display_name" val:"required" description:"customer display name"`
 	WADisplayName string   `json:"wa_display_name" description:"display name given by WhatsApp"`
 	CountryCode   string   `json:"country_code" val:"required" description:"customer country code"`
 	PhoneNumber   string   `json:"phone_number" val:"required" description:"customer phone number"`
@@ -29,7 +31,7 @@ type Create struct {
 	Tags          []string `json:"tags" description:"tags of the customer"`
 	Remarks       string   `json:"remarks" description:"for your own reference"`
 	WAId          string   `json:"wa_id" description:"optional waId from incoming messages"`
-	PhoneNumberId int32    `json:"phone_number_id" val:"required" description:"which phone number to assign this customer to"`
+	PhoneNumberId int32    `json:"phone_number_id" val:"required" description:"id of the phone number to assign this customer to"`
 	FromIncoming  bool     `json:"-"` // if from incoming WA message, there is no user in Handle()
 }
 
@@ -67,6 +69,9 @@ func (create *Create) Validate() []exception.InputException {
 }
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_customer.Customer] {
+	if inputErrors := create.Validate(); len(inputErrors) > 0 {
+		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
+	}
 	if !create.FromIncoming {
 		if user == nil {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
@@ -79,9 +84,6 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}) {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
-	}
-	if inputErrors := create.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
 	}
 	// check existing
 	if create.CountryCode != "" {
@@ -142,6 +144,16 @@ func (Create) APISettings() feature.APISettings {
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("customer already exists", http.StatusConflict)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
-		},
+		}, feature.NewAIWorker(true, "To create a customer, go to Chats page from the side menu or bottom tool bar, then click Add customer button, in the dropdown list, click Create button.",
+			types.AIWorkerReturnTypeText,
+			"Customer successfully added, you can view your customers in Chats page from the side menu or bottom tab bar.",
+			"/chats",
+			feature.NewAIWorkerRequire("Select a phone number", feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected}, dto_ai.WorkInput{
+				Name:               "phone_number_id",
+				Description:        "id of the phone number",
+				Type:               types.AIInputFieldTypeInt,
+				ReferenceFieldName: "id",
+				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
+			})),
 	)
 }

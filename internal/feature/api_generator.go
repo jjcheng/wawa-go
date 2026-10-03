@@ -9,9 +9,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -25,8 +27,16 @@ type APIGenerator struct {
 
 var apiIntentDescriptions = struct {
 	sync.RWMutex
-	values map[string]string
-}{values: make(map[string]string)}
+	values       map[string]string
+	settings     map[string]APISettings
+	requestTypes map[string]reflect.Type
+	executors    map[string]APIExecutor
+}{
+	values:       make(map[string]string),
+	settings:     make(map[string]APISettings),
+	requestTypes: make(map[string]reflect.Type),
+	executors:    make(map[string]APIExecutor),
+}
 
 // APIIntentDescriptions returns the registered public API summaries and descriptions.
 func APIIntentDescriptions() map[string]string {
@@ -35,6 +45,95 @@ func APIIntentDescriptions() map[string]string {
 	result := make(map[string]string, len(apiIntentDescriptions.values))
 	maps.Copy(result, apiIntentDescriptions.values)
 	return result
+}
+
+// APISettingsBySummary returns the settings for a registered public API summary.
+func APISettingsBySummary(summary string) (APISettings, bool) {
+	apiIntentDescriptions.RLock()
+	defer apiIntentDescriptions.RUnlock()
+	settings, exists := apiIntentDescriptions.settings[summary]
+	return settings, exists
+}
+
+// APIRequiredFieldsBySummary returns descriptions of required request fields for a registered API.
+func APIRequiredFieldsBySummary(summary string) ([]dto_ai.WorkInput, bool) {
+	apiIntentDescriptions.RLock()
+	requestType, exists := apiIntentDescriptions.requestTypes[summary]
+	apiIntentDescriptions.RUnlock()
+	if !exists {
+		return nil, false
+	}
+	return requiredFieldDescriptions(requestType, make(map[reflect.Type]bool)), true
+}
+
+func requiredFieldDescriptions(requestType reflect.Type, visited map[reflect.Type]bool) []dto_ai.WorkInput {
+	for requestType.Kind() == reflect.Pointer {
+		requestType = requestType.Elem()
+	}
+	if requestType.Kind() != reflect.Struct || visited[requestType] {
+		return nil
+	}
+	visited[requestType] = true
+	defer delete(visited, requestType)
+
+	var inputs []dto_ai.WorkInput
+	for index := 0; index < requestType.NumField(); index++ {
+		field := requestType.Field(index)
+		if hasRequiredValidationTag(field.Tag.Get("val")) {
+			inputs = append(inputs, dto_ai.WorkInput{
+				Name:               requestParameterKey(field),
+				Description:        field.Tag.Get("description"),
+				Type:               aiInputFieldType(field.Type),
+				ReferenceFieldName: "",
+			})
+			continue
+		}
+		if field.Anonymous {
+			inputs = append(inputs, requiredFieldDescriptions(field.Type, visited)...)
+			continue
+		}
+		if !field.IsExported() {
+			continue
+		}
+	}
+	return inputs
+}
+
+func aiInputFieldType(fieldType reflect.Type) types.AIInputType {
+	for fieldType.Kind() == reflect.Pointer {
+		fieldType = fieldType.Elem()
+	}
+	if fieldType == reflect.TypeFor[time.Time]() {
+		return types.AIInputFieldTypeDateTime
+	}
+	switch fieldType.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return types.AIInputFieldTypeInt
+	case reflect.Float32, reflect.Float64:
+		return types.AIInputFieldTypeFloat
+	default:
+		return types.AIInputFieldTypeText
+	}
+}
+
+func hasRequiredValidationTag(tag string) bool {
+	for _, rule := range strings.Split(tag, ",") {
+		if strings.TrimSpace(rule) == "required" {
+			return true
+		}
+	}
+	return false
+}
+
+func requestParameterKey(field reflect.StructField) string {
+	for _, tagName := range []string{"json", "form", "uri"} {
+		name := strings.Split(field.Tag.Get(tagName), ",")[0]
+		if name != "" && name != "-" {
+			return name
+		}
+	}
+	return field.Name
 }
 
 func NewAPIGenerator() *APIGenerator {
@@ -89,6 +188,8 @@ func (g *APIGenerator) AddEndpoint(requestObj any, responseType reflect.Type) er
 	if settings.Public && settings.Summary != "" {
 		apiIntentDescriptions.Lock()
 		apiIntentDescriptions.values[settings.Summary] = settings.Description
+		apiIntentDescriptions.settings[settings.Summary] = settings
+		apiIntentDescriptions.requestTypes[settings.Summary] = reflect.TypeOf(requestObj)
 		apiIntentDescriptions.Unlock()
 	}
 	// Create operation
@@ -294,24 +395,12 @@ func (g *APIGenerator) generateSchemaRecursive(t reflect.Type, visited map[refle
 	visited[t] = true
 	defer delete(visited, t)
 
-	// Handle special types before checking if it's a struct
 	if t.String() == "time.Time" {
-		return &openapi3.SchemaRef{
-			Value: &openapi3.Schema{
-				Type:   &openapi3.Types{"string"},
-				Format: "date-time",
-			},
-		}
+		return &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}, Format: "date-time"}}
 	}
 	if t.PkgPath() == "github.com/google/uuid" && t.Name() == "UUID" {
-		return &openapi3.SchemaRef{
-			Value: &openapi3.Schema{
-				Type:   &openapi3.Types{"string"},
-				Format: "uuid",
-			},
-		}
+		return &openapi3.SchemaRef{Value: &openapi3.Schema{Type: &openapi3.Types{"string"}, Format: "uuid"}}
 	}
-
 	if t.Kind() != reflect.Struct {
 		return g.generatePrimitiveSchemaRecursive(t, visited, depth)
 	}

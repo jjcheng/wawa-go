@@ -12,13 +12,13 @@ import (
 
 type User struct {
 	dto.DTOBase
-	Name              string           `json:"name"`
-	CountryCode       string           `json:"country_code"`
-	PhoneNumber       string           `json:"phone_number"`
-	Email             string           `json:"email"`
+	Name              string           `json:"name" title:"Name"`
+	CountryCode       string           `json:"country_code" title:"Country code"`
+	PhoneNumber       string           `json:"phone_number" title:"Phone number"`
+	Email             string           `json:"email" title:"Email"`
 	Description       string           `json:"description"`
-	Type              types.UserType   `json:"type"`
-	Status            types.UserStatus `json:"status"`
+	Type              types.UserType   `json:"type" title:"Type"`
+	Status            types.UserStatus `json:"status" title:"Status"`
 	BusinessAccountId int32            `json:"business_account_id"`
 	New               bool             `json:"-"`
 	// got from session

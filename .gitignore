@@ -47,3 +47,4 @@ exports
 s.yaml
 bootstrap
 worker
+!internal/feature/ai/worker

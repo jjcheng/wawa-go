@@ -73,6 +73,7 @@ func registerRoute[R any, T feature.Request[R]](server *gin.RouterGroup, depende
 	if requestType.APISettings().Public {
 		responseType := reflect.TypeFor[R]()
 		_ = apiGenerator.AddEndpoint(requestType, responseType)
+		feature.RegisterAPIExecutor(requestType.APISettings().Summary, requestType)
 	}
 	server.Handle(requestType.APISettings().Method, requestType.APISettings().Path, middleware.BindRequest[R, T](), func(ctx *gin.Context) {
 		startAt := time.Now()

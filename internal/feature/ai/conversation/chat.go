@@ -3,7 +3,6 @@ package feature_ai_conversation
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -13,8 +12,10 @@ import (
 	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	feature_ai_worker "github.com/jjcheng/wawa-go/internal/feature/ai/worker"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -67,40 +68,40 @@ func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewFailedResponse[*dto_ai.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// insert this message first
+	userContent, err := dto_ai.SerializeWorkResultParts([]dto_ai.WorkResultPart{{
+		Type:    types.AIWorkResultPartTypeText,
+		Content: strings.TrimSpace(chat.Message),
+	}})
+	if err != nil {
+		return dto.NewFailedResponse[*dto_ai.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
 	message := dao_ai.Message{
 		ConversationId: conversation.Id,
-		Content:        strings.TrimSpace(chat.Message),
+		Parts:          pq.StringArray(userContent),
 		Role:           types.AIMessageRoleUser,
 	}
 	if err := dependencies.UnitOfWork.AIMessageRepository().Insert(ctx, &message); err != nil {
 		return dto.NewFailedResponse[*dto_ai.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	// list all past messages of this conversation
-	storedMessages, err := dependencies.UnitOfWork.AIMessageRepository().ListByConversationId(ctx, conversation.Id)
+	// work
+	work := feature_ai_worker.Work{
+		ConversationId: conversation.Id,
+	}
+	workResponse := work.Handle(ctx, user, dependencies)
+	if !workResponse.Success {
+		return dto.NewFailedResponse[*dto_ai.Message](workResponse.StatusCode, workResponse.Message, workResponse.Error)
+	}
+	// response message
+	responseContents, err := dto_ai.SerializeWorkResultParts(workResponse.Data.Parts)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_ai.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	intentDescriptions := feature.APIIntentDescriptions()
-	intents := make([]string, 0, len(intentDescriptions))
-	for intent := range intentDescriptions {
-		intents = append(intents, intent)
-	}
-	typeSafeMessages := make([]service.TypeSafeMessage, 0, len(storedMessages))
-	for _, storedMessage := range storedMessages {
-		typeSafeMessages = append(typeSafeMessages, service.TypeSafeMessage{
-			Role:    strings.ToLower(string(storedMessage.Role)),
-			Content: storedMessage.Content,
-		})
-	}
-	detectedIntent, err := dependencies.TypeSafe.DetectIntent(ctx, typeSafeMessages, intents)
-	if err != nil {
-		return dto.NewFailedResponse[*dto_ai.Message](http.StatusBadGateway, "failed to detect intent", err)
-	}
-	// response message
 	responseMessage := dao_ai.Message{
+		Feature:        workResponse.Data.Feature,
 		ConversationId: conversation.Id,
 		Role:           types.AIMessageRoleAssistant,
-		Content:        fmt.Sprintf("User wants to %s", strings.ToLower(detectedIntent)),
+		Parts:          pq.StringArray(responseContents),
+		URL:            workResponse.Data.URL,
 	}
 	if err := dependencies.UnitOfWork.AIMessageRepository().Insert(ctx, &responseMessage); err != nil {
 		return dto.NewFailedResponse[*dto_ai.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
@@ -120,5 +121,6 @@ func (chat Chat) APISettings() feature.APISettings {
 		true,
 		types.APITagAI,
 		nil,
+		feature.NewAIWorker(false, "Hi, I am your AI worker, currently in beta! Tell me what you wish to do, I will try my best to give you the steps or provide you the form to execute the task. I may make mistakes, if I do so, please write a feedback to us, thank you!", types.AIWorkerReturnTypeText, "", ""),
 	)
 }

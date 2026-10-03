@@ -14,8 +14,8 @@ type PhoneNumber struct {
 	dto.DTOBase
 	BusinessAccountId  int32                     `json:"business_account_id"`
 	MetaPhoneNumberId  string                    `json:"meta_phone_number_id"`
-	DisplayPhoneNumber string                    `json:"display_phone_number"`
-	Name               string                    `json:"name"`
+	Name               string                    `json:"name" title:"Name"`
+	DisplayPhoneNumber string                    `json:"display_phone_number" title:"Phone number"`
 	WAId               string                    `json:"wa_id"`
 	Status             types.WAPhoneNumberStatus `json:"status"`
 	MetaAgentId        string                    `json:"meta_agent_id"`
