@@ -14,7 +14,7 @@ type PhoneNumber struct {
 	Name               string                    `gorm:"column:name"`
 	Status             types.WAPhoneNumberStatus `gorm:"column:status"`
 	MetaAgentId        string                    `gorm:"column:meta_agent_id"`
-	AgentRunning       bool                      `gorm:"column:agent_running"`
+	AgentEnabled       bool                      `gorm:"column:agent_enabled"` // business agent is setup and ready to handle customers
 	// two-step verification PIN set at registration, required to re-register the number later
 	RegistrationPin string `gorm:"-"` // not a db column
 	// encryption

@@ -86,7 +86,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		ImageUrls:   create.ImageUrls,
 	}
 	if err := dependencies.UnitOfWork.CommercePageRepository().Insert(ctx, &page); err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return dto.NewFailedResponse[*dto_commerce.Page](http.StatusConflict, "page slug is already in use", nil)
 		}
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)

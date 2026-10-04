@@ -26,6 +26,7 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/middleware"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
 
 	"github.com/gin-gonic/gin"
 )
@@ -99,6 +100,7 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[[]service.AgentSkill, feature_wa_business_agent.ListSkills](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentSkill, feature_wa_business_agent.UpdateSkill](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentSkill, feature_wa_business_agent.CreateSkill](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.AddCommonSkills](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_business_agent.DeleteSkill](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]service.AgentUISkill, feature_wa_business_agent.ListUISkills](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentUISkill, feature_wa_business_agent.CreateUISkill](routerGroup, dependencies, apiGenerator)
@@ -190,7 +192,7 @@ func registerWebhookReceiveRoute(routerGroup *gin.RouterGroup, dependencies *ser
 			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return
 		}
-		if !helper.VerifyWhatsAppWebhookSignature(ctx.GetHeader("X-Hub-Signature-256"), rawBody, cfg.Default().WhatsApp.AppSecret) {
+		if cfg.Default().Site.Environment != types.EnvironmentDevelop && !helper.VerifyWhatsAppWebhookSignature(ctx.GetHeader("X-Hub-Signature-256"), rawBody, cfg.Default().WhatsApp.AppSecret) {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, dto.NewFailedResponse[any](http.StatusUnauthorized, "invalid WhatsApp webhook signature", nil))
 			return
 		}

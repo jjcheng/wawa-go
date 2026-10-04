@@ -20,6 +20,7 @@ type Message struct {
 	Payload       map[string]any        `gorm:"-"` // not a db column
 	AttachmentURL string                `gorm:"column:attachment_url"`
 	Token         string                `gorm:"column:token"`
+	ByAgent       bool                  `gorm:"column:by_agent"`
 	// for billing
 	Billable    bool   `gorm:"column:billable"`
 	BillingType string `gorm:"column:billing_type"`

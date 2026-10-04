@@ -59,6 +59,7 @@ type Create struct {
 	Reaction             *ReactionObject  `json:"reaction,omitempty" description:"only if the message is an emoji reaction to a previous message, an empty string is used to remove your existing reaction from that message. Set the rest including context to nil"`
 	AttachmentURL        string           `json:"attachment_url,omitempty" description:"set message attachment_url"`
 	BroadcastRecipientId *int32           `json:"broadcast_recipient_id,omitempty" description:"if it's from a broadcast"`
+	FromWebhook          bool             `json:"-"`
 }
 
 type MessageContext struct {

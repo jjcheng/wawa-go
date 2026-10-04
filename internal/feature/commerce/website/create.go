@@ -174,7 +174,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 			}
 			err = transaction.CommerceGenericProductRepository().Insert(ctx, &newProduct)
 			if err != nil {
-				if errors.Is(err, gorm.ErrDuplicatedKey) {
+				if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 					continue
 				}
 				return dto.NewFailedResponse[*dto_commerce.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)

@@ -54,8 +54,8 @@ func (turnOn TurnOn) Handle(ctx context.Context, user *dto_account.User, depende
 	if err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, types.ExceptionMessageBadGateway, err)
 	}
-	if phoneNumber.AgentRunning != turnOn.On {
-		phoneNumber.AgentRunning = turnOn.On
+	if phoneNumber.AgentEnabled != turnOn.On {
+		phoneNumber.AgentEnabled = turnOn.On
 		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, phoneNumber); err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}

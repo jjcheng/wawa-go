@@ -35,7 +35,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				}
 				// process incoming messages
 				for _, incomingMessage := range incomingValue.Messages {
-					if err := insertIncomingMessage(ctx, dependencies, incomingMessage, incomingValue.Contacts, incomingValue.Metadata); err != nil {
+					if err := insertIncomingMessage(ctx, dependencies, incomingMessage, incomingValue.Contacts, incomingValue.Metadata, false); err != nil {
 						// if already stored, it's not really an error
 						if strings.Contains(err.Error(), "duplicate") {
 							continue
@@ -49,14 +49,14 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 						return err
 					}
 				}
-			} else if change.Field == "standby" { // customer sent message via business agent is on
+			} else if change.Field == "standby" { // when business agent is active for a phone number
 				var incomingValue dto_wa.IncomingValue
 				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
 					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
 				}
 				// standby.messages and standby.contacts are only available if customer send in via business agent is active
 				for _, message := range incomingValue.Standby.Messages {
-					if err := insertIncomingMessage(ctx, dependencies, message, incomingValue.Standby.Contacts, incomingValue.Metadata); err != nil {
+					if err := insertIncomingMessage(ctx, dependencies, message, incomingValue.Standby.Contacts, incomingValue.Metadata, true); err != nil {
 						// if already stored, it's not really an error
 						if strings.Contains(err.Error(), "duplicate") {
 							continue
@@ -65,15 +65,15 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 					}
 				}
 				// message echos is sent from the business agent
-				// for _, messageEcho := range incomingValue.Standby.MessageEchoes {
-				// 	if err := insertIncomingMessageEcho(ctx, dependencies, messageEcho, incomingValue.Metadata); err != nil {
-				// 		// if already stored, it's not really an error
-				// 		if strings.Contains(err.Error(), "duplicate") {
-				// 			continue
-				// 		}
-				// 		return err
-				// 	}
-				// }
+				for _, messageEcho := range incomingValue.Standby.MessageEchoes {
+					if err := insertIncomingMessageEcho(ctx, dependencies, messageEcho, incomingValue.Metadata); err != nil {
+						// if already stored, it's not really an error
+						if strings.Contains(err.Error(), "duplicate") {
+							continue
+						}
+						return err
+					}
+				}
 				// check statuses
 				for _, status := range incomingValue.Standby.Statuses {
 					if err := insertIncomingStatus(ctx, dependencies, status); err != nil {
@@ -168,44 +168,13 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 			} else if change.Field == "smb_app_state_sync" {
 
 			} else if change.Field == "messaging_handovers" {
-				fmt.Println("messaging_handovers")
 				var incomingValue dto_wa.IncomingValue
 				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
 					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
 				}
-				// get phone number
-				phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, incomingValue.IncomingHandovers.Recipient.PhoneNumberID)
-				if err != nil {
-					if errors.Is(err, gorm.ErrRecordNotFound) {
-						return nil
-					}
-					return err
+				if incomingValue.IncomingHandovers != nil {
+					return handoverMessaging(ctx, dependencies, incomingValue)
 				}
-				// get customer
-				customer, err := dependencies.UnitOfWork.CustomerRepository().GetByWAIdOrMetaUserId(ctx, phoneNumber.Id, incomingValue.Sender.PhoneNumber, incomingValue.Sender.PhoneNumber)
-				if err != nil {
-					if errors.Is(err, gorm.ErrRecordNotFound) {
-						return nil
-					}
-					return err
-				}
-				// get user
-				var passToAgent bool
-				if incomingValue.IncomingHandovers.Type == "control_passed" {
-					if incomingValue.IncomingHandovers.ControlPassed.NewOwnerRole == "ai_agent" {
-						passToAgent = true
-					}
-				} else {
-					if incomingValue.IncomingHandovers.ControlTaken.NewOwnerRole == "ai_agent" {
-						passToAgent = true
-					}
-				}
-				passControl := feature_wa_business_agent.PassControl{
-					CustomerId:  customer.Id,
-					ToAgent:     passToAgent,
-					FromWebhook: true,
-				}
-				_ = passControl.Handle(ctx, nil, dependencies)
 			}
 		}
 	}
@@ -318,7 +287,7 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 	return nil
 }
 
-func insertIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata) error {
+func insertIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata, isStandby bool) error {
 	timestamp, err := strconv.ParseInt(incomingMessage.Timestamp, 10, 64)
 	if err != nil {
 		return fmt.Errorf("incoming message timestamp invalid: %s", incomingMessage.Timestamp)
@@ -380,6 +349,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			Remarks:       "created from incoming WhatsApp message",
 			PhoneNumberId: userPhoneNumber.Id,
 			FromIncoming:  true,
+			AgentEnabled:  true,
 		}
 		createCustomerResponse := createCustomer.Handle(ctx, nil, &transactionDependencies)
 		if !createCustomerResponse.Success {
@@ -418,7 +388,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 		Token:         uuid.NewString(),
 	}
 	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return errors.New("duplicate message entry")
 		}
 		return fmt.Errorf("failed to insert message customerId=%d phoneNumberId=%d waMessageId=%s timestamp=%v error=%w", message.CustomerId, userPhoneNumber.Id, message.WAMessageId, message.Timestamp, err)
@@ -441,10 +411,23 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 	if err != nil {
 		dependencies.Logger.ErrorFunction(err, phoneNumberChannelName)
 	}
+	// if customer can be handled by business agent and this phone number is currently running agent, pass control to business agent
+	// if is from standby, it's already handled by business agent
+	if !isStandby && customerDTO.AgentEnabled && userPhoneNumber.AgentEnabled {
+		passControl := feature_wa_business_agent.PassControl{
+			CustomerId:  message.CustomerId,
+			ToAgent:     true,
+			FromWebhook: true,
+		}
+		response := passControl.Handle(ctx, nil, dependencies)
+		if !response.Success {
+			dependencies.Logger.ErrorFunction(response.Error, message.CustomerId)
+		}
+	}
 	return nil
 }
 
-func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Dependencies, incomingMessageEcho dto_wa.IncomingMessageEcho, metadata dto_wa.IncomingMetadata) error {
+func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Dependencies, incomingMessageEcho dto_wa.IncomingMessageStandbyEcho, metadata dto_wa.IncomingMetadata) error {
 	timestamp, err := strconv.ParseInt(incomingMessageEcho.Timestamp, 10, 64)
 	if err != nil {
 		return fmt.Errorf("incoming message echo timestamp invalid: %s", incomingMessageEcho.Timestamp)
@@ -466,7 +449,7 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		return fmt.Errorf("failed to get user's phone number %s: %w", metadata.PhoneNumberID, err)
 	}
 	// check customer exists based on waId or metaUserId
-	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.Id, incomingMessageEcho.To, incomingMessageEcho.Recipient)
+	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.Id, incomingMessageEcho.Message.To, incomingMessageEcho.Message.Recipient)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to get customer error=%w", err)
@@ -476,12 +459,12 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 	var customerDTO dto_customer.Customer
 	if existingCustomer == nil {
 		var countryCode, phoneNumber string
-		if incomingMessageEcho.To != "" {
-			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessageEcho.To)
+		if incomingMessageEcho.Message.To != "" {
+			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessageEcho.Message.To)
 			if err != nil {
 				dependencies.Logger.ErrorFunction(err)
 				cc = "."
-				pn = incomingMessageEcho.To
+				pn = incomingMessageEcho.Message.To
 			}
 			countryCode = cc
 			phoneNumber = pn
@@ -491,8 +474,8 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 			WADisplayName: "Unknown name",
 			CountryCode:   countryCode,
 			PhoneNumber:   phoneNumber,
-			MetaUserId:    incomingMessageEcho.Recipient,
-			WAId:          incomingMessageEcho.To,
+			MetaUserId:    incomingMessageEcho.Message.Recipient,
+			WAId:          incomingMessageEcho.Message.To,
 			Remarks:       "created from incoming WhatsApp message echo",
 			PhoneNumberId: userPhoneNumber.Id,
 			FromIncoming:  true,
@@ -504,12 +487,12 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		customerDTO = *createCustomerResponse.Data
 	} else {
 		var hasChange bool
-		if incomingMessageEcho.Recipient != "" && existingCustomer.MetaUserId != incomingMessageEcho.Recipient {
-			existingCustomer.MetaUserId = incomingMessageEcho.Recipient
+		if incomingMessageEcho.Message.Recipient != "" && existingCustomer.MetaUserId != incomingMessageEcho.Message.Recipient {
+			existingCustomer.MetaUserId = incomingMessageEcho.Message.Recipient
 			hasChange = true
 		}
-		if incomingMessageEcho.To != "" && existingCustomer.WAId != incomingMessageEcho.To {
-			existingCustomer.WAId = incomingMessageEcho.To
+		if incomingMessageEcho.Message.To != "" && existingCustomer.WAId != incomingMessageEcho.Message.To {
+			existingCustomer.WAId = incomingMessageEcho.Message.To
 			hasChange = true
 		}
 		if hasChange {
@@ -525,12 +508,13 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		PhoneNumberId: userPhoneNumber.Id,
 		WAMessageId:   incomingMessageEcho.ID,
 		Timestamp:     timestamp,
-		Type:          incomingMessageEcho.Type,
-		Payload:       incomingMessageEcho.Payload,
+		Type:          incomingMessageEcho.Message.Type,
+		Payload:       incomingMessageEcho.Payload["message"].(map[string]any),
 		Token:         uuid.NewString(),
+		ByAgent:       true,
 	}
 	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return errors.New("duplicate message entry")
 		}
 		return fmt.Errorf("failed to insert message customerId=%d phoneNumberId=%d waMessageId=%s timestamp=%v error=%w", message.CustomerId, userPhoneNumber.Id, message.WAMessageId, message.Timestamp, err)
@@ -539,6 +523,108 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		return fmt.Errorf("failed to commit transaction error=%w", err)
 	}
 	committed = true
+	return nil
+}
+
+func handoverMessaging(ctx context.Context, dependencies *service.Dependencies, incomingValue dto_wa.IncomingValue) error {
+	// get phone number
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, incomingValue.IncomingHandovers.Recipient.PhoneNumberID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("failed to get phone number by meta phone number id, phoneNumberId=%s error=%w", incomingValue.IncomingHandovers.Recipient.PhoneNumberID, err)
+	}
+	// get customer
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetByWAIdOrMetaUserId(ctx, phoneNumber.Id, incomingValue.Sender.PhoneNumber, incomingValue.Sender.PhoneNumber)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("failed by get customer by waId of metaUserId, phoneNumberId=%s error=%w", incomingValue.IncomingHandovers.Recipient.PhoneNumberID, err)
+	}
+	customer.AgentEnabled = false // disable the agent, must be activated again manually
+	if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, customer); err != nil {
+		return fmt.Errorf("failed update customer agent_enabled, customerId=%d error=%w", customer.Id, err)
+	}
+	// get reason
+	var metadata string
+	var summary string
+	if incomingValue.IncomingHandovers.Type == "control_passed" {
+		metadata = incomingValue.IncomingHandovers.ControlPassed.Metadata
+		if incomingValue.IncomingHandovers.ControlPassed.ConversationContext != nil && incomingValue.IncomingHandovers.ControlPassed.ConversationContext.Type == "summary" && incomingValue.IncomingHandovers.ControlPassed.ConversationContext.Summary != nil {
+			summary = incomingValue.IncomingHandovers.ControlPassed.ConversationContext.Summary.Text
+		}
+	} else {
+		metadata = incomingValue.IncomingHandovers.ControlTaken.Metadata
+		if incomingValue.IncomingHandovers.ControlTaken.ConversationContext != nil && incomingValue.IncomingHandovers.ControlTaken.ConversationContext.Type == "summary" && incomingValue.IncomingHandovers.ControlTaken.ConversationContext.Summary != nil {
+			summary = incomingValue.IncomingHandovers.ControlTaken.ConversationContext.Summary.Text
+		}
+	}
+	// send notifications to all users managing this phone number
+	userPhoneNumbers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByPhoneNumberId(ctx, phoneNumber.Id)
+	if err != nil {
+		return fmt.Errorf("failed to list userPhoneNumbers by phoneNumberId, phoneNumberId=%d error=%w", phoneNumber.Id, err)
+	}
+	if len(userPhoneNumbers) == 0 {
+		return nil
+	}
+	createNotification := feature_account_notification.Create{
+		Category: types.NotificationCategoryPending,
+		IconType: types.NotificationIconTypeChat,
+		Type:     types.NotificationTypeWarning,
+		Title:    fmt.Sprintf("Business Agent has handed over a conversation to you: %s", metadata),
+		Body:     fmt.Sprintf("Conversation with %s", customer.DisplayName),
+		URL:      fmt.Sprintf("/chats/%d/chat", customer.Id),
+	}
+	if summary != "" {
+		createNotification.Body += fmt.Sprintf("\nSummary: %s", summary)
+	}
+	createNotification.Body += "\n\nYou have to manually enable business agent for this customer again."
+	for _, userPhoneNumber := range userPhoneNumbers {
+		createNotification.ToUserId = userPhoneNumber.UserId
+		_ = createNotification.Handle(ctx, dependencies)
+		if summary != "" {
+			create := Create{
+				Type: MessageTypeText,
+				Text: &TextObject{
+					Body: fmt.Sprintf("ℹ️ *%s*\n\n%s\n\nYou have to manually enable business agent for this customer again.", strings.ReplaceAll(createNotification.Title, "_", " "), summary),
+				},
+			}
+			payload, err := messagePayload(create)
+			if err != nil {
+				return fmt.Errorf("failed to create message payload: %w", err)
+			}
+			payload["messaging_product"] = "whatsapp"
+			payload["recipient_type"] = "individual"
+			// use meta_user_id to send if not empty
+			if customer.WAId != "" {
+				payload["to"] = customer.WAId
+			} else {
+				payload["to"] = customer.MetaUserId
+			}
+			delete(payload, "customer_id")
+			token := uuid.NewString()
+			payload["biz_opaque_callback_data"] = token
+			newMessage := dao_wa.Message{
+				Sending:       true,
+				SenderUserId:  &userPhoneNumber.UserId,
+				PhoneNumberId: customer.PhoneNumberId,
+				CustomerId:    customer.Id,
+				WAMessageId:   uuid.NewString(),
+				Timestamp:     time.Now().Unix(),
+				Type:          "text",
+				Status:        types.WAMessageStatusDelivered,
+				Token:         uuid.NewString(),
+				ByAgent:       true,
+				Payload:       payload,
+			}
+			err = dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &newMessage)
+			if err != nil {
+				dependencies.Logger.ErrorFunction(err)
+			}
+		}
+	}
 	return nil
 }
 

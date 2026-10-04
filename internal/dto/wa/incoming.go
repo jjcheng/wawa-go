@@ -22,15 +22,15 @@ type IncomingChange struct {
 }
 
 type IncomingValue struct {
-	MessagingProduct string                `json:"messaging_product"`
-	Metadata         IncomingMetadata      `json:"metadata"`
-	Contacts         []IncomingContact     `json:"contacts,omitempty"`
-	Messages         []IncomingMessage     `json:"messages,omitempty"`
-	Standby          *IncomingStandby      `json:"standby,omitempty"`
-	Statuses         []Status              `json:"statuses,omitempty"`
-	MessageEchoes    []IncomingMessageEcho `json:"message_echoes,omitempty"`
-	SyncStatus       string                `json:"sync_status,omitempty"`
-	ChunkNumber      int                   `json:"chunk_number,omitempty"`
+	MessagingProduct string                       `json:"messaging_product"`
+	Metadata         IncomingMetadata             `json:"metadata"`
+	Contacts         []IncomingContact            `json:"contacts,omitempty"`
+	Messages         []IncomingMessage            `json:"messages,omitempty"`
+	Standby          *IncomingStandby             `json:"standby,omitempty"`
+	Statuses         []Status                     `json:"statuses,omitempty"`
+	MessageEchoes    []IncomingMessageStandbyEcho `json:"message_echoes,omitempty"`
+	SyncStatus       string                       `json:"sync_status,omitempty"`
+	ChunkNumber      int                          `json:"chunk_number,omitempty"`
 	// messaing_handovers
 	*IncomingHandovers
 }
@@ -59,12 +59,6 @@ type IncomingMessage struct {
 	Type       string         `json:"type"`
 	Errors     []StatusError  `json:"errors,omitempty"`
 	Payload    map[string]any `json:"-"`
-}
-
-type IncomingMessageEcho struct {
-	IncomingMessage
-	To        string `json:"to"`
-	Recipient string `json:"recipient"`
 }
 
 type IncomingStandby struct {
@@ -121,12 +115,23 @@ type IncomingHandovers struct {
 }
 
 type IncomingHandoversSender struct {
-	PhoneNumber string `json:"phone_number"`
+	PhoneNumber string `json:"phone_number"` // waid
 }
 
 type IncomingHandoversControlPassed struct {
-	NewOwnerRole      string `json:"new_owner_role"`
-	PreviousOwnerRole string `json:"previous_owner_role"`
+	NewOwnerRole        string                                `json:"new_owner_role"`      // escalation, ai_agent
+	PreviousOwnerRole   string                                `json:"previous_owner_role"` // ai_agent, escalation
+	Metadata            string                                `json:"metadata"`            // enterprise_budget_token_limit_exceeded
+	ConversationContext *IncomingHandoversConversationContext `json:"conversation_context"`
+}
+
+type IncomingHandoversConversationContext struct {
+	Type    string                                       `json:"type"`
+	Summary *IncomingHandoversConversationContextSummary `json:"summary"`
+}
+
+type IncomingHandoversConversationContextSummary struct {
+	Text string `json:"text"`
 }
 
 type IncomingTemplateStatusChange struct {
@@ -165,8 +170,8 @@ func (message *IncomingMessage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (message *IncomingMessageEcho) UnmarshalJSON(data []byte) error {
-	type incomingMessageAlias IncomingMessageEcho
+func (message *IncomingMessageStandbyEcho) UnmarshalJSON(data []byte) error {
+	type incomingMessageAlias IncomingMessageStandbyEcho
 	var decoded incomingMessageAlias
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -175,7 +180,7 @@ func (message *IncomingMessageEcho) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return err
 	}
-	*message = IncomingMessageEcho(decoded)
+	*message = IncomingMessageStandbyEcho(decoded)
 	message.Payload = payload
 	return nil
 }

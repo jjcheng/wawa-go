@@ -23,7 +23,7 @@ type Customer struct {
 	ImportedPhoneNumber  string               `json:"imported_phone_number"`
 	Token                string               `json:"token"`
 	FromIncomingMessage  bool                 `json:"from_incoming_message"`
-	AgentRunning         bool                 `json:"agent_running"`
+	AgentEnabled         bool                 `json:"agent_enabled"`
 	LatestMessageSending bool                 `json:"latest_message_sending"`
 	LatestMessageContent string               `json:"latest_message_content"`
 	LatestMessageId      *int32               `json:"latest_message_id"`
@@ -53,7 +53,7 @@ func NewCustomer(customer dao_customer.Customer) Customer {
 		ImportedPhoneNumber:  customer.ImportedPhoneNumber,
 		Token:                customer.Token,
 		FromIncomingMessage:  customer.FromIncomingMessage,
-		AgentRunning:         customer.AgentRunning,
+		AgentEnabled:         customer.AgentEnabled,
 		LatestMessageSending: customer.LatestMessageSending,
 		LatestMessageContent: customer.LatestMessageContent,
 		LatestMessageId:      customer.LatestMessageId,

@@ -24,7 +24,8 @@ type Customer struct {
 	ImportedPhoneNumber string               `gorm:"-"`                     // to prevent duplicate when importing, not a db column
 	Token               string               `gorm:"column:token"`          // uuid to identify customer
 	FromIncomingMessage bool                 `gorm:"from_incoming_message"` // if it's created from incoming message
-	AgentRunning        bool                 `gorm:"agent_running"`         // if it's controlled by business agent
+	//AgentRunning        bool                 `gorm:"agent_running"`         // if it's controlled by business agent
+	AgentEnabled bool `gorm:"agent_enabled"` // if allow business agent to engage
 	// encryption
 	PhoneNumberEncrypted         string `gorm:"column:phone_number_encrypted"`
 	PhoneNumberHash              string `gorm:"column:phone_number_hash"`

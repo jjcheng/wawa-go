@@ -7,8 +7,10 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
+	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
@@ -39,10 +41,6 @@ func (checkEligibility CheckEligibility) Handle(ctx context.Context, user *dto_a
 	if inputErrors := checkEligibility.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*CheckEligibilityResult](inputErrors)
 	}
-	// only master can setup business agent
-	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[*CheckEligibilityResult](http.StatusUnauthorized, types.ExceptionMessageInternalServerError, nil)
-	}
 	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, checkEligibility.PhoneNumberId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -50,7 +48,12 @@ func (checkEligibility CheckEligibility) Handle(ctx context.Context, user *dto_a
 		}
 		return dto.NewFailedResponse[*CheckEligibilityResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if phoneNumber.BusinessAccountId != user.BusinessAccountId {
+	// for operator need to check if the number is managed, otherwise check business account
+	if user.Type != types.UserTypeMaster && !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == checkEligibility.PhoneNumberId
+	}) {
+		return dto.NewFailedResponse[*CheckEligibilityResult](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	} else if phoneNumber.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*CheckEligibilityResult](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	isEligible, err := dependencies.Facebook.CheckAgentEligibility(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken)

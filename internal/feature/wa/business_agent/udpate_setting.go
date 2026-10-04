@@ -58,7 +58,7 @@ func (updateSetting UpdateSetting) Handle(ctx context.Context, user *dto_account
 		return dto.NewFailedResponse[*service.AgentSetting](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// don't change it's turned on/off, use switches to turn on/off
-	updateSetting.Rollout.Enabled = phoneNumber.AgentRunning
+	updateSetting.Rollout.Enabled = phoneNumber.AgentEnabled
 	updatedSetting, err := dependencies.Facebook.UpdateSetting(ctx, phoneNumber.MetaPhoneNumberId, user.WA.BusinessPortfolioAccessToken, &updateSetting.AgentSetting)
 	if err != nil {
 		return dto.NewFailedResponse[*service.AgentSetting](http.StatusBadGateway, err.Error(), err)

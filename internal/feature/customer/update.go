@@ -26,6 +26,7 @@ type Update struct {
 	Tags           []string             `json:"tags" description:"tags of the customer"`
 	Status         types.CustomerStatus `json:"status" val:"required" description:"status of the customer"`
 	Remarks        string               `json:"remarks" description:"for your own reference"`
+	AgentEnabled   bool                 `json:"agent_enabled" description:"allow business agent to engage"`
 	AdditionalData map[string]any       `json:"additional_data" description:"other profile data like bd"`
 }
 
@@ -92,6 +93,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	customer.Remarks = update.Remarks
 	customer.WAId = customer.CountryCode + customer.PhoneNumber
 	customer.AdditionalData = update.AdditionalData
+	customer.AgentEnabled = update.AgentEnabled
 	if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, customer); err != nil {
 		return dto.NewFailedResponse[*dto_customer.Customer](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

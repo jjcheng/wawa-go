@@ -88,7 +88,7 @@ func (passControl PassControl) Handle(ctx context.Context, user *dto_account.Use
 	if err := dependencies.Facebook.PassControl(ctx, phoneNumber.MetaPhoneNumberId, customer.WAId, businessAccessToken, passControl.ToAgent); err != nil {
 		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
 	}
-	customer.AgentRunning = passControl.ToAgent
+	customer.AgentEnabled = passControl.ToAgent
 	if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, customer); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

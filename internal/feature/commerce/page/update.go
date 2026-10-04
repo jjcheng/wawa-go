@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -65,7 +66,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	page.ImageUrls = append(page.ImageUrls, update.ImageUrls...)
 	page.ImageUrls = helper.Distinct(page.ImageUrls)
 	if err := dependencies.UnitOfWork.CommercePageRepository().Update(ctx, page); err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return dto.NewFailedResponse[*dto_commerce.Page](http.StatusConflict, "page slug is already in use", nil)
 		}
 		return dto.NewFailedResponse[*dto_commerce.Page](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)

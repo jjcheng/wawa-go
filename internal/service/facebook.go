@@ -74,7 +74,7 @@ type AgentPhoneNumberBusinessInfo struct {
 	PurchaseInfo        string                              `json:"purchase_info"`
 	DeliveryAndShipping string                              `json:"delivery_and_shipping"`
 	BusinessDescription string                              `json:"business_description"`
-	ContactInfo         AgentPhoneNumberBusinessContactInfo `json:"business_contact_info"`
+	ContactInfo         AgentPhoneNumberBusinessContactInfo `json:"contact_info"`
 }
 
 type AgentPhoneNumberBusinessContactInfo struct {
@@ -448,7 +448,7 @@ func (facebook *Facebook) ListAgentWebsites(ctx context.Context, metaPhoneNumber
 }
 
 func (facebook *Facebook) GetAgentWebsite(ctx context.Context, metaPhoneNumberId string, businessAccessToken string, id string) (*AgentWebsite, error) {
-	endpoint := fmt.Sprintf("%s/%s/agent_config/websites/%s", facebook.baseURL, metaPhoneNumberId, id)
+	endpoint := fmt.Sprintf("%s/%s/agent_config/websites/%s", facebook.baseURL, metaPhoneNumberId, id) ///{entity_id}/agent_config/websites/{website_id}
 	var response AgentWebsite
 	if err := facebook.doRequest(ctx, "get_agent_website", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
 		return nil, err
@@ -607,13 +607,12 @@ func (facebook *Facebook) PassControl(ctx context.Context, metaPhoneNumberId str
 	endpoint := fmt.Sprintf("%s/business/whatsapp/phone_numbers/%s/thread_control", facebook.baseURL, metaPhoneNumberId)
 	body := map[string]any{
 		"messaging_product": "whatsapp",
+		"to":                waId,
 	}
 	if toAgent {
 		body["action"] = "release"
-		body["to"] = waId
 	} else {
 		body["action"] = "take"
-		body["to"] = waId
 	}
 	if err := facebook.doRequest(ctx, "pass_control", http.MethodPost, endpoint, body, nil, businessAccessToken); err != nil {
 		return err
@@ -637,6 +636,7 @@ func (facebook *Facebook) doRequest(ctx context.Context, requestType string, met
 	if requestType != "pass_control" {
 		headers["X-API-Version"] = "2.0.0"
 	} else {
+		headers["X-API-Version"] = "1.0.0"
 		v1 = true
 	}
 	var bodyMap *map[string]any
@@ -696,7 +696,6 @@ func (facebook *Facebook) parseAPIError(statusCode int, responseBody *string, v1
 	}
 }
 
-// error
 type APIErrorResponse struct {
 	Title   string `json:"title"`
 	Detail  string `json:"detail"`
@@ -713,15 +712,39 @@ type APIErrorResponseV1 struct {
 	ErrorV1 APIErrorResponseV1Error `json:"error"`
 }
 
+//	{
+//	     "code": 1,
+//	     "error_subcode": 2494180,
+//	     "error_user_msg": "Only the current thread owner can pass or release control",
+//	     "error_user_title": "Caller is not the thread owner",
+//	     "fbtrace_id": "A27SkfXzFkQpEn_q9jvAPXJ",
+//	     "is_transient": false,
+//	     "message": "An unknown error occurred",
+//	     "type": "OAuthException"
+//	   }
 type APIErrorResponseV1Error struct {
-	Message   string `json:"message"`
-	Code      int    `json:"code"`
-	Type      string `json:"type"`
-	FBTraceId string `json:"fbtrace_id"`
+	Code         int    `json:"code"`
+	ErrorSubcode int64  `json:"error_subcode"`
+	UserMessage  string `json:"error_user_msg"`
+	UserTitle    string `json:"error_user_title"`
+	Message      string `json:"message"`
+	Type         string `json:"type"`
+	FBTraceId    string `json:"fbtrace_id"`
+	IsTransient  bool   `json:"is_transient"`
 }
 
 func (apiErrorResponseV1 APIErrorResponseV1) Error() string {
-	return apiErrorResponseV1.ErrorV1.Message
+	var items []string
+	if apiErrorResponseV1.ErrorV1.UserTitle != "" {
+		items = append(items, apiErrorResponseV1.ErrorV1.UserTitle)
+	}
+	if apiErrorResponseV1.ErrorV1.UserMessage != "" {
+		items = append(items, apiErrorResponseV1.ErrorV1.UserMessage)
+	}
+	if len(items) == 0 {
+		return apiErrorResponseV1.ErrorV1.Message
+	}
+	return strings.Join(items, "\n")
 }
 
 func (facebook *Facebook) saveRawResponse(requestType string, endpoint string, method string, requestBody any, responseBody string) error {

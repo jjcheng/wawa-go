@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	dao_commerce "github.com/jjcheng/wawa-go/internal/dao/commerce"
@@ -186,7 +187,7 @@ func (sync Sync) Handle(ctx context.Context, user *dto_account.User, dependencie
 					Processed:           true,
 				}
 				if err = transaction.CommerceGenericProductRepository().Insert(ctx, &newProduct); err != nil {
-					if errors.Is(err, gorm.ErrDuplicatedKey) {
+					if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 						continue
 					}
 					return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
