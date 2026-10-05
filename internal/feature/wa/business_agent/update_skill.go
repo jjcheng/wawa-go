@@ -18,7 +18,7 @@ import (
 )
 
 type UpdateSkill struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	service.AgentSkill
 }
 
@@ -79,9 +79,9 @@ func (UpdateSkill) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Update WhatsApp business agent skill",
 		"Updates a skill configured for a WhatsApp business agent.",
-		types.HttpRequestTypeQueryJSON,
+		types.HttpRequestTypeUriJSON,
 		http.MethodPut,
-		"/v1/wa/business-agent/skills",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/skills",
 		true,
 		true,
 		types.APITagBusinessAgent,

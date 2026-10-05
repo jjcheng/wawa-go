@@ -18,7 +18,7 @@ import (
 )
 
 type CreateFile struct {
-	PhoneNumberId int32  `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32  `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	FileName      string `form:"file_name" val:"required" description:"file name registered with the agent"`
 	Content       []byte `json:"-"`
 }
@@ -75,9 +75,9 @@ func (CreateFile) APISettings() feature.APISettings {
 	settings := feature.NewAPISettings(
 		"Create WhatsApp business agent file",
 		"Uploads a file to a WhatsApp business agent using multipart form data.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUriQuery,
 		http.MethodPost,
-		"/v1/wa/business-agent/files",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/files",
 		true,
 		true,
 		types.APITagBusinessAgent,

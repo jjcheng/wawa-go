@@ -19,7 +19,7 @@ import (
 
 type UpdateFAQ struct {
 	Id            string `uri:"id" val:"required" description:"id of the faq"`
-	PhoneNumberId int32  `json:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32  `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	Question      string `json:"question" val:"required" description:"question of the faq"`
 	Answer        string `json:"answer" val:"required" description:"answer of the faq"`
 }
@@ -87,7 +87,7 @@ func (UpdateFAQ) APISettings() feature.APISettings {
 		"Updates a FAQ configured for a WhatsApp business agent.",
 		types.HttpRequestTypeUriJSON,
 		http.MethodPut,
-		"/v1/wa/business-agent/faqs/:id",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/faqs/:id",
 		true,
 		true,
 		types.APITagBusinessAgent,

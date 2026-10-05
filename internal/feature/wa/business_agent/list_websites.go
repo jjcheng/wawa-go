@@ -18,7 +18,7 @@ import (
 )
 
 type ListWebsites struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (listWebsites *ListWebsites) Validate() []exception.InputException {
@@ -65,9 +65,9 @@ func (ListWebsites) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List WhatsApp business agent websites",
 		"Lists the websites configured for a WhatsApp business agent.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/business-agent/websites",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/websites",
 		true,
 		true,
 		types.APITagBusinessAgent,

@@ -17,7 +17,7 @@ import (
 )
 
 type Get struct {
-	Id int32 `uri:"id" description:"id of the phone number"`
+	Id int32 `uri:"phone_number_id" description:"id of the phone number"`
 }
 
 func (get *Get) Validate() []exception.InputException {
@@ -89,7 +89,7 @@ func (Get) APISettings() feature.APISettings {
 		"Get the current WhatsApp phone number status and configuration by WhatsApp API.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/phone-numbers/:id",
+		"/v1/wa/phone-numbers/:phone_number_id",
 		true,
 		true,
 		types.APITagWA,

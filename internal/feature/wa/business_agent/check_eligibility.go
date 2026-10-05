@@ -17,7 +17,7 @@ import (
 )
 
 type CheckEligibility struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 type CheckEligibilityResult struct {
@@ -26,7 +26,7 @@ type CheckEligibilityResult struct {
 
 func (checkEligibility *CheckEligibility) Validate() []exception.InputException {
 	if checkEligibility.PhoneNumberId <= 0 {
-		return []exception.InputException{exception.NewInputException("phone_number_id", "invalid phone number id")}
+		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
 	}
 	return nil
 }
@@ -67,9 +67,9 @@ func (CheckEligibility) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Check WhatsApp business agent eligibility",
 		"Checks whether a WhatsApp phone number is eligible for the business agent.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/business-agent/eligibility",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/eligibility",
 		true,
 		true,
 		types.APITagBusinessAgent,

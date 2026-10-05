@@ -98,6 +98,11 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	registerRoute[any, feature_wa_business_agent.DeleteWebsite](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentWebsite, feature_wa_business_agent.GetWebsite](routerGroup, dependencies, apiGenerator)
 	registerRoute[[]service.AgentSkill, feature_wa_business_agent.ListSkills](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]service.AgentConnector, feature_wa_business_agent.ListConnectors](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentConnector, feature_wa_business_agent.CreateConnector](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentConnector, feature_wa_business_agent.UpdateConnector](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_business_agent.DeleteConnector](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.AgentConnectorLog, feature_wa_business_agent.GetConnectorLog](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentSkill, feature_wa_business_agent.UpdateSkill](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AgentSkill, feature_wa_business_agent.CreateSkill](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_business_agent.AddCommonSkills](routerGroup, dependencies, apiGenerator)
@@ -127,8 +132,8 @@ func registerCreateAgentFileRoute(routerGroup *gin.RouterGroup, dependencies *se
 			defer ctx.Request.MultipartForm.RemoveAll()
 		}
 		request := feature_wa_business_agent.CreateFile{}
-		if err := ctx.ShouldBindQuery(&request); err != nil {
-			response := dto.NewInvalidInputResponse[*service.AgentFile]([]exception.InputException{{Field: "query", Message: err.Error()}})
+		if err := ctx.ShouldBindUri(&request); err != nil {
+			response := dto.NewInvalidInputResponse[*service.AgentFile]([]exception.InputException{{Field: "uri", Message: err.Error()}})
 			finalizeResponse(ctx, dependencies.Logger, &response.ResponseBase, response.Error, startAt)
 			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return

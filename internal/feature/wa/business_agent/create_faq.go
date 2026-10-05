@@ -18,7 +18,7 @@ import (
 )
 
 type CreateFAQ struct {
-	PhoneNumberId int32  `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32  `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	Question      string `json:"question" val:"required" description:"question of the FAQ"`
 	Answer        string `json:"answer" val:"required" description:"answer of the FAQ"`
 }
@@ -79,9 +79,9 @@ func (CreateFAQ) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create WhatsApp business agent FAQ",
 		"Creates an FAQ for a WhatsApp business agent.",
-		types.HttpRequestTypeQueryJSON,
+		types.HttpRequestTypeUriJSON,
 		http.MethodPost,
-		"/v1/wa/business-agent/faqs",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/faqs",
 		true,
 		true,
 		types.APITagBusinessAgent,

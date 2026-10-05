@@ -15,12 +15,12 @@ import (
 )
 
 type Reconnect struct {
-	Id int32 `uri:"id" description:"id of the phone number"`
+	Id int32 `uri:"phone_number_id" description:"id of the phone number"`
 }
 
 func (reconnect *Reconnect) Validate() []exception.InputException {
 	if reconnect.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
+		return []exception.InputException{exception.NewInputException("phone_number_id", "invalid phone number id")}
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func (Reconnect) APISettings() feature.APISettings {
 		"Registers a disconnected phone number again with WhatsApp API.",
 		types.HttpRequestTypeUri,
 		http.MethodPost,
-		"/v1/wa/phone-numbers/:id/reconnect",
+		"/v1/wa/phone-numbers/:phone_number_id/reconnect",
 		true,
 		true,
 		types.APITagWA,

@@ -16,12 +16,12 @@ import (
 )
 
 type Delete struct {
-	Id int32 `uri:"id" val:"required" description:"id of the phone number"`
+	Id int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (delete *Delete) Validate() []exception.InputException {
 	if delete.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
+		return []exception.InputException{exception.NewInputException("phone_number_id", "invalid phone number id")}
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func (Delete) APISettings() feature.APISettings {
 		"Removes an assigned WhatsApp phone number from WhatsApp and the local account. Meta does not allow removing phone number via API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeUri,
 		http.MethodDelete,
-		"/v1/wa/phone-numbers/:id",
+		"/v1/wa/phone-numbers/:phone_number_id",
 		true,
 		true,
 		types.APITagWA,

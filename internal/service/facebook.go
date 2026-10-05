@@ -261,6 +261,99 @@ func (setting *AgentSetting) Validate() []exception.InputException {
 	return errors
 }
 
+type AgentConnector struct {
+	ID                      string                                 `json:"id,omitempty"`
+	Name                    string                                 `json:"name"`
+	Description             string                                 `json:"description,omitempty"`
+	BaseURL                 string                                 `json:"base_url"`
+	ConnectorProtocol       string                                 `json:"connector_protocol"`
+	MCPToolSync             *AgentConnectorMCPToolSync             `json:"mcp_tool_sync,omitempty"`
+	AuthType                string                                 `json:"auth_type"`
+	AuthConfig              *AgentConnectorAuthConfig              `json:"auth_config,omitempty"`
+	MTLSConfig              *AgentConnectorMTLSConfig              `json:"mtls_config,omitempty"`
+	ConnectionStatus        *AgentConnectorConnectionStatus        `json:"connection_status,omitempty"`
+	UserAuthInjectionConfig *AgentConnectorUserAuthInjectionConfig `json:"user_auth_injection_config,omitempty"`
+	RequiresCertificate     bool                                   `json:"requires_certificate"`
+}
+
+type AgentConnectorMCPToolSync struct {
+	Status           string `json:"status"`
+	LastAttemptedAt  int64  `json:"last_attempted_at"`
+	LastSuccessfulAt int64  `json:"last_successful_at"`
+	Fingerprint      string `json:"fingerprint"`
+	ToolCount        int    `json:"tool_count"`
+}
+
+type AgentConnectorAuthConfig struct {
+	OAuth2ClientCredentials *AgentConnectorOAuth2ClientCredentials `json:"oauth2_client_credentials,omitempty"`
+	APIKey                  *AgentConnectorAPIKey                  `json:"api_key,omitempty"`
+}
+
+type AgentConnectorOAuth2ClientCredentials struct {
+	TokenURL                string   `json:"token_url"`
+	ScopesToRequest         []string `json:"scopes_to_request"`
+	TokenRequestContentType string   `json:"token_request_content_type"`
+	ClientId                string   `json:"client_id"`
+	ClientSecret            string   `json:"client_secret"`
+}
+
+type AgentConnectorAPIKey struct {
+	Headers     []AgentConnectorAPIKeyHeader `json:"headers,omitempty"`
+	QueryParams []AgentConnectorAPIKeyHeader `json:"query_params,omitempty"`
+	BodyParams  []map[string]any             `json:"body_params,omitempty"`
+}
+
+type AgentConnectorAPIKeyHeader struct {
+	FieldName string `json:"field_name"`
+	Value     string `json:"value"`
+	Prefix    string `json:"prefix"`
+}
+
+type AgentConnectorMTLSConfig struct {
+	HasCertificate    bool   `json:"has_certificate"`
+	Fingerprint       string `json:"fingerprint"`
+	ExpiresAt         int64  `json:"expires_at"`
+	Subject           string `json:"subject"`
+	ClientCertificate string `json:"client_certificate"`
+	CACertificate     string `json:"ca_certificate"`
+}
+
+type AgentConnectorConnectionStatus struct {
+	Status       string `json:"status"`
+	ErrorMessage string `json:"error_message"`
+}
+
+type AgentConnectorUserAuthInjectionConfig struct {
+	Location  string `json:"location"`
+	FieldName string `json:"field_name"`
+	Prefix    string `json:"prefix"`
+}
+
+type AgentConnectorLog struct {
+	Data  []AgentConnectorLogData `json:"data"`
+	Stats AgentConnectorStats     `json:"stats"`
+}
+
+type AgentConnectorLogData struct {
+	EventTime       string `json:"event_time"`
+	FailureCodeName string `json:"failure_code_name"`
+	ErrorMessage    string `json:"error_message"`
+	ToolName        string `json:"tool_name"`
+	Occurences      int    `json:"occurrences"`
+	LastSeen        string `json:"last_seen"`
+}
+
+type AgentConnectorStats struct {
+	StartCount        int     `json:"start_count"`
+	SuccessCount      int     `json:"success_count"`
+	ExceptionCount    int     `json:"exception_count"`
+	SuccessRate       string  `json:"success_date"`
+	AvgLatencySeconds string  `json:"avg_latency_s"`
+	P95LatencySeconds float32 `json:"p95_latency_s"`
+	P99LatencySeconds float32 `json:"p99_latency_s"`
+	TimeWindowSeconds int     `json:"time_window_seconds"`
+}
+
 // #region business agent
 
 func (facebook *Facebook) CheckAgentEligibility(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) (bool, error) {
@@ -501,7 +594,7 @@ func (facebook *Facebook) CreateAgentSkill(ctx context.Context, metaPhoneNumberI
 }
 
 func (facebook *Facebook) UpdateAgentSkill(ctx context.Context, metaPhoneNumberId string, businessAccessToken string, skill *AgentSkill) (*AgentSkill, error) {
-	endpoint := fmt.Sprintf("%s/%s/skills/%s", facebook.baseURL, metaPhoneNumberId, skill.ID)
+	endpoint := fmt.Sprintf("%s/%s/agent_config/skills/%s", facebook.baseURL, metaPhoneNumberId, skill.ID)
 	var response AgentSkill
 	if err := facebook.doRequest(ctx, "update_agent_skill", http.MethodPut, endpoint, *skill, &response, businessAccessToken); err != nil {
 		return nil, err
@@ -510,7 +603,7 @@ func (facebook *Facebook) UpdateAgentSkill(ctx context.Context, metaPhoneNumberI
 }
 
 func (facebook *Facebook) DeleteAgentSkill(ctx context.Context, metaPhoneNumberId string, businessAccessToken string, id string) error {
-	endpoint := fmt.Sprintf("%s/%s/skills/%s", facebook.baseURL, metaPhoneNumberId, id)
+	endpoint := fmt.Sprintf("%s/%s/agent_config/skills/%s", facebook.baseURL, metaPhoneNumberId, id)
 	if err := facebook.doRequest(ctx, "delete_agent_skill", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
 		return err
 	}
@@ -550,6 +643,50 @@ func (facebook *Facebook) DeleteAgentUISkill(ctx context.Context, metaPhoneNumbe
 		return err
 	}
 	return nil
+}
+
+func (facebook *Facebook) ListAgentConnectors(ctx context.Context, metaPhoneNumberId string, businessAccessToken string) ([]AgentConnector, error) {
+	endpoint := fmt.Sprintf("%s/%s/agent_connectors", facebook.baseURL, metaPhoneNumberId)
+	var response []AgentConnector
+	if err := facebook.doRequest(ctx, "list_agent_connectors", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func (facebook *Facebook) CreateAgentConnector(ctx context.Context, metaPhoneNumberId string, businessAccessToken string, agentConnector *AgentConnector) (*AgentConnector, error) {
+	endpoint := fmt.Sprintf("%s/%s/agent_connectors", facebook.baseURL, metaPhoneNumberId)
+	var response AgentConnector
+	if err := facebook.doRequest(ctx, "create_agent_connector", http.MethodPost, endpoint, *agentConnector, &response, businessAccessToken); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func (facebook *Facebook) UpdateAgentConnector(ctx context.Context, metaPhoneNumberId string, businessAccessToken string, connector *AgentConnector) (*AgentConnector, error) {
+	endpoint := fmt.Sprintf("%s/%s/agent_connectors/%s", facebook.baseURL, metaPhoneNumberId, connector.ID)
+	var response AgentConnector
+	if err := facebook.doRequest(ctx, "update_agent_connector", http.MethodPut, endpoint, *connector, &response, businessAccessToken); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func (facebook *Facebook) DeleteAgentConnector(ctx context.Context, metaPhoneNumberId string, businessAccessToken string, id string) error {
+	endpoint := fmt.Sprintf("%s/%s/agent_connectors/%s", facebook.baseURL, metaPhoneNumberId, id)
+	if err := facebook.doRequest(ctx, "delete_agent_connector", http.MethodDelete, endpoint, nil, nil, businessAccessToken); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (facebook *Facebook) ListAgentConnectorLogs(ctx context.Context, metaPhoneNumberId string, connectorId string, businessAccessToken string) (*AgentConnectorLog, error) {
+	endpoint := fmt.Sprintf("%s/%s/agent_connectors/%s/logs", facebook.baseURL, metaPhoneNumberId, connectorId)
+	var response AgentConnectorLog
+	if err := facebook.doRequest(ctx, "list_agent_connectors", http.MethodGet, endpoint, nil, &response, businessAccessToken); err != nil {
+		return nil, err
+	}
+	return &response, nil
 }
 
 func (facebook *Facebook) TestAgent(ctx context.Context, metaPhoneNumberId string, businessAccessToken string, userMessage string, conversationId string) (*AgentTestResponse, error) {

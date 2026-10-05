@@ -18,7 +18,7 @@ import (
 )
 
 type GetWebsite struct {
-	PhoneNumberId int32  `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32  `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	Id            string `uri:"id" val:"required" description:"id of the website"`
 }
 
@@ -71,9 +71,9 @@ func (GetWebsite) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp business agent website",
 		"Gets a website configured for a WhatsApp business agent.",
-		types.HttpRequestTypeUriQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/business-agent/websites/:id",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/websites/:id",
 		true,
 		true,
 		types.APITagBusinessAgent,

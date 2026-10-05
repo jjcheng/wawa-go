@@ -17,12 +17,12 @@ import (
 )
 
 type GetLocal struct {
-	Id int32 `uri:"id" val:"required" description:"id of the phone number"`
+	Id int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (getLocal *GetLocal) Validate() []exception.InputException {
 	if getLocal.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
+		return []exception.InputException{exception.NewInputException("phone_number_id", "invalid phone number id")}
 	}
 	return nil
 }
@@ -62,7 +62,7 @@ func (GetLocal) APISettings() feature.APISettings {
 		"Get a WhatsApp phone number from the local database without calling WhatsApp API.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/phone-numbers/:id/local",
+		"/v1/wa/phone-numbers/:phone_number_id/local",
 		true,
 		true,
 		types.APITagWA,

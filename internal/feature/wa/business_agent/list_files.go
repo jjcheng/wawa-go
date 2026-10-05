@@ -18,7 +18,7 @@ import (
 )
 
 type ListFiles struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (listFiles *ListFiles) Validate() []exception.InputException {
@@ -65,9 +65,9 @@ func (ListFiles) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List WhatsApp business agent files",
 		"Lists the files configured for a WhatsApp business agent.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/business-agent/files",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/files",
 		true,
 		true,
 		types.APITagBusinessAgent,

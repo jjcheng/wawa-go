@@ -18,8 +18,8 @@ import (
 )
 
 type DeleteFAQ struct {
-	PhoneNumberId int32  `form:"phone_number_id" val:"required" description:"id of the phone number"`
-	Id            string `uri:"id" val:"required" description:"id of the faq"`
+	PhoneNumberId int32  `uri:"phone_number_id" val:"required" description:"id of the phone number"`
+	Id            string `uri:"faq_id" val:"required" description:"id of the faq"`
 }
 
 func (deleteFAQ *DeleteFAQ) Validate() []exception.InputException {
@@ -70,9 +70,9 @@ func (DeleteFAQ) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Delete WhatsApp business agent FAQ",
 		"Deletes a FAQ configured for a WhatsApp business agent.",
-		types.HttpRequestTypeUriQuery,
+		types.HttpRequestTypeUri,
 		http.MethodDelete,
-		"/v1/wa/business-agent/faqs/:id",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/faqs/:faq_id",
 		true,
 		true,
 		types.APITagBusinessAgent,

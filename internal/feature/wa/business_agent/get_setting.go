@@ -18,7 +18,7 @@ import (
 )
 
 type GetSetting struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (getSetting *GetSetting) Validate() []exception.InputException {
@@ -65,9 +65,9 @@ func (GetSetting) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp business agent settings",
 		"Gets the configuration settings for a WhatsApp business agent.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/business-agent/settings",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/settings",
 		true,
 		true,
 		types.APITagBusinessAgent,

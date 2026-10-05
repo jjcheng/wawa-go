@@ -18,7 +18,7 @@ import (
 )
 
 type CreateSkill struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	service.AgentSkill
 }
 
@@ -74,9 +74,9 @@ func (CreateSkill) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create WhatsApp business agent skill",
 		"Creates a skill for a WhatsApp business agent.",
-		types.HttpRequestTypeQueryJSON,
+		types.HttpRequestTypeUriJSON,
 		http.MethodPost,
-		"/v1/wa/business-agent/skills",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/skills",
 		true,
 		true,
 		types.APITagBusinessAgent,

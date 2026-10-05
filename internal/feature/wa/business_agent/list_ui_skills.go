@@ -18,7 +18,7 @@ import (
 )
 
 type ListUISkills struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (listUISkills *ListUISkills) Validate() []exception.InputException {
@@ -65,9 +65,9 @@ func (ListUISkills) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List WhatsApp business agent UI skills",
 		"Lists the UI skills configured for a WhatsApp business agent.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/business-agent/ui-skills",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/ui-skills",
 		true,
 		true,
 		types.APITagBusinessAgent,

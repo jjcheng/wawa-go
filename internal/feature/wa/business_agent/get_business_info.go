@@ -18,7 +18,7 @@ import (
 )
 
 type GetBusinessInfo struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (getBusinessInfo *GetBusinessInfo) Validate() []exception.InputException {
@@ -65,9 +65,9 @@ func (GetBusinessInfo) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp business agent business info",
 		"Gets the business information configured for a WhatsApp business agent.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/business-agent/business-info",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/business-info",
 		true,
 		true,
 		types.APITagBusinessAgent,

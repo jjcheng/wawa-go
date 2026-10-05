@@ -55,7 +55,7 @@ func (addCommonSkills AddCommonSkills) Handle(ctx context.Context, user *dto_acc
 		{
 			Title:       "your-persona",
 			Description: "How should customer address you.",
-			Skill:       fmt.Sprintf("You are %s, the 24/7 AI assistant to help the customers to find out more about our buisness, book appointment.", phoneNumber.Name),
+			Skill:       fmt.Sprintf("You are %s, the 24/7 AI assistant to help the customers to find out more about our business, book appointment etc...", phoneNumber.Name),
 		},
 		{
 			Title:       "customer-greeting",

@@ -15,7 +15,7 @@ import (
 )
 
 type GetBusinessProfile struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 func (getBusinessProfile *GetBusinessProfile) Validate() []exception.InputException {
@@ -59,9 +59,9 @@ func (GetBusinessProfile) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get business profile",
 		"Get business profile using WhatsApp phone number.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodGet,
-		"/v1/wa/phone-numbers/business-profile",
+		"/v1/wa/phone-numbers/:phone_number_id/business-profile",
 		true,
 		true,
 		types.APITagWA,

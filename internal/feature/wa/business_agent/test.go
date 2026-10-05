@@ -18,7 +18,7 @@ import (
 )
 
 type Test struct {
-	PhoneNumberId  int32  `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId  int32  `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	UserMessage    string `json:"user_message" val:"required" description:"user's latest message"`
 	ConversationId string `json:"conversation_id" description:"id of the conversation, empty if it's a new conversation"`
 }
@@ -73,9 +73,9 @@ func (Test) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Test WhatsApp business agent",
 		"Sends a test user message to a WhatsApp business agent and returns its response.",
-		types.HttpRequestTypeQueryJSON,
+		types.HttpRequestTypeUriJSON,
 		http.MethodPost,
-		"/v1/wa/business-agent/test",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/test",
 		true,
 		true,
 		types.APITagBusinessAgent,

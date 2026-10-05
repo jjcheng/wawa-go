@@ -18,7 +18,7 @@ import (
 )
 
 type GetUsage struct {
-	Id          int32                        `form:"id" val:"required" description:"id of the phone number"`
+	Id          int32                        `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 	Start       int64                        `form:"start" val:"required" description:"Unix timestamp for the analytics start"`
 	End         int64                        `form:"end" val:"required" description:"Unix timestamp for the analytics end"`
 	Granularity types.WAAnalyticsGranularity `form:"granularity" val:"required" description:"analytics granularity: HALF_HOUR, DAY, or MONTH"`
@@ -98,9 +98,9 @@ func (GetUsage) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Get WhatsApp phone number usage",
 		"Get message delivery usage for phone numbers by WhatsApp API. Only MASTER user can access this endpoint.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUriQuery,
 		http.MethodGet,
-		"/v1/wa/phone-numbers/usage",
+		"/v1/wa/phone-numbers/:phone_number_id/usage",
 		true,
 		true,
 		types.APITagWA,

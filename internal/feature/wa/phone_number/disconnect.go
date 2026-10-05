@@ -15,12 +15,12 @@ import (
 )
 
 type Disconnect struct {
-	Id int32 `uri:"id" description:"id of the phone number"`
+	Id int32 `uri:"phone_number_id" description:"id of the phone number"`
 }
 
 func (disconnect *Disconnect) Validate() []exception.InputException {
 	if disconnect.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
+		return []exception.InputException{exception.NewInputException("phone_number_id", "invalid phone number id")}
 	}
 	return nil
 }
@@ -88,7 +88,7 @@ func (Disconnect) APISettings() feature.APISettings {
 		"Deregisters a phone number from WhatsApp API. Only MASTER user can access this endpoint.",
 		types.HttpRequestTypeUri,
 		http.MethodPost,
-		"/v1/wa/phone-numbers/:id/disconnect",
+		"/v1/wa/phone-numbers/:phone_number_id/disconnect",
 		true,
 		true,
 		types.APITagWA,

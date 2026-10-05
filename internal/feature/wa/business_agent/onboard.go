@@ -18,7 +18,7 @@ import (
 )
 
 type Onboard struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"id of the phone number"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"id of the phone number"`
 }
 
 type OnboardResult struct {
@@ -27,7 +27,7 @@ type OnboardResult struct {
 
 func (onboard *Onboard) Validate() []exception.InputException {
 	if onboard.PhoneNumberId <= 0 {
-		return []exception.InputException{exception.NewInputException("phone_number_id", "invalid phone number id")}
+		return []exception.InputException{exception.NewInputException("id", "invalid phone number id")}
 	}
 	return nil
 }
@@ -78,9 +78,9 @@ func (Onboard) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Onboard WhatsApp business agent",
 		"Onboards a WhatsApp phone number with the business agent and stores the returned Meta agent ID.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUri,
 		http.MethodPost,
-		"/v1/wa/business-agent/onboard",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/onboard",
 		true,
 		true,
 		types.APITagBusinessAgent,

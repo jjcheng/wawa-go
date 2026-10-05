@@ -17,7 +17,7 @@ import (
 )
 
 type TurnOn struct {
-	PhoneNumberId int32 `form:"phone_number_id" val:"required" description:"phone number id to turn on/off agent"`
+	PhoneNumberId int32 `uri:"phone_number_id" val:"required" description:"phone number id to turn on/off agent"`
 	On            bool  `form:"on" description:"true to enable, false to disable"`
 }
 
@@ -70,9 +70,9 @@ func (TurnOn) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Turn WhatsApp business agent on/off",
 		"Enable or disable the business agent for a WhatsApp phone number.",
-		types.HttpRequestTypeQuery,
+		types.HttpRequestTypeUriQuery,
 		http.MethodPatch,
-		"/v1/wa/business-agent/status",
+		"/v1/wa/phone-numbers/:phone_number_id/business-agent/status",
 		true,
 		true,
 		types.APITagBusinessAgent,
