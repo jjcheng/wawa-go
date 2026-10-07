@@ -424,7 +424,46 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			dependencies.Logger.ErrorFunction(response.Error, message.CustomerId)
 		}
 	}
+	// send notifications to user if message contains keywords
+	if messageText := messageDTO.Text(); messageText != "" {
+		if err := notifyMatchingBusinessAgentKeywords(ctx, dependencies, userPhoneNumber.Id, customerDTO, messageText); err != nil {
+			dependencies.Logger.ErrorFunction(err, userPhoneNumber.Id, customerDTO.Id, message.Id)
+		}
+	}
 	return nil
+}
+
+func notifyMatchingBusinessAgentKeywords(ctx context.Context, dependencies *service.Dependencies, phoneNumberId int32, customer dto_customer.Customer, messageText string) error {
+	matchedKeywords, err := dependencies.UnitOfWork.WABusinessAgentKeywordRepository().ListMatchingByPhoneNumberId(ctx, phoneNumberId, messageText)
+	if err != nil {
+		return fmt.Errorf("failed to list matching business agent keywords phoneNumberId=%d: %w", phoneNumberId, err)
+	}
+	if len(matchedKeywords) == 0 {
+		return nil
+	}
+	// send notification to all users managing this phone number
+	userPhoneNumbers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByPhoneNumberId(ctx, phoneNumberId)
+	if err != nil {
+		return fmt.Errorf("failed to list phone number users phoneNumberId=%d: %w", phoneNumberId, err)
+	}
+	var notificationErrors []error
+	for _, keyword := range matchedKeywords {
+		for _, userPhoneNumber := range userPhoneNumbers {
+			createNotification := feature_account_notification.Create{
+				ToUserId: userPhoneNumber.UserId,
+				Category: types.NotificationCategoryPending,
+				IconType: types.NotificationIconTypeChat,
+				Type:     types.NotificationTypeInfo,
+				Title:    keyword.NotificationTitle,
+				Body:     fmt.Sprintf("Keyword %q detected in a message with customer %s.", keyword.Keyword, customer.DisplayName),
+				URL:      fmt.Sprintf("/chats/%d/chat", customer.Id),
+			}
+			if response := createNotification.Handle(ctx, dependencies); !response.Success {
+				notificationErrors = append(notificationErrors, fmt.Errorf("failed to notify userId=%d keywordId=%d: %w", userPhoneNumber.UserId, keyword.Id, response.Error))
+			}
+		}
+	}
+	return errors.Join(notificationErrors...)
 }
 
 func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Dependencies, incomingMessageEcho dto_wa.IncomingMessageStandbyEcho, metadata dto_wa.IncomingMetadata) error {
@@ -523,6 +562,13 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 		return fmt.Errorf("failed to commit transaction error=%w", err)
 	}
 	committed = true
+	// send notifications to user if message contains keywords
+	messageDTO := dto_wa.NewMessage(message)
+	if messageText := messageDTO.Text(); messageText != "" {
+		if err := notifyMatchingBusinessAgentKeywords(ctx, dependencies, userPhoneNumber.Id, customerDTO, messageText); err != nil {
+			dependencies.Logger.ErrorFunction(err, userPhoneNumber.Id, customerDTO.Id, message.Id)
+		}
+	}
 	return nil
 }
 

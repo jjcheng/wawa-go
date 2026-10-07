@@ -24,13 +24,14 @@ type UnitOfWork struct {
 	broadcastRepository          repository.BarodcastRepository
 	broadcastRecipientRepository repository.BroadcastRecipientRepository
 	// wa
-	waBusinessPortfolioRepository repository.WABusinessPortfolioRepository
-	waBusinessAccountRepository   repository.WABusinessAccountRepository
-	waPhoneNumberRepository       repository.WAPhoneNumberRepository
-	waHistoryMessageRepository    repository.WAHistoryMessageRepository
-	waMessageRepository           repository.WAMessageRepository
-	waMessageStatusRepository     repository.WAMessageStatusRepository
-	waSampleTemplateRepository    repository.WASampleTemplateRepository
+	waBusinessPortfolioRepository    repository.WABusinessPortfolioRepository
+	waBusinessAccountRepository      repository.WABusinessAccountRepository
+	waPhoneNumberRepository          repository.WAPhoneNumberRepository
+	waHistoryMessageRepository       repository.WAHistoryMessageRepository
+	waMessageRepository              repository.WAMessageRepository
+	waMessageStatusRepository        repository.WAMessageStatusRepository
+	waSampleTemplateRepository       repository.WASampleTemplateRepository
+	waBusinessAgentKeywordRepository repository.WABusinessAgentKeywordRespository
 	// commerce
 	commerceCatalogRepository        repository.CommerceCatalogRepository
 	commerceSetRepository            repository.CommerceSetRepository
@@ -68,6 +69,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.waMessageRepository = NewWAMessageRepository(db, logger)
 	unitOfWork.waMessageStatusRepository = NewWAMessageStatusRepository(db, logger)
 	unitOfWork.waSampleTemplateRepository = NewWASampleTemplateRepository(db, logger)
+	unitOfWork.waBusinessAgentKeywordRepository = NewWABusinessAgentKeywordRepository(db, logger)
 	// commerce
 	unitOfWork.commerceCatalogRepository = NewCommerceCatalogRepository(db, logger)
 	unitOfWork.commerceSetRepository = NewCommerceSetRepository(db, logger)
@@ -151,6 +153,10 @@ func (unitOfWork *UnitOfWork) WAMessageStatusRepository() repository.WAMessageSt
 
 func (unitOfWork *UnitOfWork) WASampleTemplateRepository() repository.WASampleTemplateRepository {
 	return unitOfWork.waSampleTemplateRepository
+}
+
+func (unitOfWork *UnitOfWork) WABusinessAgentKeywordRepository() repository.WABusinessAgentKeywordRespository {
+	return unitOfWork.waBusinessAgentKeywordRepository
 }
 
 // commerce

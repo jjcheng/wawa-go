@@ -29,6 +29,7 @@ type UnitOfWork interface {
 	WAMessageRepository() WAMessageRepository
 	WAMessageStatusRepository() WAMessageStatusRepository
 	WASampleTemplateRepository() WASampleTemplateRepository
+	WABusinessAgentKeywordRepository() WABusinessAgentKeywordRespository
 	// commerce
 	CommerceCatalogRepository() CommerceCatalogRepository
 	CommerceSetRepository() CommerceSetRepository

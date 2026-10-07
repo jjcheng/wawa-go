@@ -156,6 +156,9 @@ func (agentSkill *AgentSkill) Validate() []exception.InputException {
 	if agentSkill.Title == "" || agentSkill.Title[0] == '-' || agentSkill.Title[len(agentSkill.Title)-1] == '-' {
 		errors = append(errors, exception.NewInputException("title", "must contain only lowercase letters, numbers, and hyphens, and must not start or end with a hyphen"))
 	}
+	if len(agentSkill.Title) > 64 {
+		errors = append(errors, exception.NewInputException("title", "title must be within 64 characters"))
+	}
 	for _, character := range agentSkill.Title {
 		if (character < 'a' || character > 'z') && (character < '0' || character > '9') && character != '-' {
 			errors = append(errors, exception.NewInputException("title", "must contain only lowercase letters, numbers, and hyphens, and must not start or end with a hyphen"))

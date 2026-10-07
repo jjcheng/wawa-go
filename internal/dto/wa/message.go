@@ -70,6 +70,13 @@ func NewMessage(message dao_wa.Message) Message {
 	return d
 }
 
+func (message Message) Text() string {
+	if !strings.EqualFold(strings.TrimSpace(message.Type), "text") {
+		return ""
+	}
+	return nestedMessageString(message.Payload, "text", "body")
+}
+
 func NotificationContent(messageType string, payload map[string]any) string {
 	switch strings.ToLower(strings.TrimSpace(messageType)) {
 	case "text":
