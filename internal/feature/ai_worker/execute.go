@@ -7,7 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -31,36 +31,36 @@ func (execute *Execute) Validate() []exception.InputException {
 	return errors
 }
 
-func (execute Execute) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_ai.WorkResult] {
+func (execute Execute) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_ai_worker.WorkResult] {
 	if inputErrors := execute.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[*dto_ai.WorkResult](inputErrors)
+		return dto.NewInvalidInputResponse[*dto_ai_worker.WorkResult](inputErrors)
 	}
 	apiSettings, exists := feature.APISettingsBySummary(execute.Feature)
 	if !exists {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadRequest, "unknown feature", nil)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusBadRequest, "unknown feature", nil)
 	}
 	if apiSettings.AIWorker == nil || !apiSettings.AIWorker.Executable {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusForbidden, "feature is not executable by the AI worker", nil)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusForbidden, "feature is not executable by the AI worker", nil)
 	}
 	executor, exists := feature.APIExecutorBySummary(execute.Feature)
 	if !exists {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	featureResponse := executor(ctx, user, dependencies, execute.Form)
 	if !featureResponse.Success {
-		return dto.Response[*dto_ai.WorkResult]{
+		return dto.Response[*dto_ai_worker.WorkResult]{
 			ResponseBase: featureResponse.ResponseBase,
 			Error:        featureResponse.Error,
 		}
 	}
-	var result dto_ai.WorkResult
+	var result dto_ai_worker.WorkResult
 	if apiSettings.AIWorker.ReturnType == types.AIWorkerReturnTypeText {
-		result = dto_ai.NewWorkResult(execute.Feature, "",
-			dto_ai.WorkResultPart{Content: apiSettings.AIWorker.ReturnText, Color: "green"},
+		result = dto_ai_worker.NewWorkResult(execute.Feature, "",
+			dto_ai_worker.WorkResultPart{Content: apiSettings.AIWorker.ReturnText, Color: "green"},
 		)
 	} else {
-		result = dto_ai.NewWorkResult(execute.Feature, "",
-			dto_ai.WorkResultPart{Content: "Here is the data you have requested:"},
+		result = dto_ai_worker.NewWorkResult(execute.Feature, "",
+			dto_ai_worker.WorkResultPart{Content: "Here is the data you have requested:"},
 			RenderFeatureResult(featureResponse.Data, nil),
 		)
 	}

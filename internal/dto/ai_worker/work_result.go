@@ -1,4 +1,4 @@
-package dto_ai
+package dto_ai_worker
 
 import (
 	"github.com/jjcheng/wawa-go/internal/types"

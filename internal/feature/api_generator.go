@@ -13,7 +13,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -56,7 +56,7 @@ func APISettingsBySummary(summary string) (APISettings, bool) {
 }
 
 // APIRequiredFieldsBySummary returns descriptions of required request fields for a registered API.
-func APIRequiredFieldsBySummary(summary string) ([]dto_ai.WorkInput, bool) {
+func APIRequiredFieldsBySummary(summary string) ([]dto_ai_worker.WorkInput, bool) {
 	apiIntentDescriptions.RLock()
 	requestType, exists := apiIntentDescriptions.requestTypes[summary]
 	apiIntentDescriptions.RUnlock()
@@ -66,7 +66,7 @@ func APIRequiredFieldsBySummary(summary string) ([]dto_ai.WorkInput, bool) {
 	return requiredFieldDescriptions(requestType, make(map[reflect.Type]bool)), true
 }
 
-func requiredFieldDescriptions(requestType reflect.Type, visited map[reflect.Type]bool) []dto_ai.WorkInput {
+func requiredFieldDescriptions(requestType reflect.Type, visited map[reflect.Type]bool) []dto_ai_worker.WorkInput {
 	for requestType.Kind() == reflect.Pointer {
 		requestType = requestType.Elem()
 	}
@@ -76,12 +76,12 @@ func requiredFieldDescriptions(requestType reflect.Type, visited map[reflect.Typ
 	visited[requestType] = true
 	defer delete(visited, requestType)
 
-	var inputs []dto_ai.WorkInput
+	var inputs []dto_ai_worker.WorkInput
 	for index := 0; index < requestType.NumField(); index++ {
 		field := requestType.Field(index)
 		if hasRequiredValidationTag(field.Tag.Get("val")) {
 			filedType, values := aiInputFieldType(field.Type)
-			inputs = append(inputs, dto_ai.WorkInput{
+			inputs = append(inputs, dto_ai_worker.WorkInput{
 				Name:               requestParameterKey(field),
 				Description:        field.Tag.Get("description"),
 				Type:               filedType,

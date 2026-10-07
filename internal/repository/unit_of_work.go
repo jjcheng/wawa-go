@@ -39,6 +39,6 @@ type UnitOfWork interface {
 	// site
 	SiteFeedbackRepository() SiteFeedbackRepository
 	// ai
-	AIConversationRepository() AIConversationRepository
-	AIMessageRepository() AIMessageRepository
+	AIWorkerConversationRepository() AIWorkerConversationRepository
+	AIWorkerMessageRepository() AIWorkerMessageRepository
 }

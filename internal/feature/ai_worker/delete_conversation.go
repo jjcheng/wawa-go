@@ -1,4 +1,4 @@
-package feature_ai_conversation
+package feature_ai_worker
 
 import (
 	"context"
@@ -14,25 +14,25 @@ import (
 	"gorm.io/gorm"
 )
 
-type Delete struct {
+type DeleteConversation struct {
 	Id int32 `uri:"id" val:"required" description:"id of the conversation"`
 }
 
-func (delete *Delete) Validate() []exception.InputException {
-	if delete.Id <= 0 {
+func (deleteConversation *DeleteConversation) Validate() []exception.InputException {
+	if deleteConversation.Id <= 0 {
 		return []exception.InputException{exception.NewInputException("id", "invalid conversation id")}
 	}
 	return nil
 }
 
-func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+func (deleteConversation DeleteConversation) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
+	if inputErrors := deleteConversation.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	conversation, err := dependencies.UnitOfWork.AIConversationRepository().GetById(ctx, delete.Id)
+	conversation, err := dependencies.UnitOfWork.AIWorkerConversationRepository().GetById(ctx, deleteConversation.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[any](http.StatusNotFound, "conversation not found", nil)
@@ -42,13 +42,13 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if conversation.UserId != user.Id {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if err := dependencies.UnitOfWork.AIConversationRepository().DeleteById(ctx, conversation.Id); err != nil {
+	if err := dependencies.UnitOfWork.AIWorkerConversationRepository().DeleteById(ctx, conversation.Id); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 
-func (Delete) APISettings() feature.APISettings {
+func (DeleteConversation) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Delete an AI conversation",
 		"Delete an AI conversation belonging to the authenticated user.",

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	dao_ai "github.com/jjcheng/wawa-go/internal/dao/ai"
+	dao_ai_worker "github.com/jjcheng/wawa-go/internal/dao/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"gorm.io/gorm"
@@ -13,19 +13,19 @@ import (
 type AIMessageRepository struct {
 	db     *gorm.DB
 	logger *service.Logger
-	repository.Repository[dao_ai.Message]
+	repository.Repository[dao_ai_worker.Message]
 }
 
-func NewAIMessageRepository(db *gorm.DB, logger *service.Logger) repository.AIMessageRepository {
+func NewAIWorkerMessageRepository(db *gorm.DB, logger *service.Logger) repository.AIWorkerMessageRepository {
 	return &AIMessageRepository{
 		db:         db,
 		logger:     logger,
-		Repository: NewRepository[dao_ai.Message](db, logger),
+		Repository: NewRepository[dao_ai_worker.Message](db, logger),
 	}
 }
 
-func (messageRepository *AIMessageRepository) ListByConversationId(ctx context.Context, conversationId int32) ([]dao_ai.Message, error) {
-	var messages []dao_ai.Message
+func (messageRepository *AIMessageRepository) ListByConversationId(ctx context.Context, conversationId int32) ([]dao_ai_worker.Message, error) {
+	var messages []dao_ai_worker.Message
 	if err := messageRepository.db.WithContext(ctx).
 		Where("conversation_id = ?", conversationId).
 		Order("id").

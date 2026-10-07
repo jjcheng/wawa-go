@@ -7,7 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -66,7 +66,7 @@ func (DeleteUser) APISettings() feature.APISettings {
 		"User successfully deleted.",
 		"/assets/users",
 		feature.NewAIWorkerRequire("Select a user to delete",
-			ListUsers{}, dto_ai.WorkInput{
+			ListUsers{}, dto_ai_worker.WorkInput{
 				Name:               "id",
 				Description:        "user to delete",
 				Type:               types.AIInputFieldTypeInt,

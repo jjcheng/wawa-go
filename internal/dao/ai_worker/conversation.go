@@ -1,4 +1,4 @@
-package dao_ai
+package dao_ai_worker
 
 import "github.com/jjcheng/wawa-go/internal/dao"
 
@@ -9,7 +9,7 @@ type Conversation struct {
 }
 
 func (Conversation) TableName() string {
-	return "ai.conversations"
+	return "ai_worker.conversations"
 }
 
 func (conversation Conversation) Base() dao.DAOBase {

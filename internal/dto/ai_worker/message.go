@@ -1,10 +1,10 @@
-package dto_ai
+package dto_ai_worker
 
 import (
 	"encoding/json"
 	"strings"
 
-	dao_ai "github.com/jjcheng/wawa-go/internal/dao/ai"
+	dao_ai_worker "github.com/jjcheng/wawa-go/internal/dao/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
@@ -18,7 +18,7 @@ type Message struct {
 	URL            string              `json:"url"`
 }
 
-func NewMessage(message dao_ai.Message) Message {
+func NewMessage(message dao_ai_worker.Message) Message {
 	parts := make([]WorkResultPart, 0, len(message.Parts))
 	for _, serializedPart := range message.Parts {
 		var part WorkResultPart

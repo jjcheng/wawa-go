@@ -6,7 +6,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
@@ -78,7 +78,7 @@ func (ListAssignedUsers) APISettings() feature.APISettings {
 			types.AIWorkerReturnTypeData,
 			"",
 			"/assets/phone-numbers",
-			feature.NewAIWorkerRequire("Select a connected phone number", feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected}, dto_ai.WorkInput{
+			feature.NewAIWorkerRequire("Select a connected phone number", feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected}, dto_ai_worker.WorkInput{
 				Name:               "phone_number_id",
 				Description:        "phone number to view assigned users for",
 				Type:               types.AIInputFieldTypeInt,

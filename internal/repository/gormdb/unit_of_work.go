@@ -40,9 +40,9 @@ type UnitOfWork struct {
 	commercePageRepository           repository.CommercePageRepository
 	// site
 	siteFeedbackRepository repository.SiteFeedbackRepository
-	// ai
-	aiConversationRepository repository.AIConversationRepository
-	aiMessageRepository      repository.AIMessageRepository
+	// ai worker
+	aiWorkerConversationRepository repository.AIWorkerConversationRepository
+	aiWorkerMessageRepository      repository.AIWorkerMessageRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -78,9 +78,9 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.commercePageRepository = NewCommercePageRepository(db, logger)
 	// site
 	unitOfWork.siteFeedbackRepository = NewSiteFeedbackRepository(db, logger)
-	// ai
-	unitOfWork.aiConversationRepository = NewAIConversationRepository(db, logger)
-	unitOfWork.aiMessageRepository = NewAIMessageRepository(db, logger)
+	// ai worker
+	unitOfWork.aiWorkerConversationRepository = NewAIWorkerConversationRepository(db, logger)
+	unitOfWork.aiWorkerMessageRepository = NewAIWorkerMessageRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -185,13 +185,13 @@ func (unitOfWork *UnitOfWork) SiteFeedbackRepository() repository.SiteFeedbackRe
 	return unitOfWork.siteFeedbackRepository
 }
 
-// ai
-func (unitOfWork *UnitOfWork) AIConversationRepository() repository.AIConversationRepository {
-	return unitOfWork.aiConversationRepository
+// ai worker
+func (unitOfWork *UnitOfWork) AIWorkerConversationRepository() repository.AIWorkerConversationRepository {
+	return unitOfWork.aiWorkerConversationRepository
 }
 
-func (unitOfWork *UnitOfWork) AIMessageRepository() repository.AIMessageRepository {
-	return unitOfWork.aiMessageRepository
+func (unitOfWork *UnitOfWork) AIWorkerMessageRepository() repository.AIWorkerMessageRepository {
+	return unitOfWork.aiWorkerMessageRepository
 }
 
 // transaction

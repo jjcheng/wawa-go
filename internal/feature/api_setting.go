@@ -5,7 +5,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -92,10 +92,10 @@ func NewAIWorker(executable bool, howToMessage string, returnType types.AIWorker
 type AIWorkerRequire struct {
 	Title   string
 	Handler func(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any]
-	Input   dto_ai.WorkInput
+	Input   dto_ai_worker.WorkInput
 }
 
-func NewAIWorkerRequire[T any](title string, request Request[T], input dto_ai.WorkInput) AIWorkerRequire {
+func NewAIWorkerRequire[T any](title string, request Request[T], input dto_ai_worker.WorkInput) AIWorkerRequire {
 	return AIWorkerRequire{
 		Title: title,
 		Handler: func(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {

@@ -1,4 +1,4 @@
-package feature_ai_conversation
+package feature_ai_worker
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -26,30 +26,30 @@ func (listMessages *ListMessages) Validate() []exception.InputException {
 	return nil
 }
 
-func (listMessages ListMessages) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_ai.Message] {
+func (listMessages ListMessages) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_ai_worker.Message] {
 	if user == nil {
-		return dto.NewFailedResponse[[]dto_ai.Message](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+		return dto.NewFailedResponse[[]dto_ai_worker.Message](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if inputErrors := listMessages.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[[]dto_ai.Message](inputErrors)
+		return dto.NewInvalidInputResponse[[]dto_ai_worker.Message](inputErrors)
 	}
-	conversation, err := dependencies.UnitOfWork.AIConversationRepository().GetById(ctx, listMessages.ConversationId)
+	conversation, err := dependencies.UnitOfWork.AIWorkerConversationRepository().GetById(ctx, listMessages.ConversationId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[[]dto_ai.Message](http.StatusNotFound, "conversation not found", nil)
+			return dto.NewFailedResponse[[]dto_ai_worker.Message](http.StatusNotFound, "conversation not found", nil)
 		}
-		return dto.NewFailedResponse[[]dto_ai.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		return dto.NewFailedResponse[[]dto_ai_worker.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if conversation.UserId != user.Id {
-		return dto.NewFailedResponse[[]dto_ai.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		return dto.NewFailedResponse[[]dto_ai_worker.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	messages, err := dependencies.UnitOfWork.AIMessageRepository().ListByConversationId(ctx, listMessages.ConversationId)
+	messages, err := dependencies.UnitOfWork.AIWorkerMessageRepository().ListByConversationId(ctx, listMessages.ConversationId)
 	if err != nil {
-		return dto.NewFailedResponse[[]dto_ai.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		return dto.NewFailedResponse[[]dto_ai_worker.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	result := make([]dto_ai.Message, 0, len(messages))
+	result := make([]dto_ai_worker.Message, 0, len(messages))
 	for _, message := range messages {
-		result = append(result, dto_ai.NewMessage(message))
+		result = append(result, dto_ai_worker.NewMessage(message))
 	}
 	return dto.NewSuccessResponse(result)
 }

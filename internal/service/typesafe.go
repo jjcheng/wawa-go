@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/types"
 )
 
@@ -22,12 +21,12 @@ type TypeSafe struct {
 }
 
 type typeSafeRequest struct {
-	State     []typeSafeMessage                 `json:"state"`
+	State     []TypeSafeMessage                 `json:"state"`
 	Model     string                            `json:"model"`
 	Questions map[string]TypeSafeChoiceQuestion `json:"questions"`
 }
 
-type typeSafeMessage struct {
+type TypeSafeMessage struct {
 	Role    types.AIMessageRole `json:"role"`
 	Content string              `json:"content"`
 }
@@ -56,16 +55,9 @@ func NewTypeSafe(logger *Logger) *TypeSafe {
 }
 
 // DetectIntent asks Jev to select one intent for a multi-turn conversation.
-func (typeSafe *TypeSafe) DetectChoice(ctx context.Context, messages []dto_ai.Message, questions map[string]TypeSafeChoiceQuestion) (*TypeSafeResponse, error) {
-	var chatMessages []typeSafeMessage
-	for _, m := range messages {
-		chatMessages = append(chatMessages, typeSafeMessage{
-			Role:    m.Role,
-			Content: m.Text(),
-		})
-	}
+func (typeSafe *TypeSafe) DetectChoice(ctx context.Context, messages []TypeSafeMessage, questions map[string]TypeSafeChoiceQuestion) (*TypeSafeResponse, error) {
 	requestBody := typeSafeRequest{
-		State:     chatMessages,
+		State:     messages,
 		Model:     "jev-latest",
 		Questions: questions,
 	}

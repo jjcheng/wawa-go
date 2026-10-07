@@ -1,7 +1,7 @@
-package dto_ai
+package dto_ai_worker
 
 import (
-	dao_ai "github.com/jjcheng/wawa-go/internal/dao/ai"
+	dao_ai_worker "github.com/jjcheng/wawa-go/internal/dao/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/dto"
 )
 
@@ -11,7 +11,7 @@ type Conversation struct {
 	Title  string `json:"title"`
 }
 
-func NewConversation(conversation dao_ai.Conversation) Conversation {
+func NewConversation(conversation dao_ai_worker.Conversation) Conversation {
 	return Conversation{
 		DTOBase: dto.DTOBase{
 			Id:            conversation.Id,

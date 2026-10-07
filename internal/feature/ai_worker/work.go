@@ -9,10 +9,10 @@ import (
 	"reflect"
 	"strings"
 
-	dao_ai "github.com/jjcheng/wawa-go/internal/dao/ai"
+	dao_ai_worker "github.com/jjcheng/wawa-go/internal/dao/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -33,29 +33,29 @@ func (work *Work) Validate() []exception.InputException {
 	return errors
 }
 
-func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_ai.WorkResult] {
+func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_ai_worker.WorkResult] {
 	if errors := work.Validate(); len(errors) > 0 {
-		return dto.NewInvalidInputResponse[*dto_ai.WorkResult](errors)
+		return dto.NewInvalidInputResponse[*dto_ai_worker.WorkResult](errors)
 	}
 	// get conversation
-	conversation, err := dependencies.UnitOfWork.AIConversationRepository().GetById(ctx, work.ConversationId)
+	conversation, err := dependencies.UnitOfWork.AIWorkerConversationRepository().GetById(ctx, work.ConversationId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusNotFound, "conversation not found", err)
+			return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusNotFound, "conversation not found", err)
 		}
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if conversation.UserId != user.Id {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	// get messages
-	messages, err := dependencies.UnitOfWork.AIMessageRepository().ListByConversationId(ctx, conversation.Id)
+	messages, err := dependencies.UnitOfWork.AIWorkerMessageRepository().ListByConversationId(ctx, conversation.Id)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	// call jev with all apiSettings to detect intent
-	messageDTOs := helper.Map(messages, func(m dao_ai.Message) dto_ai.Message {
-		return dto_ai.NewMessage(m)
+	messageDTOs := helper.Map(messages, func(m dao_ai_worker.Message) dto_ai_worker.Message {
+		return dto_ai_worker.NewMessage(m)
 	})
 	// get all summaries from all
 	apiSettingSummaries := feature.APIIntentDescriptions()
@@ -70,25 +70,32 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 			Criteria:     apiSettingSummaries,
 		},
 	}
-	response, err := dependencies.TypeSafe.DetectChoice(ctx, messageDTOs, questions)
+	typesafeMessages := make([]service.TypeSafeMessage, 0, len(messageDTOs))
+	for i, messageDTO := range messageDTOs {
+		typesafeMessages[i] = service.TypeSafeMessage{
+			Role:    messageDTO.Role,
+			Content: messageDTO.Text(),
+		}
+	}
+	response, err := dependencies.TypeSafe.DetectChoice(ctx, typesafeMessages, questions)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadGateway, types.ExceptionMessageBadGateway, err)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusBadGateway, types.ExceptionMessageBadGateway, err)
 	}
 	detectedIndent := response.Answers["detected_intent"]
 	// get the apiSetting
 	apiSettings, exists := feature.APISettingsBySummary(detectedIndent.Choice)
 	if !exists {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadRequest, "sorry, we are unable to detect your intent", nil)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusBadRequest, "sorry, we are unable to detect your intent", nil)
 	}
 	if apiSettings.AIWorker == nil {
-		result := dto_ai.NewWorkResult(apiSettings.Summary, "", dto_ai.WorkResultPart{
+		result := dto_ai_worker.NewWorkResult(apiSettings.Summary, "", dto_ai_worker.WorkResultPart{
 			Content: "Sorry, this feature is not available to the AI worker yet.",
 		})
 		return dto.NewSuccessResponse(&result)
 	}
 	// if not executable, just return the how to message
 	if !apiSettings.AIWorker.Executable {
-		result := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai.WorkResultPart{
+		result := dto_ai_worker.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai_worker.WorkResultPart{
 			Content: apiSettings.AIWorker.HowToMessage,
 		})
 		return dto.NewSuccessResponse(&result)
@@ -105,14 +112,14 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 			Criteria:     criteria,
 		},
 	}
-	response, err = dependencies.TypeSafe.DetectChoice(ctx, messageDTOs, questions)
+	response, err = dependencies.TypeSafe.DetectChoice(ctx, typesafeMessages, questions)
 	if err != nil {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadRequest, types.ExceptionMessageBadGateway, err)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusBadRequest, types.ExceptionMessageBadGateway, err)
 	}
 	detectedAction := response.Answers["detected_action"]
 	action, exist := criteria[detectedAction.Choice]
 	if !exist {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusBadRequest, types.ExceptionMessageBadGateway, nil)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusBadRequest, types.ExceptionMessageBadGateway, nil)
 	}
 	detectedActionType := types.AIWorkerAction(action)
 	switch detectedActionType {
@@ -122,7 +129,7 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 		if apiSettings.AIWorker.Executable {
 			inputs, exists := feature.APIRequiredFieldsBySummary(detectedIndent.Choice)
 			if !exists {
-				return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+				return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 			}
 			if len(inputs) == 0 {
 				message += "\nDo you want me to pull the data directly here?"
@@ -130,13 +137,13 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 				message += "\nOr would you like me to show you the form here?"
 			}
 		}
-		workResult := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai.WorkResultPart{
+		workResult := dto_ai_worker.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai_worker.WorkResultPart{
 			Content: message,
 		})
 		return dto.NewSuccessResponse(&workResult)
 	case types.AIWorkerActionReport:
 		// if user is reporting an issue using this feature, store in feedback and return sorry message
-		workResult := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai.WorkResultPart{
+		workResult := dto_ai_worker.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, dto_ai_worker.WorkResultPart{
 			Content: "we have received your feedback and will work on it soon!",
 		})
 		return dto.NewSuccessResponse(&workResult)
@@ -144,19 +151,19 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 	// If the user wants to execute this feature, ask for any required request fields first.
 	inputs, exists := feature.APIRequiredFieldsBySummary(detectedIndent.Choice)
 	if !exists {
-		return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
+		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, nil)
 	}
 	// if no required field, execute Handle of the feature and return
 	if len(inputs) == 0 {
 		result, err := work.executeHandle(detectedIndent.Choice, ctx, user, dependencies)
 		if err != nil {
-			return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		return dto.NewSuccessResponse(result)
 	}
 	if len(inputs) > 0 {
-		var parts []dto_ai.WorkResultPart
-		parts = append(parts, dto_ai.WorkResultPart{
+		var parts []dto_ai_worker.WorkResultPart
+		parts = append(parts, dto_ai_worker.WorkResultPart{
 			Content: fmt.Sprintf("To %s, use this form:\n", strings.ToLower(detectedIndent.Choice)),
 		})
 		// check for any pre-requisits
@@ -164,9 +171,9 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 			for _, require := range apiSettings.AIWorker.Requires {
 				requiredDataResponse := require.Handler(ctx, user, dependencies)
 				if !requiredDataResponse.Success {
-					return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, requiredDataResponse.Error)
+					return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, requiredDataResponse.Error)
 				}
-				parts = append(parts, dto_ai.WorkResultPart{
+				parts = append(parts, dto_ai_worker.WorkResultPart{
 					Content: require.Title,
 				})
 				parts = append(parts, RenderFeatureResult(requiredDataResponse.Data, &require.Input))
@@ -179,44 +186,44 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 			}) {
 				continue
 			}
-			parts = append(parts, dto_ai.WorkResultPart{
+			parts = append(parts, dto_ai_worker.WorkResultPart{
 				Content: input.Description,
 			})
 			input.DisplayType = types.AIWorkerDisplayTypeTextbox
 			// add inputs
-			parts = append(parts, dto_ai.WorkResultPart{
+			parts = append(parts, dto_ai_worker.WorkResultPart{
 				Content: "",
 				Input:   &input,
 			})
 		}
-		result := dto_ai.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, parts...)
+		result := dto_ai_worker.NewWorkResult(apiSettings.Summary, apiSettings.AIWorker.URL, parts...)
 		return dto.NewSuccessResponse(&result)
 	}
-	return dto.NewFailedResponse[*dto_ai.WorkResult](http.StatusNotImplemented, "feature execution is not implemented", nil)
+	return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusNotImplemented, "feature execution is not implemented", nil)
 }
 
-func (work *Work) executeHandle(detectedSummary string, ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) (*dto_ai.WorkResult, error) {
+func (work *Work) executeHandle(detectedSummary string, ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) (*dto_ai_worker.WorkResult, error) {
 	executor, exists := feature.APIExecutorBySummary(detectedSummary)
 	if !exists {
 		return nil, fmt.Errorf("unable to find the feature by summary")
 	}
 	response := executor(ctx, user, dependencies, nil)
 	if !response.Success {
-		result := dto_ai.NewWorkResult(detectedSummary, "", dto_ai.WorkResultPart{
+		result := dto_ai_worker.NewWorkResult(detectedSummary, "", dto_ai_worker.WorkResultPart{
 			Content: response.Message,
 		})
 		return &result, nil
 	}
-	var parts []dto_ai.WorkResultPart
-	parts = append(parts, dto_ai.WorkResultPart{
+	var parts []dto_ai_worker.WorkResultPart
+	parts = append(parts, dto_ai_worker.WorkResultPart{
 		Content: detectedSummary,
 	})
 	parts = append(parts, RenderFeatureResult(response.Data, nil))
-	result := dto_ai.NewWorkResult(detectedSummary, "", parts...)
+	result := dto_ai_worker.NewWorkResult(detectedSummary, "", parts...)
 	return &result, nil
 }
 
-func RenderFeatureResult(data any, input *dto_ai.WorkInput) dto_ai.WorkResultPart {
+func RenderFeatureResult(data any, input *dto_ai_worker.WorkInput) dto_ai_worker.WorkResultPart {
 	value := reflect.ValueOf(data)
 	value = indirectValue(value)
 	if !value.IsValid() || isEmptyResult(value) {
@@ -246,7 +253,7 @@ func isEmptyResult(value reflect.Value) bool {
 	}
 }
 
-func renderFeatureTable(rows reflect.Value, input *dto_ai.WorkInput) dto_ai.WorkResultPart {
+func renderFeatureTable(rows reflect.Value, input *dto_ai_worker.WorkInput) dto_ai_worker.WorkResultPart {
 	if rows.Len() == 0 {
 		return textResultPart("Sorry, we cannot find any result.")
 	}
@@ -256,7 +263,7 @@ func renderFeatureTable(rows reflect.Value, input *dto_ai.WorkInput) dto_ai.Work
 		for index := 0; index < rows.Len(); index++ {
 			items = append(items, []any{valueInterface(rows.Index(index))})
 		}
-		part := dto_ai.WorkResultPart{Content: items, Input: input}
+		part := dto_ai_worker.WorkResultPart{Content: items, Input: input}
 		return part
 	}
 
@@ -283,7 +290,7 @@ func renderFeatureTable(rows reflect.Value, input *dto_ai.WorkInput) dto_ai.Work
 		}
 		content = append(content, values)
 	}
-	part := dto_ai.WorkResultPart{
+	part := dto_ai_worker.WorkResultPart{
 		FieldNames: fieldNames,
 		Titles:     titles,
 		Content:    content,
@@ -292,7 +299,7 @@ func renderFeatureTable(rows reflect.Value, input *dto_ai.WorkInput) dto_ai.Work
 	return part
 }
 
-func renderFeatureObject(object reflect.Value) dto_ai.WorkResultPart {
+func renderFeatureObject(object reflect.Value) dto_ai_worker.WorkResultPart {
 	fields := titledFields(object.Type())
 	if len(fields) == 0 {
 		return textResultPart(formatFeatureValue(object))
@@ -303,14 +310,14 @@ func renderFeatureObject(object reflect.Value) dto_ai.WorkResultPart {
 		titles = append(titles, field.title)
 		content = append(content, valueInterface(fieldByIndex(object, field.index)))
 	}
-	return dto_ai.WorkResultPart{
+	return dto_ai_worker.WorkResultPart{
 		Titles:  titles,
 		Content: content,
 	}
 }
 
-func textResultPart(message string) dto_ai.WorkResultPart {
-	return dto_ai.WorkResultPart{Content: message}
+func textResultPart(message string) dto_ai_worker.WorkResultPart {
+	return dto_ai_worker.WorkResultPart{Content: message}
 }
 
 type titledField struct {

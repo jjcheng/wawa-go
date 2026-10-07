@@ -7,7 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -85,7 +85,7 @@ func (SetUserType) APISettings() feature.APISettings {
 		types.AIWorkerReturnTypeText,
 		"User type successfully updated.",
 		"/assets/users",
-		feature.NewAIWorkerRequire("Select a user", ListUsers{}, dto_ai.WorkInput{
+		feature.NewAIWorkerRequire("Select a user", ListUsers{}, dto_ai_worker.WorkInput{
 			Name:               "id",
 			Description:        "user whose type to update",
 			Type:               types.AIInputFieldTypeInt,

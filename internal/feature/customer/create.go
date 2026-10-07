@@ -10,7 +10,7 @@ import (
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -150,7 +150,7 @@ func (Create) APISettings() feature.APISettings {
 			types.AIWorkerReturnTypeText,
 			"Customer successfully added, you can view your customers in Chats page from the side menu or bottom tab bar.",
 			"/chats",
-			feature.NewAIWorkerRequire("Select a phone number", feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected}, dto_ai.WorkInput{
+			feature.NewAIWorkerRequire("Select a phone number", feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected}, dto_ai_worker.WorkInput{
 				Name:               "phone_number_id",
 				Description:        "id of the phone number",
 				Type:               types.AIInputFieldTypeInt,

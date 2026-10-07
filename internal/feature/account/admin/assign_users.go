@@ -7,7 +7,7 @@ import (
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
+	dto_ai_worker "github.com/jjcheng/wawa-go/internal/dto/ai_worker"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_wa_phone_number "github.com/jjcheng/wawa-go/internal/feature/wa/phone_number"
@@ -108,7 +108,7 @@ func (AssignUsers) APISettings() feature.APISettings {
 			feature.NewAIWorkerRequire(
 				"Select a connected phone number",
 				feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected},
-				dto_ai.WorkInput{
+				dto_ai_worker.WorkInput{
 					Name:               "phone_number_id",
 					Description:        "phone number to assign users to",
 					Type:               types.AIInputFieldTypeInt,
@@ -119,7 +119,7 @@ func (AssignUsers) APISettings() feature.APISettings {
 			feature.NewAIWorkerRequire(
 				"Select the users to assign to this phone number",
 				ListUsers{},
-				dto_ai.WorkInput{
+				dto_ai_worker.WorkInput{
 					Name:               "user_ids",
 					Description:        "users to assign to the phone number",
 					Type:               types.AIInputFieldTypeInt,
