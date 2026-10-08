@@ -7,11 +7,12 @@ import (
 
 type Connector struct {
 	dao.DAOBase
-	BusinessAccountId  int32                              `gorm:"column:business_account_id"`
+	ProfileId          int32                              `gorm:"column:profile_id"`
 	BaseURL            string                             `gorm:"column:base_url"`
 	AuthLocation       types.AIAgentConnectorAuthLocation `gorm:"column:auth_location"`
 	AuthKey            string                             `gorm:"column:auth_key"`
 	AuthValueEncrypted string                             `gorm:"column:auth_value_encrypted"`
+	AuthValue          string                             `gorm:"-"` // not in db
 }
 
 func (Connector) TableName() string {

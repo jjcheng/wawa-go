@@ -42,6 +42,7 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	// phone number
 	registerRoute[*service.WhatsAppPhoneNumberDetailsResponse, feature_wa_phone_number.Get](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.PhoneNumber, feature_wa_phone_number.GetLocal](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_phone_number.LinkAgentProfile](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_phone_number.Disconnect](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_wa_phone_number.Reconnect](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto.ListResponse[dto_wa.PhoneNumber], feature_wa_phone_number.List](routerGroup, dependencies, apiGenerator)

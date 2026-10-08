@@ -20,6 +20,7 @@ type PhoneNumber struct {
 	Status             types.WAPhoneNumberStatus `json:"status"`
 	MetaAgentId        string                    `json:"meta_agent_id"`
 	AgentEnabled       bool                      `json:"agent_enabled"`
+	AgentProfileId     *int32                    `json:"agent_profile_id"`
 	// not stored
 	New           bool           `json:"-"`
 	AssignedUsers []AssignedUser `json:"assigned_users"`
@@ -46,6 +47,7 @@ func NewPhoneNumber(phoneNumber dao_wa.PhoneNumber) PhoneNumber {
 		Status:             phoneNumber.Status,
 		MetaAgentId:        phoneNumber.MetaAgentId,
 		AgentEnabled:       phoneNumber.AgentEnabled,
+		AgentProfileId:     phoneNumber.AgenProfileId,
 	}
 	return d
 }
