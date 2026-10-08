@@ -89,6 +89,8 @@ type CommerceConfig struct {
 
 type CloudflareConfig struct {
 	TurnstileSecretKey string
+	AccountId          string
+	APIToken           string
 }
 
 type TypesafeConfig struct {
@@ -175,6 +177,8 @@ func Default() *Config {
 			},
 			Cloudflare: CloudflareConfig{
 				TurnstileSecretKey: os.Getenv("TURNSTILE_SECRET_KEY"),
+				AccountId:          os.Getenv("CLOUDFLARE_ACCOUNT_ID"),
+				APIToken:           os.Getenv("CLOUDFLARE_API_TOKEN"),
 			},
 			Typesafe: TypesafeConfig{
 				JevAPIKey: os.Getenv("JEV_API_KEY"),

@@ -34,8 +34,7 @@ env:
 	sed -i '' "s|\$${ABLY_API_KEY}|$${ABLY_API_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${TURNSTILE_SECRET_KEY}|$${TURNSTILE_SECRET_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${CLOUDFLARE_ACCOUNT_ID}|$${CLOUDFLARE_ACCOUNT_ID//&/\\&}|g" .env; \
-	sed -i '' "s|\$${CLOUDFLARE_KV_NAMESPACE_ID}|$${CLOUDFLARE_KV_NAMESPACE_ID//&/\\&}|g" .env; \
-	sed -i '' "s|\$${CLOUDFLARE_KV_READWRITE_API_KEY}|$${CLOUDFLARE_KV_READWRITE_API_KEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${CLOUDFLARE_API_TOKEN}|$${CLOUDFLARE_API_TOKEN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${COMMERCE_WEBSITE_DOMAIN}|$${COMMERCE_WEBSITE_DOMAIN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${JEV_API_KEY}|$${JEV_API_KEY//&/\\&}|g" .env;
 	@echo ".env generated from $(ENV_SOURCE)"
