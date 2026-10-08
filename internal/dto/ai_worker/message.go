@@ -11,11 +11,11 @@ import (
 
 type Message struct {
 	dto.DTOBase
-	Feature        string              `json:"feature"`
-	Role           types.AIMessageRole `json:"role"`
-	Parts          []WorkResultPart    `json:"parts"`
-	ConversationId int32               `json:"conversation_id"`
-	URL            string              `json:"url"`
+	Feature        string                    `json:"feature"`
+	Role           types.AIWorkerMessageRole `json:"role"`
+	Parts          []WorkResultPart          `json:"parts"`
+	ConversationId int32                     `json:"conversation_id"`
+	URL            string                    `json:"url"`
 }
 
 func NewMessage(message dao_ai_worker.Message) Message {

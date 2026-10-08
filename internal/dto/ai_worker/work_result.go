@@ -11,13 +11,13 @@ type WorkResult struct {
 }
 
 type WorkInput struct {
-	Name               string              `json:"name"`
-	Description        string              `json:"description"`
-	Type               types.AIInputType   `json:"type"`
-	DisplayType        types.AIDisplayType `json:"display_type"`
-	Values             []string            `json:"values,omitempty"` // if type is select, got from types.xxx
-	Example            string              `json:"example,omitempty"`
-	ReferenceFieldName string              `json:"reference_field_name,omitempty"` // if coming from another source
+	Name               string                    `json:"name"`
+	Description        string                    `json:"description"`
+	Type               types.AIWorkerInputType   `json:"type"`
+	DisplayType        types.AIWorkerDisplayType `json:"display_type"`
+	Values             []string                  `json:"values,omitempty"` // if type is select, got from types.xxx
+	Example            string                    `json:"example,omitempty"`
+	ReferenceFieldName string                    `json:"reference_field_name,omitempty"` // if coming from another source
 }
 
 type WorkResultPart struct {

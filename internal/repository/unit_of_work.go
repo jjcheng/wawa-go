@@ -41,4 +41,8 @@ type UnitOfWork interface {
 	// ai
 	AIWorkerConversationRepository() AIWorkerConversationRepository
 	AIWorkerMessageRepository() AIWorkerMessageRepository
+	// ai agent
+	AIAgentProfileRepository() AIProfileRepository
+	AIAgentFAQRepository() AIAgentFAQRepository
+	AIAgentSkillRepository() AIAgentSkillRepository
 }

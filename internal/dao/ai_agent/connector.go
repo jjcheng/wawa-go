@@ -1,0 +1,23 @@
+package dao_ai_agent
+
+import (
+	"github.com/jjcheng/wawa-go/internal/dao"
+	"github.com/jjcheng/wawa-go/internal/types"
+)
+
+type Connector struct {
+	dao.DAOBase
+	BusinessAccountId  int32                              `gorm:"column:business_account_id"`
+	BaseURL            string                             `gorm:"column:base_url"`
+	AuthLocation       types.AIAgentConnectorAuthLocation `gorm:"column:auth_location"`
+	AuthKey            string                             `gorm:"column:auth_key"`
+	AuthValueEncrypted string                             `gorm:"column:auth_value_encrypted"`
+}
+
+func (Connector) TableName() string {
+	return "ai_agent.connectors"
+}
+
+func (connector Connector) Base() dao.DAOBase {
+	return connector.DAOBase
+}

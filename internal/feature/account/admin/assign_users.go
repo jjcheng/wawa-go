@@ -111,7 +111,7 @@ func (AssignUsers) APISettings() feature.APISettings {
 				dto_ai_worker.WorkInput{
 					Name:               "phone_number_id",
 					Description:        "phone number to assign users to",
-					Type:               types.AIInputFieldTypeInt,
+					Type:               types.AIWorkerInputFieldTypeInt,
 					ReferenceFieldName: "id",
 					DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 				},
@@ -122,7 +122,7 @@ func (AssignUsers) APISettings() feature.APISettings {
 				dto_ai_worker.WorkInput{
 					Name:               "user_ids",
 					Description:        "users to assign to the phone number",
-					Type:               types.AIInputFieldTypeInt,
+					Type:               types.AIWorkerInputFieldTypeInt,
 					ReferenceFieldName: "id",
 					DisplayType:        types.AIWorkerDisplayTypeMultiChoiceTable,
 				},

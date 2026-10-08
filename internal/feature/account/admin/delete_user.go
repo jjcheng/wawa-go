@@ -69,7 +69,7 @@ func (DeleteUser) APISettings() feature.APISettings {
 			ListUsers{}, dto_ai_worker.WorkInput{
 				Name:               "id",
 				Description:        "user to delete",
-				Type:               types.AIInputFieldTypeInt,
+				Type:               types.AIWorkerInputFieldTypeInt,
 				ReferenceFieldName: "id",
 				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 			}),

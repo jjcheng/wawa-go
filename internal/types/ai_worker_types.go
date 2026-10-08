@@ -1,10 +1,10 @@
 package types
 
-type AIMessageRole string
+type AIWorkerMessageRole string
 
 const (
-	AIMessageRoleUser      AIMessageRole = "USER"
-	AIMessageRoleAssistant AIMessageRole = "ASSISTANT"
+	AIWorkerMessageRoleUser      AIWorkerMessageRole = "USER"
+	AIWorkerMessageRoleAssistant AIWorkerMessageRole = "ASSISTANT"
 )
 
 type AIWorkerAction string
@@ -43,16 +43,16 @@ var AIWorkerInputStatuss []string = []string{
 	string(AIWorkerInputStatusEmpty),
 }
 
-type AIInputType string
+type AIWorkerInputType string
 
 const (
-	AIInputFieldTypeText     AIInputType = "TEXT"
-	AIInputFieldTypeInt      AIInputType = "INT"
-	AIInputFieldTypeFloat    AIInputType = "FLOAT"
-	AIInputFieldTypeDate     AIInputType = "DATE"
-	AIInputFieldTypeDateTime AIInputType = "DATETIME"
-	AIInputFieldTypeBool     AIInputType = "BOOL"
-	AIInputFieldTypeSelect   AIInputType = "SELECT"
+	AIWorkerInputFieldTypeText     AIWorkerInputType = "TEXT"
+	AIWorkerInputFieldTypeInt      AIWorkerInputType = "INT"
+	AIWorkerInputFieldTypeFloat    AIWorkerInputType = "FLOAT"
+	AIWorkerInputFieldTypeDate     AIWorkerInputType = "DATE"
+	AIWorkerInputFieldTypeDateTime AIWorkerInputType = "DATETIME"
+	AIWorkerInputFieldTypeBool     AIWorkerInputType = "BOOL"
+	AIWorkerInputFieldTypeSelect   AIWorkerInputType = "SELECT"
 )
 
 type AIWorkerReturnType string
@@ -62,12 +62,12 @@ const (
 	AIWorkerReturnTypeData AIWorkerReturnType = "DATA"
 )
 
-type AIDisplayType string
+type AIWorkerDisplayType string
 
 const (
-	AIWorkerDisplayTypeTextbox           AIDisplayType = "TEXTBOX"
-	AIWorkerDisplayTypeTextarea          AIDisplayType = "TEXTAREA"
-	AIWorkerDisplayTypeReadonlyTable     AIDisplayType = "READONLY_TABLE"
-	AIWorkerDisplayTypeSingleChoiceTable AIDisplayType = "SINGLE_CHOICE_TABLE"
-	AIWorkerDisplayTypeMultiChoiceTable  AIDisplayType = "MULTI_CHOICE_TABLE"
+	AIWorkerDisplayTypeTextbox           AIWorkerDisplayType = "TEXTBOX"
+	AIWorkerDisplayTypeTextarea          AIWorkerDisplayType = "TEXTAREA"
+	AIWorkerDisplayTypeReadonlyTable     AIWorkerDisplayType = "READONLY_TABLE"
+	AIWorkerDisplayTypeSingleChoiceTable AIWorkerDisplayType = "SINGLE_CHOICE_TABLE"
+	AIWorkerDisplayTypeMultiChoiceTable  AIWorkerDisplayType = "MULTI_CHOICE_TABLE"
 )

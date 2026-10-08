@@ -1,4 +1,4 @@
-package feature_ai_worker
+package feature_ai_agent_profile
 
 import (
 	"context"
@@ -14,54 +14,57 @@ import (
 	"gorm.io/gorm"
 )
 
-type DeleteConversation struct {
-	Id int32 `uri:"id" val:"required" description:"id of the conversation"`
+type Delete struct {
+	Id int32 `uri:"id" val:"required" description:"id of the profile"`
 }
 
-func (deleteConversation *DeleteConversation) Validate() []exception.InputException {
-	if deleteConversation.Id <= 0 {
-		return []exception.InputException{exception.NewInputException("id", "invalid conversation id")}
+func (delete *Delete) Validate() []exception.InputException {
+	if delete.Id <= 0 {
+		return []exception.InputException{exception.NewInputException("id", "invalid profile id")}
 	}
 	return nil
 }
 
-func (deleteConversation DeleteConversation) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
+func (delete Delete) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[any] {
 	if user == nil {
 		return dto.NewFailedResponse[any](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
-	if inputErrors := deleteConversation.Validate(); len(inputErrors) > 0 {
+	if user.Type != types.UserTypeMaster {
+		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	}
+	if inputErrors := delete.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	conversation, err := dependencies.UnitOfWork.AIWorkerConversationRepository().GetById(ctx, deleteConversation.Id)
+	profile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, delete.Id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "conversation not found", nil)
+			return dto.NewFailedResponse[any](http.StatusNotFound, "profile not found", nil)
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if conversation.UserId != user.Id {
+	if profile.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if err := dependencies.UnitOfWork.AIWorkerConversationRepository().DeleteById(ctx, conversation.Id); err != nil {
+	if err := dependencies.UnitOfWork.AIAgentProfileRepository().DeleteById(ctx, delete.Id); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }
 
-func (DeleteConversation) APISettings() feature.APISettings {
+func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Delete an AI conversation",
-		"Delete an AI conversation belonging to the authenticated user.",
+		"Delete AI agent profile",
+		"Deletes an AI agent profile in the business account.",
 		types.HttpRequestTypeUri,
 		http.MethodDelete,
-		"/v1/ai/conversations/:id",
+		"/v1/ai-agent/profiles/:id",
 		true,
 		true,
-		types.APITagAIWorker,
+		types.APITagAIAgent,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageUnauthorized, http.StatusUnauthorized)),
-			feature.NewAPIError(*exception.NewCustomException("conversation not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("profile not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},
 	)

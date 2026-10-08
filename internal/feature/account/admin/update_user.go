@@ -119,7 +119,7 @@ func (UpdateUser) APISettings() feature.APISettings {
 		feature.NewAIWorkerRequire("Select a user to update", ListUsers{}, dto_ai_worker.WorkInput{
 			Name:               "id",
 			Description:        "user to update",
-			Type:               types.AIInputFieldTypeInt,
+			Type:               types.AIWorkerInputFieldTypeInt,
 			ReferenceFieldName: "id",
 			DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 		}),

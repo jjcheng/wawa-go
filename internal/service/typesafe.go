@@ -27,8 +27,8 @@ type typeSafeRequest struct {
 }
 
 type TypeSafeMessage struct {
-	Role    types.AIMessageRole `json:"role"`
-	Content string              `json:"content"`
+	Role    types.AIWorkerMessageRole `json:"role"`
+	Content string                    `json:"content"`
 }
 
 type TypeSafeChoiceQuestion struct {

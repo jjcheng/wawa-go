@@ -92,7 +92,7 @@ func (GetUser) APISettings() feature.APISettings {
 			feature.NewAIWorkerRequire("Select a user", ListUsers{}, dto_ai_worker.WorkInput{
 				Name:               "id",
 				Description:        "user to view",
-				Type:               types.AIInputFieldTypeInt,
+				Type:               types.AIWorkerInputFieldTypeInt,
 				ReferenceFieldName: "id",
 				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 			}),

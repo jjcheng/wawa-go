@@ -8,11 +8,11 @@ import (
 
 type Message struct {
 	dao.DAOBase
-	Feature        string              `gorm:"column:feature"`
-	ConversationId int32               `gorm:"column:conversation_id"`
-	Parts          pq.StringArray      `gorm:"column:parts;type:text[]"`
-	Role           types.AIMessageRole `gorm:"column:role"`
-	URL            string              `gorm:"column:url"`
+	Feature        string                    `gorm:"column:feature"`
+	ConversationId int32                     `gorm:"column:conversation_id"`
+	Parts          pq.StringArray            `gorm:"column:parts;type:text[]"`
+	Role           types.AIWorkerMessageRole `gorm:"column:role"`
+	URL            string                    `gorm:"column:url"`
 }
 
 func (Message) TableName() string {

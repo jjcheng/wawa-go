@@ -43,6 +43,10 @@ type UnitOfWork struct {
 	// ai worker
 	aiWorkerConversationRepository repository.AIWorkerConversationRepository
 	aiWorkerMessageRepository      repository.AIWorkerMessageRepository
+	// ai agent
+	aiAgentProfileRepository repository.AIProfileRepository
+	aiAgentFAQRepository     repository.AIAgentFAQRepository
+	aiAgentSkillRepository   repository.AIAgentSkillRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -81,6 +85,10 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	// ai worker
 	unitOfWork.aiWorkerConversationRepository = NewAIWorkerConversationRepository(db, logger)
 	unitOfWork.aiWorkerMessageRepository = NewAIWorkerMessageRepository(db, logger)
+	// ai agent
+	unitOfWork.aiAgentProfileRepository = NewAIAgentProfileRepository(db, logger)
+	unitOfWork.aiAgentFAQRepository = NewAIAgentFAQRepository(db, logger)
+	unitOfWork.aiAgentSkillRepository = NewAIAgentSkillRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -192,6 +200,19 @@ func (unitOfWork *UnitOfWork) AIWorkerConversationRepository() repository.AIWork
 
 func (unitOfWork *UnitOfWork) AIWorkerMessageRepository() repository.AIWorkerMessageRepository {
 	return unitOfWork.aiWorkerMessageRepository
+}
+
+// ai agent
+func (unitOfWork *UnitOfWork) AIAgentProfileRepository() repository.AIProfileRepository {
+	return unitOfWork.aiAgentProfileRepository
+}
+
+func (unitOfWork *UnitOfWork) AIAgentFAQRepository() repository.AIAgentFAQRepository {
+	return unitOfWork.aiAgentFAQRepository
+}
+
+func (unitOfWork *UnitOfWork) AIAgentSkillRepository() repository.AIAgentSkillRepository {
+	return unitOfWork.aiAgentSkillRepository
 }
 
 // transaction

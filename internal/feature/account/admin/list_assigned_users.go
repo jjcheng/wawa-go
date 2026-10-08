@@ -81,7 +81,7 @@ func (ListAssignedUsers) APISettings() feature.APISettings {
 			feature.NewAIWorkerRequire("Select a connected phone number", feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected}, dto_ai_worker.WorkInput{
 				Name:               "phone_number_id",
 				Description:        "phone number to view assigned users for",
-				Type:               types.AIInputFieldTypeInt,
+				Type:               types.AIWorkerInputFieldTypeInt,
 				ReferenceFieldName: "id",
 				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 			}),

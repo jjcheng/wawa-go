@@ -102,7 +102,7 @@ func requiredFieldDescriptions(requestType reflect.Type, visited map[reflect.Typ
 	return inputs
 }
 
-func aiInputFieldType(fieldType reflect.Type) (types.AIInputType, []string) {
+func aiInputFieldType(fieldType reflect.Type) (types.AIWorkerInputType, []string) {
 	for fieldType.Kind() == reflect.Pointer {
 		fieldType = fieldType.Elem()
 	}
@@ -110,19 +110,19 @@ func aiInputFieldType(fieldType reflect.Type) (types.AIInputType, []string) {
 		values := helper.Map(types.UserTypes, func(userType types.UserType) string {
 			return string(userType)
 		})
-		return types.AIInputFieldTypeSelect, values
+		return types.AIWorkerInputFieldTypeSelect, values
 	}
 	if fieldType == reflect.TypeFor[time.Time]() {
-		return types.AIInputFieldTypeDateTime, nil
+		return types.AIWorkerInputFieldTypeDateTime, nil
 	}
 	switch fieldType.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return types.AIInputFieldTypeInt, nil
+		return types.AIWorkerInputFieldTypeInt, nil
 	case reflect.Float32, reflect.Float64:
-		return types.AIInputFieldTypeFloat, nil
+		return types.AIWorkerInputFieldTypeFloat, nil
 	default:
-		return types.AIInputFieldTypeText, nil
+		return types.AIWorkerInputFieldTypeText, nil
 	}
 }
 

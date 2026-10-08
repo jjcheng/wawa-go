@@ -153,7 +153,7 @@ func (Create) APISettings() feature.APISettings {
 			feature.NewAIWorkerRequire("Select a phone number", feature_wa_phone_number.List{Status: types.WAPhoneNumberStatusConnected}, dto_ai_worker.WorkInput{
 				Name:               "phone_number_id",
 				Description:        "id of the phone number",
-				Type:               types.AIInputFieldTypeInt,
+				Type:               types.AIWorkerInputFieldTypeInt,
 				ReferenceFieldName: "id",
 				DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 			})),

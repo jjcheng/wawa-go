@@ -76,7 +76,7 @@ func (Execute) APISettings() feature.APISettings {
 		"/v1/ai/worker/execute",
 		true,
 		true,
-		types.APITagAI,
+		types.APITagAIWorker,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException("unknown feature", http.StatusBadRequest)),
 			feature.NewAPIError(*exception.NewCustomException("feature is not executable by the AI worker", http.StatusForbidden)),

@@ -76,7 +76,7 @@ func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencie
 	message := dao_ai_worker.Message{
 		ConversationId: conversation.Id,
 		Parts:          pq.StringArray(userContent),
-		Role:           types.AIMessageRoleUser,
+		Role:           types.AIWorkerMessageRoleUser,
 	}
 	if err := dependencies.UnitOfWork.AIWorkerMessageRepository().Insert(ctx, &message); err != nil {
 		return dto.NewFailedResponse[*dto_ai_worker.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
@@ -97,7 +97,7 @@ func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencie
 	responseMessage := dao_ai_worker.Message{
 		Feature:        workResponse.Data.Feature,
 		ConversationId: conversation.Id,
-		Role:           types.AIMessageRoleAssistant,
+		Role:           types.AIWorkerMessageRoleAssistant,
 		Parts:          pq.StringArray(responseContents),
 		URL:            workResponse.Data.URL,
 	}
@@ -117,7 +117,7 @@ func (chat Chat) APISettings() feature.APISettings {
 		"/v1/ai/conversations/chat",
 		true,
 		true,
-		types.APITagAI,
+		types.APITagAIWorker,
 		nil,
 		feature.NewAIWorker(false, "Hi, I am your AI worker, currently in beta! Tell me what you wish to do, I will try my best to give you the steps or provide you the form to execute the task. I may make mistakes, if I do so, please write a feedback to us, thank you!", types.AIWorkerReturnTypeText, "", ""),
 	)

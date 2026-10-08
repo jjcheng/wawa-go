@@ -63,7 +63,7 @@ func (ListMessages) APISettings() feature.APISettings {
 		"/v1/ai/conversations/:conversation_id/messages",
 		true,
 		true,
-		types.APITagAI,
+		types.APITagAIWorker,
 		[]feature.APIError{
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageForbidden, http.StatusForbidden)),
 			feature.NewAPIError(*exception.NewCustomException("conversation not found", http.StatusNotFound)),

@@ -97,7 +97,7 @@ func (SetUserStatus) APISettings() feature.APISettings {
 		feature.NewAIWorkerRequire("Select a user", ListUsers{}, dto_ai_worker.WorkInput{
 			Name:               "id",
 			Description:        "user whose status to update",
-			Type:               types.AIInputFieldTypeInt,
+			Type:               types.AIWorkerInputFieldTypeInt,
 			ReferenceFieldName: "id",
 			DisplayType:        types.AIWorkerDisplayTypeSingleChoiceTable,
 		}),
