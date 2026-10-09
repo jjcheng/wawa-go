@@ -26,6 +26,7 @@ type Config struct {
 	Commerce   CommerceConfig
 	Cloudflare CloudflareConfig
 	Typesafe   TypesafeConfig
+	LLM        LLMConfig
 }
 
 type DatabaseConfig struct {
@@ -98,11 +99,8 @@ type TypesafeConfig struct {
 }
 
 type LLMConfig struct {
-	//AccessKeyID     string
-	//AccessKeySecret string
-	AgentKey string
-	AppID    string
-	Endpoint string
+	APIKey  string
+	BaseURL string
 }
 
 var configInstance *Config
@@ -182,6 +180,10 @@ func Default() *Config {
 			},
 			Typesafe: TypesafeConfig{
 				JevAPIKey: os.Getenv("JEV_API_KEY"),
+			},
+			LLM: LLMConfig{
+				APIKey:  os.Getenv("ALIYUN_DASHSCOPE_API_KEY"),
+				BaseURL: os.Getenv("ALIYUN_DASHSCOPE_BASEURL"),
 			},
 		}
 	})

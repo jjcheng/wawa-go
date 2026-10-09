@@ -16,6 +16,7 @@ type Dependencies struct {
 	Cache        *Cache
 	Cloudflare   *Cloudflare
 	TypeSafe     *TypeSafe
+	LLM          *LLM
 }
 
 func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger) *Dependencies {
@@ -31,5 +32,6 @@ func NewDependencies(unitOfWork repository.UnitOfWork, logger *Logger) *Dependen
 		Cache:        NewCache(unitOfWork),
 		Cloudflare:   NewCloudflare(logger),
 		TypeSafe:     NewTypeSafe(logger),
+		LLM:          NewLLM(logger),
 	}
 }

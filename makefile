@@ -36,7 +36,9 @@ env:
 	sed -i '' "s|\$${CLOUDFLARE_ACCOUNT_ID}|$${CLOUDFLARE_ACCOUNT_ID//&/\\&}|g" .env; \
 	sed -i '' "s|\$${CLOUDFLARE_API_TOKEN}|$${CLOUDFLARE_API_TOKEN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${COMMERCE_WEBSITE_DOMAIN}|$${COMMERCE_WEBSITE_DOMAIN//&/\\&}|g" .env; \
-	sed -i '' "s|\$${JEV_API_KEY}|$${JEV_API_KEY//&/\\&}|g" .env;
+	sed -i '' "s|\$${JEV_API_KEY}|$${JEV_API_KEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_DASHSCOPE_BASEURL}|$${ALIYUN_DASHSCOPE_BASEURL//&/\\&}|g" .env; \
+	sed -i '' "s|\$${ALIYUN_DASHSCOPE_API_KEY}|$${ALIYUN_DASHSCOPE_API_KEY//&/\\&}|g" .env; 
 	@echo ".env generated from $(ENV_SOURCE)"
 run-api:
 	@make env

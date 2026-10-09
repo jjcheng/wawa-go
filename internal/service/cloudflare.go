@@ -10,7 +10,6 @@ import (
 
 	cloudflare_sdk "github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/ai_search"
-	"github.com/cloudflare/cloudflare-go/v7/option"
 	"github.com/jjcheng/wawa-go/internal/cfg"
 )
 
@@ -40,10 +39,10 @@ func NewCloudflare(logger *Logger) *Cloudflare {
 	if cloudflare.apiToken == "" {
 		panic("missing api token when creating cloudflare service")
 	}
-	cloudflare.client = cloudflare_sdk.NewClient(
-		option.WithAPIToken(cfg.Default().Cloudflare.APIToken),
-	)
-	return cloudflare
+	// cloudflare.client = cloudflare_sdk.NewClient(
+	// 	option.WithAPIToken(cfg.Default().Cloudflare.APIToken),
+	// )
+	return nil
 }
 
 // turnstile
@@ -83,6 +82,7 @@ func (cloudflare *Cloudflare) CreateAISearchInstance(ctx context.Context, id str
 		EmbeddingModel:      cloudflare_sdk.String("@cf/qwen/qwen3-vl-embedding-2b"),
 		Reranking:           cloudflare_sdk.Bool(true),
 		RerankingModel:      cloudflare_sdk.String("@cf/baai/bge-reranker-base"),
+		//	Metadata:            cloudflare,
 	})
 	return response, err
 }
