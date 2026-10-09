@@ -47,6 +47,7 @@ type UnitOfWork struct {
 	aiAgentProfileRepository repository.AIProfileRepository
 	aiAgentFAQRepository     repository.AIAgentFAQRepository
 	aiAgentSkillRepository   repository.AIAgentSkillRepository
+	aiAgentWebsiteRepository repository.AIAgentWebsiteRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -89,6 +90,7 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.aiAgentProfileRepository = NewAIAgentProfileRepository(db, logger)
 	unitOfWork.aiAgentFAQRepository = NewAIAgentFAQRepository(db, logger)
 	unitOfWork.aiAgentSkillRepository = NewAIAgentSkillRepository(db, logger)
+	unitOfWork.aiAgentWebsiteRepository = NewAIAgentWebsiteRepository(db, logger)
 	return &unitOfWork
 }
 
@@ -213,6 +215,10 @@ func (unitOfWork *UnitOfWork) AIAgentFAQRepository() repository.AIAgentFAQReposi
 
 func (unitOfWork *UnitOfWork) AIAgentSkillRepository() repository.AIAgentSkillRepository {
 	return unitOfWork.aiAgentSkillRepository
+}
+
+func (unitOfWork *UnitOfWork) AIAgentWebsiteRepository() repository.AIAgentWebsiteRepository {
+	return unitOfWork.aiAgentWebsiteRepository
 }
 
 // transaction

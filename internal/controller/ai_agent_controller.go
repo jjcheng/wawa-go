@@ -7,6 +7,7 @@ import (
 	feature_ai_agent_faq "github.com/jjcheng/wawa-go/internal/feature/ai_agent/faq"
 	feature_ai_agent_profile "github.com/jjcheng/wawa-go/internal/feature/ai_agent/profile"
 	feature_ai_agent_skill "github.com/jjcheng/wawa-go/internal/feature/ai_agent/skill"
+	feature_ai_agent_website "github.com/jjcheng/wawa-go/internal/feature/ai_agent/website"
 	"github.com/jjcheng/wawa-go/internal/service"
 )
 
@@ -29,4 +30,10 @@ func registerAIAgentController(routerGroup *gin.RouterGroup, dependencies *servi
 	registerRoute[*dto_ai_agent.Skill, feature_ai_agent_skill.Update](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_agent_skill.Delete](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_agent_skill.AddCommon](routerGroup, dependencies, apiGenerator)
+	// websites
+	registerRoute[[]dto_ai_agent.Website, feature_ai_agent_website.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_ai_agent.Website, feature_ai_agent_website.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[*feature_ai_agent_website.GetResult, feature_ai_agent_website.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_ai_agent_website.Cancel](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_ai_agent_website.Delete](routerGroup, dependencies, apiGenerator)
 }

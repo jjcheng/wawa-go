@@ -45,4 +45,5 @@ type UnitOfWork interface {
 	AIAgentProfileRepository() AIProfileRepository
 	AIAgentFAQRepository() AIAgentFAQRepository
 	AIAgentSkillRepository() AIAgentSkillRepository
+	AIAgentWebsiteRepository() AIAgentWebsiteRepository
 }

@@ -44,6 +44,12 @@ func RegisterControllers(router *gin.Engine, dependencies *service.Dependencies)
 	// generate api doc
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		generateAPIDoc(apiGenerator, dependencies.Logger)
+		// // response, err := dependencies.Cloudflare.Crawl(context.Background(), "https://thelucernegrand.sg/", false, nil)
+		// response, err := dependencies.Cloudflare.GetCrawlStatus(context.Background(), "af676529-8b20-4e3f-8b00-c8fe54407bbe")
+		// if err != nil {
+		// 	println(err.Error())
+		// }
+		// fmt.Println(response)
 	}
 }
 
