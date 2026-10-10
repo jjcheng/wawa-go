@@ -93,12 +93,11 @@ func (cloudflare *Cloudflare) UploadAISearchFile(ctx context.Context, instanceId
 }
 
 // crawl
-func (cloudflare *Cloudflare) Crawl(ctx context.Context, url string, includeSubdmomains bool, excludePatterns []string) (*CloudflareCrawlResponse, error) {
+func (cloudflare *Cloudflare) Crawl(ctx context.Context, url string, includeSubdmomains bool, includePatterns []string, excludePatterns []string) (*CloudflareCrawlResponse, error) {
 	apiUrl := fmt.Sprintf("%s/browser-run/crawl", cloudflare.baseUrl)
 	requestBody := map[string]any{
 		"url":           url,
-		"crawlPurposes": []string{"search"},
-		"contentUse":    "reference",
+		"crawlPurposes": []string{"search", "ai-input"},
 		"formats":       []string{"markdown"},
 		"source":        "all",
 	}
@@ -107,6 +106,9 @@ func (cloudflare *Cloudflare) Crawl(ctx context.Context, url string, includeSubd
 	}
 	if len(excludePatterns) > 0 {
 		options["excludePatterns"] = excludePatterns
+	}
+	if len(includePatterns) > 0 {
+		options["inxludePatterns"] = includePatterns
 	}
 	requestBody["options"] = options
 	status, response, _, err := helper.RequestHTTP(ctx, apiUrl, "POST", cloudflare.getHeader(), &requestBody)

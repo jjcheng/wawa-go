@@ -7,9 +7,10 @@ import (
 
 type Website struct {
 	dao.DAOBase
-	BusinessAccountId int32          `gorm:"column:business_account_id"`
+	ProfileId         int32          `gorm:"column:profile_id"`
 	URL               string         `gorm:"column:url"`
 	ExcludePatterns   pq.StringArray `gorm:"column:exclude_patterns;type:text[]"`
+	IncludePatterns   pq.StringArray `gorm:"column:include_patterns;type:text[]"`
 	IncludeSubdomains bool           `gorm:"column:include_subdomains"`
 	JobId             string         `gorm:"column:job_id"`
 	Status            string         `gorm:"column:status"`

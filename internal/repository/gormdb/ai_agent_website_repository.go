@@ -24,13 +24,13 @@ func NewAIAgentWebsiteRepository(db *gorm.DB, logger *service.Logger) repository
 	}
 }
 
-func (websiteRepository *AIAgentWebsiteRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32) ([]dao_ai_agent.Website, error) {
+func (websiteRepository *AIAgentWebsiteRepository) ListByProfileId(ctx context.Context, profileId int32) ([]dao_ai_agent.Website, error) {
 	var websites []dao_ai_agent.Website
 	if err := websiteRepository.db.WithContext(ctx).
-		Where("business_account_id = ?", businessAccountId).
+		Where("profile_id = ?", profileId).
 		Order("id").
 		Find(&websites).Error; err != nil {
-		return nil, fmt.Errorf("AIAgentWebsiteRepository.ListByBusinessAccountId businessAccountId=%d error=%w", businessAccountId, err)
+		return nil, fmt.Errorf("AIAgentWebsiteRepository.ListByBusinessAccountId profileId=%d error=%w", profileId, err)
 	}
 	return websites, nil
 }

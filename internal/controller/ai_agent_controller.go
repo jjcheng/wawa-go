@@ -33,7 +33,7 @@ func registerAIAgentController(routerGroup *gin.RouterGroup, dependencies *servi
 	// websites
 	registerRoute[[]dto_ai_agent.Website, feature_ai_agent_website.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_ai_agent.Website, feature_ai_agent_website.Create](routerGroup, dependencies, apiGenerator)
-	registerRoute[*feature_ai_agent_website.GetResult, feature_ai_agent_website.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[*service.CloudflareGetCrawlStatusResult, feature_ai_agent_website.Get](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_agent_website.Cancel](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_agent_website.Delete](routerGroup, dependencies, apiGenerator)
 }

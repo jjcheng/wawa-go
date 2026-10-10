@@ -25,6 +25,7 @@ type Create struct {
 	URL               string   `json:"url" val:"required" description:"HTTP or HTTPS URL of the website to crawl"`
 	IncludeSubdomains bool     `json:"include_subdomains" description:"whether to crawl subdomains"`
 	ExcludePatterns   []string `json:"exclude_patterns" description:"URL patterns to exclude from crawling" example:"[\"test\"]"`
+	IncludePatterns   []string `json:"include_patterns" description:"put full urls to only include those pages"`
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -67,7 +68,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if profile.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*dto_ai_agent.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	crawl, err := dependencies.Cloudflare.Crawl(ctx, create.URL, create.IncludeSubdomains, create.ExcludePatterns)
+	crawl, err := dependencies.Cloudflare.Crawl(ctx, create.URL, create.IncludeSubdomains, create.IncludePatterns, create.ExcludePatterns)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_ai_agent.Website](http.StatusBadGateway, types.ExceptionMessageBadGateway, err)
 	}
@@ -75,9 +76,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		return dto.NewFailedResponse[*dto_ai_agent.Website](http.StatusBadGateway, types.ExceptionMessageBadGateway, fmt.Errorf("Cloudflare did not return a successful crawl job"))
 	}
 	website := dao_ai_agent.Website{
-		BusinessAccountId: user.BusinessAccountId,
+		ProfileId:         create.ProfileId,
 		URL:               create.URL,
 		IncludeSubdomains: create.IncludeSubdomains,
+		IncludePatterns:   create.IncludePatterns,
 		ExcludePatterns:   create.ExcludePatterns,
 		JobId:             crawl.Result,
 		Status:            "Running",

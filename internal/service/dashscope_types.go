@@ -184,18 +184,19 @@ func (dashScopeDecideQuestion DashScopeDecideQuestionContent) Payload() map[stri
 		"type":         dashScopeDecideQuestion.Type,
 		"instructions": dashScopeDecideQuestion.Instructions,
 	}
-	if dashScopeDecideQuestion.Type == DashScopeDecideQuestionTypeChoice {
+	switch dashScopeDecideQuestion.Type {
+	case DashScopeDecideQuestionTypeChoice:
 		if c, ok := dashScopeDecideQuestion.Criteria.(map[string]any); ok {
 			m["criteria"] = c
 		}
-	} else if dashScopeDecideQuestion.Type == DashScopeDecideQuestionTypeNoul {
+	case DashScopeDecideQuestionTypeNoul:
 		if c, ok := dashScopeDecideQuestion.Criteria.(DashScopeDecideQuestionCriteriaNoul); ok {
 			m["criteria"] = map[string]any{
 				"true":  c.True,
 				"false": c.False,
 			}
 		}
-	} else {
+	default:
 		if c, ok := dashScopeDecideQuestion.Criteria.([]string); ok {
 			m["criteria"] = c
 		}

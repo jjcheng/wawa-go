@@ -46,8 +46,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if profile.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[[]dto_ai_agent.Website](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-
-	websites, err := dependencies.UnitOfWork.AIAgentWebsiteRepository().ListByBusinessAccountId(ctx, user.BusinessAccountId)
+	websites, err := dependencies.UnitOfWork.AIAgentWebsiteRepository().ListByProfileId(ctx, profile.Id)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_ai_agent.Website](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

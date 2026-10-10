@@ -8,5 +8,5 @@ import (
 
 type AIAgentWebsiteRepository interface {
 	Repository[dao_ai_agent.Website]
-	ListByBusinessAccountId(ctx context.Context, businessAccountId int32) ([]dao_ai_agent.Website, error)
+	ListByProfileId(ctx context.Context, profileId int32) ([]dao_ai_agent.Website, error)
 }

@@ -19,25 +19,6 @@ type CloudflareGetCrawlStatusResult struct {
 	Cursor             int                              `json:"cursor"`
 }
 
-func (cloudflareGetCrawlStatusResponse *CloudflareGetCrawlStatusResponse) Status() string {
-	switch cloudflareGetCrawlStatusResponse.Result.Status {
-	case "running":
-		return "Running"
-	case "cancelled_due_to_timeout":
-		return "Timeout"
-	case "cancelled_due_to_limits":
-		return "Hit account limit"
-	case "cancelled_by_user":
-		return "Cancelled"
-	case "errored":
-		return "Error"
-	case "completed":
-		return "Completed"
-	default:
-		return cloudflareGetCrawlStatusResponse.Result.Status
-	}
-}
-
 type CloudflareGetCrawlStatusRecord struct {
 	URL      string                                 `json:"url"`
 	Status   string                                 `json:"status"`
@@ -50,3 +31,14 @@ type CloudflareGetCrawlStatusRecordMetadata struct {
 	Title  string `json:"title"`
 	URL    string `json:"url"`
 }
+
+type CloudflareCrawlStatus string
+
+const (
+	CloudflareCrawlStatusRunning      CloudflareCrawlStatus = "RUNNING"
+	CloudflareCrawlStatusTimeout      CloudflareCrawlStatus = "TIMEOUT"
+	CloudflareCrawlStatusAccountLimit CloudflareCrawlStatus = "ACCOUNT LIMIT"
+	CloudflareCrawlStatusCancelled    CloudflareCrawlStatus = "CANCELLED"
+	CloudflareCrawlStatusError        CloudflareCrawlStatus = "ERROR"
+	CloudflareCrawlStatusCompleted    CloudflareCrawlStatus = "COMPLETED"
+)

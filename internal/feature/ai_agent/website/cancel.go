@@ -44,7 +44,14 @@ func (cancel Cancel) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if website.BusinessAccountId != user.BusinessAccountId {
+	profile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, website.ProfileId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[any](http.StatusNotFound, "profile not found", nil)
+		}
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	if profile.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if strings.TrimSpace(website.JobId) == "" {
