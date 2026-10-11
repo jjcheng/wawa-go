@@ -34,6 +34,7 @@ type Message struct {
 	PreviewHTML         string          `json:"preview_html,omitempty"`
 	PreviewDarkHTML     string          `json:"preview_dark_html,omitempty"`
 	CustomerName        string          `json:"customer_name"`
+	CustomerIsNew       bool            `json:"customer_is_new"`
 	NotificationContent string          `json:"notification_content"`
 }
 

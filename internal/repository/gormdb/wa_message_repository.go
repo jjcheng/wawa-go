@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
@@ -27,6 +28,15 @@ func NewWAMessageRepository(db *gorm.DB, logger *service.Logger) repository.WAMe
 		logger:     logger,
 		Repository: NewRepository[dao_wa.Message](db, logger),
 	}
+}
+
+func (messageRepository *WAMessageRepository) DeleteById(ctx context.Context, id int32) error {
+	if err := messageRepository.db.WithContext(ctx).
+		Where("id = ?", id).
+		Delete(&dao_wa.Message{}).Error; err != nil {
+		return fmt.Errorf("MessageRepository.DeleteById messageId=%d error=%w", id, err)
+	}
+	return nil
 }
 
 func (messageRepository *WAMessageRepository) Insert(ctx context.Context, message *dao_wa.Message) error {
@@ -71,9 +81,17 @@ func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNum
 	totalCount = int(count)
 	totalPages = (totalCount + pageSize - 1) / pageSize
 	offset := (page - 1) * pageSize
-	if err = query.Order("timestamp").Offset(offset).Limit(pageSize).Find(&messages).Error; err != nil {
+	if err = query.Order("timestamp DESC").Offset(offset).Limit(pageSize).Find(&messages).Error; err != nil {
 		return nil, 0, 0, fmt.Errorf("MessageRepository.List index=1 phoneNumberId=%d customerId=%d ignoreUnsuppoortedType=%v page=%d pageSize=%d error=%w", phoneNumberId, customerId, ignoreUnsupportedType, page, pageSize, err)
 	}
+	helper.Sort(messages, func(m1, m2 dao_wa.Message) int {
+		if m1.Timestamp < m2.Timestamp {
+			return -1
+		} else if m1.Timestamp > m2.Timestamp {
+			return 1
+		}
+		return 0
+	})
 	for i := range messages {
 		if err = messageRepository.decryptPayload(&messages[i]); err != nil {
 			return nil, 0, 0, fmt.Errorf("MessageRepository.List index=2 phoneNumberId=%d customerId=%d ignoreUnsuppoortedType=%v page=%d pageSize=%d error=%w", phoneNumberId, customerId, ignoreUnsupportedType, page, pageSize, err)

@@ -51,6 +51,7 @@ func registerWAController(routerGroup *gin.RouterGroup, dependencies *service.De
 	// message
 	registerRoute[*dto_wa.Message, feature_wa_message.Create](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_wa.Message, feature_wa_message.Get](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_wa_message.Delete](routerGroup, dependencies, apiGenerator)
 	registerRoute[*service.AblyTokenRequest, feature_wa_message.CreateAblyToken](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto.ListResponse[dto_wa.Message], feature_wa_message.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*feature_wa_message.Media, feature_wa_message.GetMedia](routerGroup, dependencies, apiGenerator)
@@ -258,7 +259,7 @@ func registerMediaUploadRoute(routerGroup *gin.RouterGroup, dependencies *servic
 			ctx.AbortWithStatusJSON(response.StatusCode, response)
 			return
 		}
-		request := feature_wa_message.NewUploadMedia(ctx.Query("filename"), ctx.GetHeader("Content-Type"), content)
+		request := feature_wa_message.NewUploadMedia(ctx.Query("filename"), ctx.Query("content_type"), content)
 		request.ToMeta = ctx.Query("to_meta") == "true"
 		var user *dto_account.User
 		if userValue, exists := ctx.Get(cfg.Default().Site.HTTPRequestUserKey); exists {

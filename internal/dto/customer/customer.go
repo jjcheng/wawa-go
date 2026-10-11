@@ -30,6 +30,7 @@ type Customer struct {
 	LastMessageTimestamp *int64               `json:"last_message_timestamp"`
 	// lazy loaded
 	SendingPhoneNumber *dto_wa.PhoneNumber `json:"sending_phone_number"`
+	New                bool                `json:"new"`
 }
 
 func NewCustomer(customer dao_customer.Customer) Customer {

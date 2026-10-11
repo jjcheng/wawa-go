@@ -365,6 +365,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			return createCustomerResponse.Error
 		}
 		customerDTO = *createCustomerResponse.Data
+		customerDTO.New = true
 	} else { // update metaUserId if not exist
 		var hasChange bool
 		if incomingMessage.FromUserID != "" && existingCustomer.MetaUserId != incomingMessage.FromUserID {
@@ -528,6 +529,7 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 			return createCustomerResponse.Error
 		}
 		customerDTO = *createCustomerResponse.Data
+		customerDTO.New = true
 	} else {
 		var hasChange bool
 		if incomingMessageEcho.Message.Recipient != "" && existingCustomer.MetaUserId != incomingMessageEcho.Message.Recipient {
@@ -573,6 +575,7 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 	// 		dependencies.Logger.ErrorFunction(err, userPhoneNumber.Id, customerDTO.Id, message.Id)
 	// 	}
 	// }
+	publishNotification(metadata.PhoneNumberID, dto_wa.NewMessage(message), customerDTO, dependencies)
 	return nil
 }
 
@@ -737,6 +740,7 @@ func insertIncomingSMBMessageEcho(ctx context.Context, dependencies *service.Dep
 			return createCustomerResponse.Error
 		}
 		customerDTO = *createCustomerResponse.Data
+		customerDTO.New = true
 	} else {
 		var hasChange bool
 		if incomingMessageEcho.To != "" && existingCustomer.MetaUserId != incomingMessageEcho.ToUserId {
@@ -782,6 +786,8 @@ func insertIncomingSMBMessageEcho(ctx context.Context, dependencies *service.Dep
 
 func publishNotification(phoneNumberId string, message dto_wa.Message, customer dto_customer.Customer, dependencies *service.Dependencies) {
 	// publish to the chat room between phone number and customer
+	message.CustomerName = customer.DisplayName
+	message.CustomerIsNew = customer.New
 	chatChannelName := helper.GetChatChannelName(phoneNumberId, customer.Token)
 	err := dependencies.Ably.Publish("message", chatChannelName, message)
 	if err != nil {

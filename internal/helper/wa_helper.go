@@ -95,33 +95,13 @@ func CanTransitionWAMessageStatus(current types.WAMessageStatus, next types.WAMe
 	if current == next {
 		return false
 	}
-	if next == types.WAMessageStatusFailed {
-		switch current {
-		case types.WAMessageStatusAccepted, types.WAMessageStatusSent, types.WAMessageStatusRejected:
-			return true
-		default:
-			return false
-		}
+	if current == types.WAMessageStatusRead {
+		return false
 	}
 	if current == types.WAMessageStatusFailed {
 		return false
 	}
-	return waMessageStatusRank(next) > waMessageStatusRank(current)
-}
-
-func waMessageStatusRank(status types.WAMessageStatus) int {
-	switch status {
-	case types.WAMessageStatusAccepted:
-		return 1
-	case types.WAMessageStatusSent:
-		return 2
-	case types.WAMessageStatusDelivered:
-		return 3
-	case types.WAMessageStatusRead:
-		return 4
-	default:
-		return 0
-	}
+	return true
 }
 
 // waid = 6590000000

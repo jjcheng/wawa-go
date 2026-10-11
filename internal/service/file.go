@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 	"time"
 
@@ -156,6 +157,32 @@ func (f *File) DeleteFile(blobName string) error {
 		return fmt.Errorf("File.DeleteFile blobName=%s error=%w", blobName, err)
 	}
 	return nil
+}
+
+func (f *File) DeleteFileByURL(fileURL string) error {
+	blobName, err := f.blobNameFromURL(fileURL)
+	if err != nil {
+		return fmt.Errorf("File.DeleteFileByURL error=%w", err)
+	}
+	return f.DeleteFile(blobName)
+}
+
+func (f *File) blobNameFromURL(fileURL string) (string, error) {
+	parsed, err := url.Parse(fileURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid file URL: %w", err)
+	}
+	endpoint := strings.TrimPrefix(strings.TrimPrefix(f.endpoint, "https://"), "http://")
+	expectedHost := f.bucketName + "." + endpoint
+	if (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.User != nil ||
+		f.bucketName == "" || endpoint == "" || !strings.EqualFold(parsed.Host, expectedHost) {
+		return "", fmt.Errorf("file URL does not belong to the configured OSS bucket")
+	}
+	blobName := strings.TrimPrefix(parsed.Path, "/")
+	if blobName == "" {
+		return "", fmt.Errorf("file URL is missing an object key")
+	}
+	return blobName, nil
 }
 
 // deleteBlob is an internal helper to delete a blob
