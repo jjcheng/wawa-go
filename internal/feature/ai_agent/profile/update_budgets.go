@@ -16,10 +16,11 @@ import (
 )
 
 type UpdateBudgets struct {
-	Id           int32 `uri:"id" val:"required" description:"id of the profile"`
-	BudgetDaily  int32 `json:"budget_daily" val:"required" description:"daily budget * 1000"`
-	Budget7Days  int32 `json:"budget_7_days" val:"required" description:"7 day budget * 1000"`
-	Budget30Days int32 `json:"budget_30_days" val:"required" description:"30 day budget * 1000"`
+	Id             int32 `uri:"id" val:"required" description:"id of the profile"`
+	BudgetDaily    int32 `json:"budget_daily" val:"required" description:"daily budget * 1000"`
+	Budget7Days    int32 `json:"budget_7_days" val:"required" description:"7 day budget * 1000"`
+	Budget30Days   int32 `json:"budget_30_days" val:"required" description:"30 day budget * 1000"`
+	UTCOffsetHours int32 `json:"utc_offset_hours" val:"required" description:"offset hours from UTC to reset budget"`
 }
 
 func (update *UpdateBudgets) Validate() []exception.InputException {
@@ -33,7 +34,7 @@ func (update *UpdateBudgets) Validate() []exception.InputException {
 	if update.Budget7Days < update.BudgetDaily {
 		inputErrors = append(inputErrors, exception.NewInputException("budget_7_days", "7 day budget must be at least same as daily budget"))
 	}
-	if update.Budget30Days < update.Budget7Days {
+	if update.Budget30Days > 0 && update.Budget30Days < update.Budget7Days {
 		inputErrors = append(inputErrors, exception.NewInputException("budget_30_days", "30 day budget must be at least same as 7 day budget"))
 	}
 	return inputErrors
@@ -62,6 +63,7 @@ func (update UpdateBudgets) Handle(ctx context.Context, user *dto_account.User, 
 	profile.BudgetDaily = update.BudgetDaily
 	profile.Budget7Days = update.Budget7Days
 	profile.Budget30Days = update.Budget30Days
+	profile.UTCOffsetHours = update.UTCOffsetHours
 	if err := dependencies.UnitOfWork.AIAgentProfileRepository().Update(ctx, profile); err != nil {
 		return dto.NewFailedResponse[*dto_ai_agent.Profile](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

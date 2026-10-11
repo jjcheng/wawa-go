@@ -66,7 +66,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}) {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, customer.PhoneNumberId, customer.Id, true, list.Page, list.PageSize)
+	messages, totalPages, totalCount, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, customer.PhoneNumberId, customer.Id, false, list.Page, list.PageSize)
 	if err != nil {
 		return dto.NewFailedResponse[*dto.ListResponse[dto_wa.Message]](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

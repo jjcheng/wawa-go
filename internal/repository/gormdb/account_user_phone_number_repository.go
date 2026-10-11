@@ -8,6 +8,7 @@ import (
 	dao_account "github.com/jjcheng/wawa-go/internal/dao/account"
 	"github.com/jjcheng/wawa-go/internal/repository"
 	"github.com/jjcheng/wawa-go/internal/service"
+	"github.com/jjcheng/wawa-go/internal/types"
 	"gorm.io/gorm"
 )
 
@@ -30,7 +31,7 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListBy
 	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
 		Joins("User").
 		Joins("PhoneNumber").
-		Where("user_id = ?", userId).
+		Where(`user_id = ? AND "PhoneNumber".status <> ?`, userId, types.WAPhoneNumberStatusRemoved).
 		Order("id").
 		Find(&userPhoneNumbers).Error; err != nil {
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByUserId userId=%d error=%w", userId, err)
@@ -46,7 +47,7 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListBy
 	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
 		Joins("User").
 		Joins("PhoneNumber").
-		Where("phone_number_id = ?", phoneNumberId).
+		Where(`phone_number_id = ? AND "PhoneNumber".status <> ?`, phoneNumberId, types.WAPhoneNumberStatusRemoved).
 		Order("id").
 		Find(&userPhoneNumbers).Error; err != nil {
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByPhoneNumberId phoneNumberId=%d error=%w", phoneNumberId, err)
@@ -65,7 +66,7 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListBy
 	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
 		Joins("User").
 		Joins("PhoneNumber").
-		Where("user_id IN ?", userIds).
+		Where(`user_id IN ? AND "PhoneNumber".status <> ?`, userIds, types.WAPhoneNumberStatusRemoved).
 		Order("id").
 		Find(&userPhoneNumbers).Error; err != nil {
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByUserIds userIds=%v error=%w", userIds, err)
@@ -84,7 +85,7 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) ListBy
 	if err := accountUserPhoneNumberRepository.db.WithContext(ctx).
 		Joins("User").
 		Joins("PhoneNumber").
-		Where("phone_number_id IN ?", phoneNumberIds).
+		Where(`phone_number_id IN ? AND "PhoneNumber".status <> ?`, phoneNumberIds, types.WAPhoneNumberStatusRemoved).
 		Order("id").
 		Find(&userPhoneNumbers).Error; err != nil {
 		return nil, fmt.Errorf("AccountUserPhoneNumberRepository.ListByPhoneNumberIds phoneNumberIds=%v error=%w", phoneNumberIds, err)
@@ -102,7 +103,7 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) CountB
 	var count int64
 	result := accountUserPhoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers").
-		Where("business_account_id = ? AND id IN ?", businessAccountId, phoneNumberIds).
+		Where("business_account_id = ? AND id IN ? AND status <> ?", businessAccountId, phoneNumberIds, types.WAPhoneNumberStatusRemoved).
 		Count(&count)
 	if result.Error != nil {
 		return 0, fmt.Errorf("AccountUserPhoneNumberRepository.CountByBusinessAccountIdAndPhoneNumberIds businessAccountId=%d phoneNumberIds=%v error=%w", businessAccountId, phoneNumberIds, result.Error)
@@ -133,7 +134,7 @@ func (accountUserPhoneNumberRepository *AccountUserPhoneNumberRepository) GetByU
 	result := accountUserPhoneNumberRepository.db.WithContext(ctx).
 		Joins("User").
 		Joins("PhoneNumber").
-		Where("user_id = ? AND phone_number_id = ?", userId, phoneNumberId).
+		Where(`user_id = ? AND phone_number_id = ? AND "PhoneNumber".status <> ?`, userId, phoneNumberId, types.WAPhoneNumberStatusRemoved).
 		First(&userPhoneNumber)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

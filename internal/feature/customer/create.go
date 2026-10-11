@@ -64,7 +64,7 @@ func (create *Create) Validate() []exception.InputException {
 		}
 	}
 	if create.PhoneNumberId <= 0 {
-		errors = append(errors, exception.NewInputException("phone_number_id", "missing phone number id"))
+		errors = append(errors, exception.NewInputException("phone_number_id", "phone number id is invalid"))
 	}
 	return errors
 }

@@ -31,9 +31,9 @@ func (create *Create) Validate() []exception.InputException {
 		inputErrors = append(inputErrors, exception.NewInputException("name", "max length of name is 50"))
 	}
 	create.Description = strings.TrimSpace(create.Description)
-	if create.Description == "" {
-		inputErrors = append(inputErrors, exception.NewInputException("description", "description is required"))
-	}
+	// if create.Description == "" {
+	// 	inputErrors = append(inputErrors, exception.NewInputException("description", "description is required"))
+	// }
 	return inputErrors
 }
 

@@ -21,6 +21,7 @@ type Message struct {
 	AttachmentURL string                `gorm:"column:attachment_url"`
 	Token         string                `gorm:"column:token"`
 	ByAgent       bool                  `gorm:"column:by_agent"`
+	Echo          bool                  `gorm:"column:echo"`
 	// for billing
 	Billable    bool   `gorm:"column:billable"`
 	BillingType string `gorm:"column:billing_type"`

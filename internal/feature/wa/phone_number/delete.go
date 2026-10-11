@@ -64,6 +64,13 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 			return dto.NewFailedResponse[any](http.StatusBadRequest, "you need to disconnect your phone number first", nil)
 		}
 	}
+	customerCount, err := dependencies.UnitOfWork.CustomerRepository().CountByPhoneNumberIds(ctx, []int32{phoneNumber.Id})
+	if err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	if customerCount > 0 {
+		return dto.NewFailedResponse[any](http.StatusConflict, "phone number has associated customers", nil)
+	}
 	// remove using meta API, but don't delete from db
 	// Meta don't allow removing phone number via API
 	// https://developers.facebook.com/documentation/business-messaging/whatsapp/business-phone-numbers/phone-numbers#delete-phone-number-from-a-waba
@@ -88,6 +95,7 @@ func (Delete) APISettings() feature.APISettings {
 			feature.NewAPIError(*exception.NewCustomException("phone number not found", http.StatusNotFound)),
 			feature.NewAPIError(*exception.NewCustomException("you are not master", http.StatusUnauthorized)),
 			feature.NewAPIError(*exception.NewCustomException("Meta business portfolio not found", http.StatusNotFound)),
+			feature.NewAPIError(*exception.NewCustomException("phone number has associated customers", http.StatusConflict)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageBadGateway, http.StatusBadGateway)),
 			feature.NewAPIError(*exception.NewCustomException(types.ExceptionMessageInternalServerError, http.StatusInternalServerError)),
 		},

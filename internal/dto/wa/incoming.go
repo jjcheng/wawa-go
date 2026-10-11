@@ -22,15 +22,16 @@ type IncomingChange struct {
 }
 
 type IncomingValue struct {
-	MessagingProduct string                       `json:"messaging_product"`
-	Metadata         IncomingMetadata             `json:"metadata"`
-	Contacts         []IncomingContact            `json:"contacts,omitempty"`
-	Messages         []IncomingMessage            `json:"messages,omitempty"`
-	Standby          *IncomingStandby             `json:"standby,omitempty"`
-	Statuses         []Status                     `json:"statuses,omitempty"`
-	MessageEchoes    []IncomingMessageStandbyEcho `json:"message_echoes,omitempty"`
-	SyncStatus       string                       `json:"sync_status,omitempty"`
-	ChunkNumber      int                          `json:"chunk_number,omitempty"`
+	MessagingProduct string            `json:"messaging_product"`
+	Metadata         IncomingMetadata  `json:"metadata"`
+	Contacts         []IncomingContact `json:"contacts,omitempty"`
+	Messages         []IncomingMessage `json:"messages,omitempty"`
+	Standby          *IncomingStandby  `json:"standby,omitempty"`
+	Statuses         []Status          `json:"statuses,omitempty"`
+	//MessageEchoes    []IncomingMessageStandbyEcho `json:"message_echoes,omitempty"`
+	SMBMessageEchoes []IncomingSMBMessageEcho `json:"message_echoes,omitempty"`
+	SyncStatus       string                   `json:"sync_status,omitempty"`
+	ChunkNumber      int                      `json:"chunk_number,omitempty"`
 	// messaing_handovers
 	*IncomingHandovers
 }
@@ -84,6 +85,17 @@ type IncomingMessageStandbyEchoMessage struct {
 	Errors                []StatusError              `json:"errors,omitempty"`
 	Revoke                *IncomingMessageEchoRevoke `json:"rovoke,omitempty"`
 	Edit                  *IncomingMessageEchoEdit   `json:"edit,omitempty"`
+}
+
+// smb message echo
+type IncomingSMBMessageEcho struct {
+	ID        string         `json:"id"`
+	From      string         `json:"from"`       // waid of the whatsapp business
+	To        string         `json:"to"`         // waid of the customer
+	ToUserId  string         `json:"to_user_id"` // customer's meta user id
+	Timestamp string         `json:"timestamp"`
+	Type      string         `json:"type"`
+	Payload   map[string]any `json:"payload"`
 }
 
 type IncomingMessageEchoRevoke struct {
@@ -170,8 +182,23 @@ func (message *IncomingMessage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (message *IncomingMessageStandbyEcho) UnmarshalJSON(data []byte) error {
-	type incomingMessageAlias IncomingMessageStandbyEcho
+// func (message *IncomingMessageStandbyEcho) UnmarshalJSON(data []byte) error {
+// 	type incomingMessageAlias IncomingMessageStandbyEcho
+// 	var decoded incomingMessageAlias
+// 	if err := json.Unmarshal(data, &decoded); err != nil {
+// 		return err
+// 	}
+// 	var payload map[string]any
+// 	if err := json.Unmarshal(data, &payload); err != nil {
+// 		return err
+// 	}
+// 	*message = IncomingMessageStandbyEcho(decoded)
+// 	message.Payload = payload
+// 	return nil
+// }
+
+func (message *IncomingSMBMessageEcho) UnmarshalJSON(data []byte) error {
+	type incomingMessageAlias IncomingSMBMessageEcho
 	var decoded incomingMessageAlias
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
@@ -180,7 +207,7 @@ func (message *IncomingMessageStandbyEcho) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &payload); err != nil {
 		return err
 	}
-	*message = IncomingMessageStandbyEcho(decoded)
+	*message = IncomingSMBMessageEcho(decoded)
 	message.Payload = payload
 	return nil
 }

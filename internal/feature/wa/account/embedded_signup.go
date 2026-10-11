@@ -51,8 +51,8 @@ func (embeddedSignup *EmbeddedSignup) Validate() []exception.InputException {
 	if embeddedSignup.Type != "WA_EMBEDDED_SIGNUP" {
 		errors = append(errors, exception.NewInputException("type", "invalid event"))
 	}
-	if embeddedSignup.Event != "FINISH" {
-		errors = append(errors, exception.NewInputException("event", "event is not FINISH"))
+	if embeddedSignup.Event != "FINISH" && embeddedSignup.Event != "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING" {
+		errors = append(errors, exception.NewInputException("event", "event is not FINISH or FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"))
 	}
 	if embeddedSignup.Data.PhoneNumberId == "" {
 		errors = append(errors, exception.NewInputException("data.phone_number_id", "missing phone number id"))

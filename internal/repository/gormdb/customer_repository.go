@@ -112,6 +112,17 @@ func (customerRepository *CustomerRepository) CountActiveByPhoneNumberIds(ctx co
 	return int(count), nil
 }
 
+func (customerRepository *CustomerRepository) CountByPhoneNumberIds(ctx context.Context, phoneNumberIds []int32) (int, error) {
+	var count int64
+	if err := customerRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("phone_number_id IN ?", phoneNumberIds).
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("CustomerRepository.CountByPhoneNumberIds phoneNumberIds=%v error=%w", phoneNumberIds, err)
+	}
+	return int(count), nil
+}
+
 func (customerRepository *CustomerRepository) CountActiveByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error) {
 	var count int64
 	if err := customerRepository.db.WithContext(ctx).
@@ -247,7 +258,7 @@ func (customerRepository *CustomerRepository) GetDistinctTagsByPhoneNumberIds(ct
 	return tags, nil
 }
 
-func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasMessage bool, phoneNumberIds []int32, name string, order types.OrderCustomersType, status types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error) {
+func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasMessage bool, phoneNumberIds []int32, name string, order types.OrderCustomersType, status *types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error) {
 	query := customerRepository.db.WithContext(ctx).
 		Table("customer.customers AS c").
 		Where("c.phone_number_id IN ?", phoneNumberIds)
@@ -255,8 +266,8 @@ func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasM
 		query = query.Where("c.display_name ILIKE ?", "%"+name+"%")
 	}
 	// Phone-number filtering happens after decryption because the database stores only ciphertext.
-	if status != "" {
-		query = query.Where("c.status = ?", status)
+	if status != nil {
+		query = query.Where("c.status = ?", *status)
 	}
 	if len(tags) > 0 {
 		query = query.Where("c.tags && ?", pq.Array(tags))
@@ -272,7 +283,7 @@ func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasM
 	}
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
-		return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=0 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
+		return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=0 phoneNumberIds=%v name=%s orderBy=%s status=%v tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
 	}
 	switch order {
 	case types.OrderCustomersTypeLatestMessage:
@@ -305,15 +316,15 @@ func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasM
 		`, "unsupported")
 	result := query.Find(&customers)
 	if result.Error != nil {
-		return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=1 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, result.Error)
+		return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=1 phoneNumberIds=%v name=%s orderBy=%s status=%v tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, result.Error)
 	}
 	decrypted := customers[:0]
 	for i := range customers {
 		if err := customerRepository.decryptSensitiveFields(&customers[i]); err != nil {
-			return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=2 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
+			return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=2 phoneNumberIds=%v name=%s orderBy=%s status=%v tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
 		}
 		if err := customerRepository.setLatestMessageContent(&customers[i]); err != nil {
-			return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=3 phoneNumberIds=%v name=%s orderBy=%s status=%s tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
+			return nil, 0, 0, fmt.Errorf("CustomerRepository.List index=3 phoneNumberIds=%v name=%s orderBy=%s status=%v tags=%v page=%d pageSize=%d error=%w", phoneNumberIds, name, order, status, tags, page, pageSize, err)
 		}
 		decrypted = append(decrypted, customers[i])
 	}

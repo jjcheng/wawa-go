@@ -46,7 +46,7 @@ func (receive Receive) Handle(ctx context.Context, _, dependencies *service.Depe
 		if err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, err.Error(), err)
 		}
-		if err := feature_wa_message.ProcessIncoming(ctx, *waIncoming, dependencies); err != nil {
+		if err := feature_wa_message.ProcessIncoming(context.Background(), *waIncoming, dependencies); err != nil {
 			return dto.NewFailedResponse[any](http.StatusInternalServerError, err.Error(), err)
 		}
 	} else {

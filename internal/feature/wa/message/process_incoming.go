@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -45,7 +46,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				}
 				// process incoming message statuses
 				for _, status := range incomingValue.Statuses {
-					if err := insertIncomingStatus(ctx, dependencies, status); err != nil {
+					if err := insertIncomingStatus(ctx, dependencies, status, 0); err != nil {
 						return err
 					}
 				}
@@ -76,7 +77,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				}
 				// check statuses
 				for _, status := range incomingValue.Standby.Statuses {
-					if err := insertIncomingStatus(ctx, dependencies, status); err != nil {
+					if err := insertIncomingStatus(ctx, dependencies, status, 0); err != nil {
 						return err
 					}
 				}
@@ -144,14 +145,14 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				if productFeed.Status == "finished" {
 					// TODO: sync catalog db
 				}
-			} else if change.Field == "smb_message_echoes" { // messages sent by user from business app
+			} else if change.Field == "smb_message_echoes" { // messages sent by user via business app
 				var incomingValue dto_wa.IncomingValue
 				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
 					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
 				}
 				// process incoming messages echoes
-				for _, incomingMessageEcho := range incomingValue.MessageEchoes {
-					if err := insertIncomingMessageEcho(ctx, dependencies, incomingMessageEcho, incomingValue.Metadata); err != nil {
+				for _, incomingMessageEcho := range incomingValue.SMBMessageEchoes {
+					if err := insertIncomingSMBMessageEcho(ctx, dependencies, incomingMessageEcho, incomingValue.Metadata); err != nil {
 						// if already stored, it's not really an error
 						if strings.Contains(err.Error(), "duplicate") {
 							continue
@@ -161,7 +162,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				}
 				// proces statuses
 				for _, status := range incomingValue.Statuses {
-					if err := insertIncomingStatus(ctx, dependencies, status); err != nil {
+					if err := insertIncomingStatus(ctx, dependencies, status, 0); err != nil {
 						return err
 					}
 				}
@@ -181,7 +182,8 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 	return nil
 }
 
-func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status) error {
+// incoming status
+func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencies, status dto_wa.Status, retries int) error {
 	timestamp, err := strconv.ParseInt(status.Timestamp, 10, 64)
 	if err != nil {
 		return fmt.Errorf("insert message status timestamp invalid timestamp=%s error=%w", status.Timestamp, err)
@@ -202,7 +204,13 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 		}
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return fmt.Errorf("message not found")
+				// retry 3 times
+				if retries <= 3 {
+					log.Printf("message not found, retry %d times", retries+1)
+					time.Sleep(time.Second * time.Duration(retries+2))
+					return insertIncomingStatus(ctx, dependencies, status, retries+1)
+				}
+				return fmt.Errorf("message not found after retrying %d times", retries)
 			}
 			return fmt.Errorf("failed to get message from status messageId=%s error=%w", status.ID, err)
 		}
@@ -287,6 +295,7 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 	return nil
 }
 
+// customer incoming message
 func insertIncomingMessage(ctx context.Context, dependencies *service.Dependencies, incomingMessage dto_wa.IncomingMessage, contacts []dto_wa.IncomingContact, metadata dto_wa.IncomingMetadata, isStandby bool) error {
 	timestamp, err := strconv.ParseInt(incomingMessage.Timestamp, 10, 64)
 	if err != nil {
@@ -370,6 +379,10 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			existingCustomer.WADisplayName = contact.Profile.Name
 			hasChange = true
 		}
+		if contact.Profile.Name != "" && existingCustomer.DisplayName == "Unknown name" {
+			existingCustomer.DisplayName = contact.Profile.Name
+			hasChange = true
+		}
 		if hasChange {
 			if err := transaction.CustomerRepository().Update(ctx, existingCustomer); err != nil {
 				return fmt.Errorf("failed update existing customer %d: %w", existingCustomer.Id, err)
@@ -400,17 +413,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 	messageDTO := dto_wa.NewMessage(message)
 	messageDTO.CustomerName = customerDTO.DisplayName
 	// publish to the chat room between phone number and customer
-	chatChannelName := helper.GetChatChannelName(metadata.PhoneNumberID, customerDTO.Token)
-	err = dependencies.Ably.Publish("message", chatChannelName, messageDTO)
-	if err != nil {
-		dependencies.Logger.ErrorFunction(err, chatChannelName)
-	}
-	// publish to phone number channel
-	phoneNumberChannelName := helper.GetPhoneNumberChannelName(customerDTO.PhoneNumberId)
-	err = dependencies.Ably.Publish("phone_number_message", phoneNumberChannelName, messageDTO)
-	if err != nil {
-		dependencies.Logger.ErrorFunction(err, phoneNumberChannelName)
-	}
+	publishNotification(metadata.PhoneNumberID, messageDTO, customerDTO, dependencies)
 	// if customer can be handled by business agent and this phone number is currently running agent, pass control to business agent
 	// if is from standby, it's already handled by business agent
 	if !isStandby && customerDTO.AgentEnabled && userPhoneNumber.AgentEnabled {
@@ -425,47 +428,48 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 		}
 	}
 	// send notifications to user if message contains keywords
-	if messageText := messageDTO.Text(); messageText != "" {
-		if err := notifyMatchingBusinessAgentKeywords(ctx, dependencies, userPhoneNumber.Id, customerDTO, messageText); err != nil {
-			dependencies.Logger.ErrorFunction(err, userPhoneNumber.Id, customerDTO.Id, message.Id)
-		}
-	}
+	// if messageText := messageDTO.Text(); messageText != "" {
+	// 	if err := notifyMatchingBusinessAgentKeywords(ctx, dependencies, userPhoneNumber.Id, customerDTO, messageText); err != nil {
+	// 		dependencies.Logger.ErrorFunction(err, userPhoneNumber.Id, customerDTO.Id, message.Id)
+	// 	}
+	// }
 	return nil
 }
 
-func notifyMatchingBusinessAgentKeywords(ctx context.Context, dependencies *service.Dependencies, phoneNumberId int32, customer dto_customer.Customer, messageText string) error {
-	matchedKeywords, err := dependencies.UnitOfWork.WABusinessAgentKeywordRepository().ListMatchingByPhoneNumberId(ctx, phoneNumberId, messageText)
-	if err != nil {
-		return fmt.Errorf("failed to list matching business agent keywords phoneNumberId=%d: %w", phoneNumberId, err)
-	}
-	if len(matchedKeywords) == 0 {
-		return nil
-	}
-	// send notification to all users managing this phone number
-	userPhoneNumbers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByPhoneNumberId(ctx, phoneNumberId)
-	if err != nil {
-		return fmt.Errorf("failed to list phone number users phoneNumberId=%d: %w", phoneNumberId, err)
-	}
-	var notificationErrors []error
-	for _, keyword := range matchedKeywords {
-		for _, userPhoneNumber := range userPhoneNumbers {
-			createNotification := feature_account_notification.Create{
-				ToUserId: userPhoneNumber.UserId,
-				Category: types.NotificationCategoryPending,
-				IconType: types.NotificationIconTypeChat,
-				Type:     types.NotificationTypeInfo,
-				Title:    keyword.NotificationTitle,
-				Body:     fmt.Sprintf("Keyword %q detected in a message with customer %s.", keyword.Keyword, customer.DisplayName),
-				URL:      fmt.Sprintf("/chats/%d/chat", customer.Id),
-			}
-			if response := createNotification.Handle(ctx, dependencies); !response.Success {
-				notificationErrors = append(notificationErrors, fmt.Errorf("failed to notify userId=%d keywordId=%d: %w", userPhoneNumber.UserId, keyword.Id, response.Error))
-			}
-		}
-	}
-	return errors.Join(notificationErrors...)
-}
+// func notifyMatchingBusinessAgentKeywords(ctx context.Context, dependencies *service.Dependencies, phoneNumberId int32, customer dto_customer.Customer, messageText string) error {
+// 	matchedKeywords, err := dependencies.UnitOfWork.WABusinessAgentKeywordRepository().ListMatchingByPhoneNumberId(ctx, phoneNumberId, messageText)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to list matching business agent keywords phoneNumberId=%d: %w", phoneNumberId, err)
+// 	}
+// 	if len(matchedKeywords) == 0 {
+// 		return nil
+// 	}
+// 	// send notification to all users managing this phone number
+// 	userPhoneNumbers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByPhoneNumberId(ctx, phoneNumberId)
+// 	if err != nil {
+// 		return fmt.Errorf("failed to list phone number users phoneNumberId=%d: %w", phoneNumberId, err)
+// 	}
+// 	var notificationErrors []error
+// 	for _, keyword := range matchedKeywords {
+// 		for _, userPhoneNumber := range userPhoneNumbers {
+// 			createNotification := feature_account_notification.Create{
+// 				ToUserId: userPhoneNumber.UserId,
+// 				Category: types.NotificationCategoryPending,
+// 				IconType: types.NotificationIconTypeChat,
+// 				Type:     types.NotificationTypeInfo,
+// 				Title:    keyword.NotificationTitle,
+// 				Body:     fmt.Sprintf("Keyword %q detected in a message with customer %s.", keyword.Keyword, customer.DisplayName),
+// 				URL:      fmt.Sprintf("/chats/%d/chat", customer.Id),
+// 			}
+// 			if response := createNotification.Handle(ctx, dependencies); !response.Success {
+// 				notificationErrors = append(notificationErrors, fmt.Errorf("failed to notify userId=%d keywordId=%d: %w", userPhoneNumber.UserId, keyword.Id, response.Error))
+// 			}
+// 		}
+// 	}
+// 	return errors.Join(notificationErrors...)
+// }
 
+// business agent messages
 func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Dependencies, incomingMessageEcho dto_wa.IncomingMessageStandbyEcho, metadata dto_wa.IncomingMetadata) error {
 	timestamp, err := strconv.ParseInt(incomingMessageEcho.Timestamp, 10, 64)
 	if err != nil {
@@ -563,12 +567,12 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 	}
 	committed = true
 	// send notifications to user if message contains keywords
-	messageDTO := dto_wa.NewMessage(message)
-	if messageText := messageDTO.Text(); messageText != "" {
-		if err := notifyMatchingBusinessAgentKeywords(ctx, dependencies, userPhoneNumber.Id, customerDTO, messageText); err != nil {
-			dependencies.Logger.ErrorFunction(err, userPhoneNumber.Id, customerDTO.Id, message.Id)
-		}
-	}
+	// messageDTO := dto_wa.NewMessage(message)
+	// if messageText := messageDTO.Text(); messageText != "" {
+	// 	if err := notifyMatchingBusinessAgentKeywords(ctx, dependencies, userPhoneNumber.Id, customerDTO, messageText); err != nil {
+	// 		dependencies.Logger.ErrorFunction(err, userPhoneNumber.Id, customerDTO.Id, message.Id)
+	// 	}
+	// }
 	return nil
 }
 
@@ -674,6 +678,124 @@ func handoverMessaging(ctx context.Context, dependencies *service.Dependencies, 
 	return nil
 }
 
+// smb messages
+func insertIncomingSMBMessageEcho(ctx context.Context, dependencies *service.Dependencies, incomingMessageEcho dto_wa.IncomingSMBMessageEcho, metadata dto_wa.IncomingMetadata) error {
+	timestamp, err := strconv.ParseInt(incomingMessageEcho.Timestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("incoming message echo timestamp invalid: %s", incomingMessageEcho.Timestamp)
+	}
+	transaction := dependencies.UnitOfWork.BeginTransaction()
+	committed := false
+	defer func() {
+		if !committed {
+			transaction.Rollback()
+		}
+	}()
+	transactionDependencies := *dependencies
+	transactionDependencies.UnitOfWork = transaction
+	userPhoneNumber, err := transaction.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, metadata.PhoneNumberID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("user's phone number not found %s", metadata.PhoneNumberID)
+		}
+		return fmt.Errorf("failed to get user's phone number %s: %w", metadata.PhoneNumberID, err)
+	}
+	// check customer exists based on waId or metaUserId
+	existingCustomer, err := transaction.CustomerRepository().GetByWAIdOrMetaUserId(ctx, userPhoneNumber.Id, incomingMessageEcho.To, incomingMessageEcho.ToUserId)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("failed to get customer error=%w", err)
+		}
+	}
+	// if no existing customer, create new
+	var customerDTO dto_customer.Customer
+	if existingCustomer == nil {
+		var countryCode, phoneNumber string
+		if incomingMessageEcho.To != "" {
+			cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(incomingMessageEcho.To)
+			if err != nil {
+				dependencies.Logger.ErrorFunction(err)
+				cc = "."
+				pn = incomingMessageEcho.To
+			}
+			countryCode = cc
+			phoneNumber = pn
+		}
+		createCustomer := feature_customer.Create{
+			DisplayName:   "Unknown name",
+			WADisplayName: "Unknown name",
+			CountryCode:   countryCode,
+			PhoneNumber:   phoneNumber,
+			MetaUserId:    incomingMessageEcho.ToUserId,
+			WAId:          incomingMessageEcho.To,
+			Remarks:       "created from incoming WhatsApp SMB message echo",
+			PhoneNumberId: userPhoneNumber.Id,
+			FromIncoming:  true,
+		}
+		createCustomerResponse := createCustomer.Handle(ctx, nil, &transactionDependencies)
+		if !createCustomerResponse.Success {
+			return createCustomerResponse.Error
+		}
+		customerDTO = *createCustomerResponse.Data
+	} else {
+		var hasChange bool
+		if incomingMessageEcho.To != "" && existingCustomer.MetaUserId != incomingMessageEcho.ToUserId {
+			existingCustomer.MetaUserId = incomingMessageEcho.ToUserId
+			hasChange = true
+		}
+		if incomingMessageEcho.To != "" && existingCustomer.WAId != incomingMessageEcho.To {
+			existingCustomer.WAId = incomingMessageEcho.To
+			hasChange = true
+		}
+		if hasChange {
+			if err := transaction.CustomerRepository().Update(ctx, existingCustomer); err != nil {
+				return fmt.Errorf("failed update existing customer %d: %w", existingCustomer.Id, err)
+			}
+		}
+		customerDTO = dto_customer.NewCustomer(*existingCustomer)
+	}
+	message := dao_wa.Message{
+		Sending:       true, // message echos are messages sent by business agent
+		CustomerId:    customerDTO.Id,
+		PhoneNumberId: userPhoneNumber.Id,
+		WAMessageId:   incomingMessageEcho.ID,
+		Timestamp:     timestamp,
+		Type:          incomingMessageEcho.Type,
+		Payload:       incomingMessageEcho.Payload,
+		Token:         uuid.NewString(),
+		Echo:          true,
+	}
+	if err := transaction.WAMessageRepository().Insert(ctx, &message); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			return errors.New("duplicate message entry")
+		}
+		return fmt.Errorf("failed to insert message customerId=%d phoneNumberId=%d waMessageId=%s timestamp=%v error=%w", message.CustomerId, userPhoneNumber.Id, message.WAMessageId, message.Timestamp, err)
+	}
+	if err := transaction.CommitTransaction(); err != nil {
+		return fmt.Errorf("failed to commit transaction error=%w", err)
+	}
+	committed = true
+	// publish to the chat room between phone number and customer
+	publishNotification(metadata.PhoneNumberID, dto_wa.NewMessage(message), customerDTO, dependencies)
+	return nil
+}
+
+func publishNotification(phoneNumberId string, message dto_wa.Message, customer dto_customer.Customer, dependencies *service.Dependencies) {
+	// publish to the chat room between phone number and customer
+	chatChannelName := helper.GetChatChannelName(phoneNumberId, customer.Token)
+	err := dependencies.Ably.Publish("message", chatChannelName, message)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, chatChannelName)
+	}
+	// publish to phone number channel
+	phoneNumberChannelName := helper.GetPhoneNumberChannelName(customer.PhoneNumberId)
+	err = dependencies.Ably.Publish("phone_number_message", phoneNumberChannelName, message)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, phoneNumberChannelName)
+	}
+}
+
+// retry sending message in task function
 func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *service.Dependencies) error {
 	// if cannot get message, just return error
 	var message *dao_wa.Message

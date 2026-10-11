@@ -28,7 +28,9 @@ func NewWAPhoneNumberRepository(db *gorm.DB, logger *service.Logger) repository.
 
 func (phoneNumberRepository *WAPhoneNumberRepository) GetById(ctx context.Context, id int32) (*dao_wa.PhoneNumber, error) {
 	var phoneNumber *dao_wa.PhoneNumber
-	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("id = ?", id).First(&phoneNumber)
+	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).
+		Where("id = ? AND status <> ?", id, types.WAPhoneNumberStatusRemoved).
+		First(&phoneNumber)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("PhoneNumberRepository.GetById index=0 id=%d error=%w", id, result.Error)
@@ -81,7 +83,9 @@ func (phoneNumberRepository *WAPhoneNumberRepository) Update(ctx context.Context
 
 func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx context.Context, metaPhoneNumberId string) (*dao_wa.PhoneNumber, error) {
 	var phoneNumber *dao_wa.PhoneNumber
-	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).Where("meta_phone_number_id = ?", metaPhoneNumberId).First(&phoneNumber)
+	result := phoneNumberRepository.db.WithContext(ctx).Model(&dao_wa.PhoneNumber{}).
+		Where("meta_phone_number_id = ? AND status <> ?", metaPhoneNumberId, types.WAPhoneNumberStatusRemoved).
+		First(&phoneNumber)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("PhoneNumberRepository.GetByMetaPhoneNumberId index=0 metaPhoneNumberId=%s error=%w", metaPhoneNumberId, result.Error)
@@ -94,11 +98,23 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx
 	return phoneNumber, nil
 }
 
+func (phoneNumberRepository *WAPhoneNumberRepository) ListAll(ctx context.Context) ([]dao_wa.PhoneNumber, error) {
+	var phoneNumbers []dao_wa.PhoneNumber
+	if err := phoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.PhoneNumber{}).
+		Where("status <> ?", types.WAPhoneNumberStatusRemoved).
+		Order("id").
+		Find(&phoneNumbers).Error; err != nil {
+		return nil, fmt.Errorf("PhoneNumberRepository.ListAll error=%w", err)
+	}
+	return phoneNumbers, nil
+}
+
 func (phoneNumberRepository *WAPhoneNumberRepository) CountByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error) {
 	var count int64
 	if err := phoneNumberRepository.db.WithContext(ctx).
 		Model(&dao_wa.PhoneNumber{}).
-		Where("business_account_id = ?", businessAccountId).
+		Where("business_account_id = ? AND status <> ?", businessAccountId, types.WAPhoneNumberStatusRemoved).
 		Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("PhoneNumberRepository.CountByBusinessAccountId businessAccountId=%d error=%w", businessAccountId, err)
 	}
@@ -109,7 +125,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) ListUnassigned(ctx context
 	var phoneNumbers []dao_wa.PhoneNumber
 	result := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers AS pn").
-		Where("pn.business_account_id = ?", businessAccountId).
+		Where("pn.business_account_id = ? AND pn.status <> ?", businessAccountId, types.WAPhoneNumberStatusRemoved).
 		Where("NOT EXISTS (?)", phoneNumberRepository.db.
 			Table("account.user_phone_numbers AS upn").
 			Select("1").
@@ -130,11 +146,9 @@ func (phoneNumberRepository *WAPhoneNumberRepository) ListUnassigned(ctx context
 func (phoneNumberRepository *WAPhoneNumberRepository) ListByBusinessAccountId(ctx context.Context, businessAccountId int32, status types.WAPhoneNumberStatus, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error) {
 	query := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers AS pn").
-		Where("pn.business_account_id = ?", businessAccountId)
+		Where("pn.business_account_id = ? AND pn.status <> ?", businessAccountId, types.WAPhoneNumberStatusRemoved)
 	if status != "" {
 		query = query.Where("pn.status = ?", status)
-	} else {
-		query = query.Where("pn.status <> ?", types.WAPhoneNumberStatusRemoved)
 	}
 	var count int64
 	if err := query.Count(&count).Error; err != nil {
@@ -158,7 +172,7 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByUserId(ctx context.Co
 	result := phoneNumberRepository.db.WithContext(ctx).
 		Table("wa.phone_numbers AS pn").
 		Joins("JOIN account.user_phone_numbers AS upn ON upn.phone_number_id = pn.id").
-		Where("upn.user_id = ?", userId).
+		Where("upn.user_id = ? AND pn.status <> ?", userId, types.WAPhoneNumberStatusRemoved).
 		Select("pn.*").
 		Order("pn.id").
 		Find(&phoneNumbers)

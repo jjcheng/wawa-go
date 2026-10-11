@@ -28,6 +28,7 @@ type Message struct {
 	ErrorMessage  string                `json:"error_message"`
 	Token         string                `json:"token"`
 	ByAgent       bool                  `json:"by_agent"`
+	Echo          bool                  `json:"echo"`
 	// lazy loaded
 	Statuses            []MessageStatus `json:"statuses,omitempty"`
 	PreviewHTML         string          `json:"preview_html,omitempty"`

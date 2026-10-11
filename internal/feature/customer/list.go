@@ -18,7 +18,7 @@ type List struct {
 	Order          types.OrderCustomersType `form:"order"`
 	Name           string                   `form:"name"`
 	Tags           []string                 `form:"tags"`
-	Status         types.CustomerStatus     `form:"status"`
+	Status         *types.CustomerStatus    `form:"status"`
 	OnlyHasMessage bool                     `form:"only_has_message"`
 	Page           int                      `form:"page"`
 	PageSize       int                      `form:"page_size"`
@@ -36,17 +36,11 @@ func (list *List) Validate() []exception.InputException {
 		list.Page = 1
 	}
 	if list.PageSize <= 0 {
-		list.PageSize = 10
+		list.PageSize = 500
 	}
 	inputErrors := []exception.InputException{}
 	if list.Order != types.OrderCustomersTypeLatestMessage && list.Order != types.OrderCustomersTypeFromNew && list.Order != types.OrderCustomersTypeFromOld {
 		inputErrors = append(inputErrors, exception.NewInputException("order", "invalid order"))
-	}
-	if list.PageSize > 500 {
-		inputErrors = append(inputErrors, exception.NewInputException("page_size", "page size must be less than or equal to 500"))
-	}
-	if list.Status == "" {
-		list.Status = types.CustomerStatusActive
 	}
 	return inputErrors
 }

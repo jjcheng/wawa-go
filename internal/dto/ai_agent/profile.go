@@ -14,6 +14,7 @@ type Profile struct {
 	BudgetDaily       int32              `json:"budget_daily"`
 	Budget7Days       int32              `json:"budget_7_days"`
 	Budget30Days      int32              `json:"budget_30_days"`
+	UTCOffsetHours    int32              `json:"utc_offset_hours"`
 	HandoverMessage   string             `json:"handover_message"`
 	NeverSayPhrases   []string           `json:"never_say_phrases"`
 }
@@ -31,6 +32,7 @@ func NewProfile(profile dao_ai_agent.Profile) Profile {
 		BudgetDaily:       profile.BudgetDaily,
 		Budget7Days:       profile.Budget7Days,
 		Budget30Days:      profile.Budget30Days,
+		UTCOffsetHours:    profile.UTCOffsetHours,
 		HandoverMessage:   profile.HandoverMessage,
 		NeverSayPhrases:   profile.NeverSayPhrases,
 	}

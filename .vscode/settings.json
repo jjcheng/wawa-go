@@ -3,6 +3,7 @@
     "debugAdapter": "dlv-dap",
     "stopOnPanic": true
   },
+  "go.buildFlags": ["-buildvcs=false"], 
   "favorites.resources": [
     {
       "filePath": "internal/feature/task/work.go",
