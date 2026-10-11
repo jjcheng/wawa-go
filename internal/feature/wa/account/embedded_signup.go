@@ -122,10 +122,11 @@ func (embeddedSignup EmbeddedSignup) Handle(ctx context.Context, user *dto_accou
 	}
 	// phone number — using the display number and verified name Meta reported
 	storePhoneNumberResponse := (feature_wa_phone_number.Store{
-		BusinessAccountId:  storeBusinessAccountResponse.Data.Id,
-		MetaPhoneNumberId:  embeddedSignup.Data.PhoneNumberId,
-		DisplayPhoneNumber: phoneNumberDetails.DisplayPhoneNumber,
-		Name:               phoneNumberDetails.VerifiedName,
+		BusinessAccountId:   storeBusinessAccountResponse.Data.Id,
+		MetaPhoneNumberId:   embeddedSignup.Data.PhoneNumberId,
+		DisplayPhoneNumber:  phoneNumberDetails.DisplayPhoneNumber,
+		Name:                phoneNumberDetails.VerifiedName,
+		BusinessAccessToken: accessToken,
 	}).Handle(ctx, nil, &transactionDependencies)
 	if !storePhoneNumberResponse.Success {
 		return dto.NewFailedResponse[*EmbeddedSignupResult](storePhoneNumberResponse.StatusCode, storePhoneNumberResponse.Message, storePhoneNumberResponse.Error)

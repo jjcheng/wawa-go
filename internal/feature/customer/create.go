@@ -33,7 +33,7 @@ type Create struct {
 	WAId          string   `json:"wa_id" description:"optional waId from incoming messages"`
 	PhoneNumberId int32    `json:"phone_number_id" val:"required" description:"id of the phone number to assign this customer to"`
 	AgentEnabled  bool     `json:"agent_enabled" description:"allow business agent to engage"`
-	FromIncoming  bool     `json:"-"` // if from incoming WA message, there is no user in Handle()
+	FromWebhook   bool     `json:"-"` // if from webhook, there is no user in Handle()
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -73,7 +73,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_customer.Customer](inputErrors)
 	}
-	if !create.FromIncoming {
+	if !create.FromWebhook {
 		if user == nil {
 			return dto.NewFailedResponse[*dto_customer.Customer](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 		}
@@ -123,7 +123,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Remarks:             create.Remarks,
 		ImportedPhoneNumber: waId,
 		Token:               uuid.NewString(),
-		FromIncomingMessage: create.FromIncoming,
+		FromWebhook:         create.FromWebhook,
 		AgentEnabled:        create.AgentEnabled,
 	}
 	if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &customer); err != nil {

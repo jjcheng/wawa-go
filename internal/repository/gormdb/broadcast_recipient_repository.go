@@ -30,6 +30,9 @@ func NewBroadcastRecipientRepository(db *gorm.DB, logger *service.Logger) reposi
 }
 
 func (broadcastRecipientRepository *BroadcastRecipientRepository) Insert(ctx context.Context, recipient *dao_customer.BroadcastRecipient) error {
+	if err := broadcastRecipientRepository.checkCustomers(ctx, []dao_customer.BroadcastRecipient{*recipient}); err != nil {
+		return err
+	}
 	payload := recipient.Payload
 	if recipient.EncryptionID == "" {
 		recipient.EncryptionID = uuid.NewString()
@@ -46,6 +49,9 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) Insert(ctx con
 }
 
 func (broadcastRecipientRepository *BroadcastRecipientRepository) InsertBulk(ctx context.Context, recipients []dao_customer.BroadcastRecipient) error {
+	if err := broadcastRecipientRepository.checkCustomers(ctx, recipients); err != nil {
+		return err
+	}
 	payloads := make([]map[string]any, len(recipients))
 	for i := range recipients {
 		payloads[i] = recipients[i].Payload
@@ -86,6 +92,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) GetById(ctx co
 	result := broadcastRecipientRepository.db.WithContext(ctx).
 		Model(&dao_customer.BroadcastRecipient{}).
 		Where("id = ?", id).
+		Where("EXISTS (SELECT 1 FROM customer.customers AS c WHERE c.id = broadcast_recipients.customer_id AND c.status <> ?)", types.CustomerStatusRemoved).
 		First(&recipient)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -104,7 +111,7 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) ListByBroadcas
 		Table("customer.broadcast_recipients AS cr").
 		Joins("JOIN customer.customers AS c ON c.id = cr.customer_id").
 		Joins("LEFT JOIN wa.messages AS m ON m.id = cr.message_id").
-		Where("cr.broadcast_id = ?", broadcastId)
+		Where("cr.broadcast_id = ? AND c.status <> ?", broadcastId, types.CustomerStatusRemoved)
 	if status != "" {
 		query = query.Where("m.status = ?", status)
 	}
@@ -165,7 +172,8 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) CountMessageSt
 	if err := broadcastRecipientRepository.db.WithContext(ctx).
 		Table("customer.broadcast_recipients AS cr").
 		Joins("JOIN wa.messages AS m ON m.id = cr.message_id").
-		Where("cr.broadcast_id = ?", broadcastId).
+		Joins("JOIN customer.customers AS c ON c.id = cr.customer_id").
+		Where("cr.broadcast_id = ? AND c.status <> ?", broadcastId, types.CustomerStatusRemoved).
 		Select("m.status AS status, COUNT(*) AS count").
 		Group("m.status").
 		Scan(&rows).Error; err != nil {
@@ -183,6 +191,46 @@ func (broadcastRecipientRepository *BroadcastRecipientRepository) CountMessageSt
 		counts[row.Status] = row.Count
 	}
 	return counts, nil
+}
+
+func (broadcastRecipientRepository *BroadcastRecipientRepository) checkCustomers(ctx context.Context, recipients []dao_customer.BroadcastRecipient) error {
+	ids := make(map[int32]struct{}, len(recipients))
+	for _, recipient := range recipients {
+		ids[recipient.CustomerId] = struct{}{}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	customerIds := make([]int32, 0, len(ids))
+	for id := range ids {
+		customerIds = append(customerIds, id)
+	}
+	var count int64
+	if err := broadcastRecipientRepository.db.WithContext(ctx).
+		Model(&dao_customer.Customer{}).
+		Where("id IN ? AND status <> ?", customerIds, types.CustomerStatusRemoved).
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("BroadcastRecipientRepository.checkCustomers error=%w", err)
+	}
+	if count != int64(len(ids)) {
+		return fmt.Errorf("BroadcastRecipientRepository.checkCustomers: one or more customers are missing or removed")
+	}
+	return nil
+}
+
+func (broadcastRecipientRepository *BroadcastRecipientRepository) ListAll(ctx context.Context) ([]dao_customer.BroadcastRecipient, error) {
+	var recipients []dao_customer.BroadcastRecipient
+	if err := broadcastRecipientRepository.db.WithContext(ctx).
+		Where("EXISTS (SELECT 1 FROM customer.customers AS c WHERE c.id = broadcast_recipients.customer_id AND c.status <> ?)", types.CustomerStatusRemoved).
+		Order("id").Find(&recipients).Error; err != nil {
+		return nil, fmt.Errorf("BroadcastRecipientRepository.ListAll error=%w", err)
+	}
+	for i := range recipients {
+		if err := broadcastRecipientRepository.decryptPayload(&recipients[i]); err != nil {
+			return nil, fmt.Errorf("BroadcastRecipientRepository.ListAll recipientId=%d error=%w", recipients[i].Id, err)
+		}
+	}
+	return recipients, nil
 }
 
 func (broadcastRecipientRepository *BroadcastRecipientRepository) broadcastRecipientAAD(recipient *dao_customer.BroadcastRecipient, purpose string) string {

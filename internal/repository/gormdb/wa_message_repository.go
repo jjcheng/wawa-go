@@ -70,7 +70,8 @@ func (messageRepository *WAMessageRepository) Update(ctx context.Context, messag
 
 func (messageRepository *WAMessageRepository) List(ctx context.Context, phoneNumberId int32, customerId int32, ignoreUnsupportedType bool, page int, pageSize int) (messages []dao_wa.Message, totalPages int, totalCount int, err error) {
 	query := messageRepository.db.WithContext(ctx).Model(&dao_wa.Message{})
-	query = query.Where("phone_number_id = ? AND customer_id = ?", phoneNumberId, customerId)
+	query = query.Where("phone_number_id = ? AND customer_id = ?", phoneNumberId, customerId).
+		Scopes(withVisibleMessageCustomer)
 	if ignoreUnsupportedType {
 		query = query.Where("type <> ?", "unsupported")
 	}
@@ -117,6 +118,7 @@ func (messageRepository *WAMessageRepository) GetById(ctx context.Context, id in
 	var message dao_wa.Message
 	if err := messageRepository.db.WithContext(ctx).
 		Where("id = ?", id).
+		Scopes(withVisibleMessageCustomer).
 		First(&message).Error; err != nil {
 		return nil, fmt.Errorf("MessageRepository.GetById index=0 id=%d error=%w", id, err)
 	}
@@ -143,6 +145,7 @@ func (messageRepository *WAMessageRepository) ListNeedResend(ctx context.Context
 	var messages []dao_wa.Message
 	result := messageRepository.db.WithContext(ctx).
 		Model(&dao_wa.Message{}).
+		Scopes(withVisibleMessageCustomer).
 		Where("status = ? AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW()", "REJECTED").
 		Order("next_attempt_at, id").
 		Find(&messages)
@@ -161,6 +164,7 @@ func (messageRepository *WAMessageRepository) UpdateNextAttemptAt(ctx context.Co
 	result := messageRepository.db.WithContext(ctx).
 		Model(&dao_wa.Message{}).
 		Where("id = ? AND status = ? AND next_attempt_at IS NOT NULL AND next_attempt_at <= NOW()", id, types.WAMessageStatusRejected).
+		Scopes(withVisibleMessageCustomer).
 		Updates(map[string]any{
 			"next_attempt_at": nextAttemptAt,
 		})
@@ -179,6 +183,25 @@ func (messageRepository *WAMessageRepository) DeleteByPhoneNumberId(ctx context.
 		return fmt.Errorf("MessageRepository.DeleteByPhoneNumberId index=1 phoneNumberId=%d error=%w", phoneNumberId, err)
 	}
 	return nil
+}
+
+func withVisibleMessageCustomer(db *gorm.DB) *gorm.DB {
+	return db.Where("EXISTS (SELECT 1 FROM customer.customers AS c WHERE c.id = messages.customer_id AND c.status <> ?)", types.CustomerStatusRemoved)
+}
+
+func (messageRepository *WAMessageRepository) ListAll(ctx context.Context) ([]dao_wa.Message, error) {
+	var messages []dao_wa.Message
+	if err := messageRepository.db.WithContext(ctx).
+		Scopes(withVisibleMessageCustomer).
+		Order("id").Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("MessageRepository.ListAll error=%w", err)
+	}
+	for i := range messages {
+		if err := messageRepository.decryptPayload(&messages[i]); err != nil {
+			return nil, fmt.Errorf("MessageRepository.ListAll messageId=%d error=%w", messages[i].Id, err)
+		}
+	}
+	return messages, nil
 }
 
 func (messageRepository *WAMessageRepository) encryptPayload(message *dao_wa.Message) error {

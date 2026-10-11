@@ -98,6 +98,28 @@ func (phoneNumberRepository *WAPhoneNumberRepository) GetByMetaPhoneNumberId(ctx
 	return phoneNumber, nil
 }
 
+func (phoneNumberRepository *WAPhoneNumberRepository) GetByWAId(ctx context.Context, waId string) (*dao_wa.PhoneNumber, error) {
+	waIdHash, err := hashSecret(waId)
+	if err != nil {
+		return nil, fmt.Errorf("PhoneNumberRepository.GetByWAId index=0 error=%w", err)
+	}
+	var phoneNumber dao_wa.PhoneNumber
+	result := phoneNumberRepository.db.WithContext(ctx).
+		Model(&dao_wa.PhoneNumber{}).
+		Where("wa_id_hash = ? AND status <> ?", waIdHash, types.WAPhoneNumberStatusRemoved).
+		First(&phoneNumber)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, result.Error
+		}
+		return nil, fmt.Errorf("PhoneNumberRepository.GetByWAId index=1 error=%w", result.Error)
+	}
+	if err := phoneNumberRepository.decryptSecrets(&phoneNumber); err != nil {
+		return nil, fmt.Errorf("PhoneNumberRepository.GetByWAId index=2 phoneNumberId=%d error=%w", phoneNumber.Id, err)
+	}
+	return &phoneNumber, nil
+}
+
 func (phoneNumberRepository *WAPhoneNumberRepository) ListAll(ctx context.Context) ([]dao_wa.PhoneNumber, error) {
 	var phoneNumbers []dao_wa.PhoneNumber
 	if err := phoneNumberRepository.db.WithContext(ctx).

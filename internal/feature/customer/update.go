@@ -49,6 +49,9 @@ func (update *Update) Validate() []exception.InputException {
 	if update.DisplayName == "" {
 		inputErrors = append(inputErrors, exception.NewInputException("name", "missing customer name"))
 	}
+	if update.Status != types.CustomerStatusActive && update.Status != types.CustomerStatusInactive {
+		inputErrors = append(inputErrors, exception.NewInputException("status", "invalid customer status"))
+	}
 	return inputErrors
 }
 
@@ -104,7 +107,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Update a customer",
-		"Update a customer for the user.",
+		"Update a non-removed customer for the user. Status must be ACTIVE or INACTIVE; use the delete endpoint to remove customers.",
 		types.HttpRequestTypeUriJSON,
 		http.MethodPatch,
 		"/v1/customers/:customer_id",

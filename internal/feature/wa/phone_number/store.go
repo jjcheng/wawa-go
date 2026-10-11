@@ -21,11 +21,12 @@ import (
 // Store only persists the phone number. Registering it on Meta is a non-transactional
 // side effect and is performed by the caller after the database transaction commits.
 type Store struct {
-	BusinessAccountId  int32  `json:"business_account_id" val:"required" description:"id of the business account"`
-	MetaPhoneNumberId  string `json:"meta_phone_number_id" val:"required" description:"returned in embeded signup"`
-	DisplayPhoneNumber string `json:"display_phone_number" val:"required" description:"display phone number returned by Meta"`
-	Name               string `json:"name" val:"required" description:"verified name returned by Meta"`
-	IsInTransaction    bool   `json:"is_in_transaction" val:"required" description:"if unitOfWork has a transaction already"`
+	BusinessAccountId   int32  `json:"-" val:"required" description:"id of the business account"`
+	MetaPhoneNumberId   string `json:"-" val:"required" description:"returned in embeded signup"`
+	DisplayPhoneNumber  string `json:"-" val:"required" description:"display phone number returned by Meta"`
+	Name                string `json:"-" val:"required" description:"verified name returned by Meta"`
+	IsInTransaction     bool   `json:"-" val:"required" description:"if unitOfWork has a transaction already"`
+	BusinessAccessToken string `json:"-" val:"required" description:"exchanged in embedded signup"`
 }
 
 func (store *Store) Validate() []exception.InputException {
@@ -44,6 +45,9 @@ func (store *Store) Validate() []exception.InputException {
 	}
 	if store.Name == "" {
 		errors = append(errors, exception.NewInputException("name", "missing verified name"))
+	}
+	if store.BusinessAccessToken == "" {
+		errors = append(errors, exception.NewInputException("business_access_token", "missing business access token"))
 	}
 	return errors
 }
@@ -64,6 +68,15 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 	}
+	// start syncing app state
+	syncAppContactsRequestId, err := dependencies.Whatsapp.StartSyncingAppContacts(ctx, store.MetaPhoneNumberId, store.BusinessAccessToken)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, store.MetaPhoneNumberId)
+	}
+	syncAppHistoryRequestId, err := dependencies.Whatsapp.StartSyncingAppHistory(ctx, store.MetaPhoneNumberId, store.BusinessAccessToken)
+	if err != nil {
+		dependencies.Logger.ErrorFunction(err, store.MetaPhoneNumberId)
+	}
 	// update existing
 	if existing != nil {
 		if existing.BusinessAccountId != store.BusinessAccountId {
@@ -72,6 +85,9 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 		existing.DisplayPhoneNumber = store.DisplayPhoneNumber
 		existing.WAId = helper.NormalizeWAId(existing.DisplayPhoneNumber)
 		existing.Name = store.Name
+		existing.Status = types.WAPhoneNumberStatusConnected
+		existing.ContactSyncRequestId = syncAppContactsRequestId
+		existing.HistorySyncRequestId = syncAppHistoryRequestId
 		if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, existing); err != nil {
 			return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
@@ -80,12 +96,14 @@ func (store Store) Handle(ctx context.Context, user *dto_account.User, dependenc
 	}
 	// insert new
 	phoneNumber := dao_wa.PhoneNumber{
-		BusinessAccountId:  store.BusinessAccountId,
-		MetaPhoneNumberId:  store.MetaPhoneNumberId,
-		DisplayPhoneNumber: store.DisplayPhoneNumber,
-		Status:             types.WAPhoneNumberStatusConnected,
-		Name:               store.Name,
-		WAId:               helper.NormalizeWAId(store.DisplayPhoneNumber),
+		BusinessAccountId:    store.BusinessAccountId,
+		MetaPhoneNumberId:    store.MetaPhoneNumberId,
+		DisplayPhoneNumber:   store.DisplayPhoneNumber,
+		Status:               types.WAPhoneNumberStatusConnected,
+		Name:                 store.Name,
+		WAId:                 helper.NormalizeWAId(store.DisplayPhoneNumber),
+		ContactSyncRequestId: syncAppContactsRequestId,
+		HistorySyncRequestId: syncAppHistoryRequestId,
 	}
 	if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Insert(ctx, &phoneNumber); err != nil {
 		return dto.NewFailedResponse[*dto_wa.PhoneNumber](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)

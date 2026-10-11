@@ -22,18 +22,18 @@ type IncomingChange struct {
 }
 
 type IncomingValue struct {
-	MessagingProduct string            `json:"messaging_product"`
-	Metadata         IncomingMetadata  `json:"metadata"`
-	Contacts         []IncomingContact `json:"contacts,omitempty"`
-	Messages         []IncomingMessage `json:"messages,omitempty"`
-	Standby          *IncomingStandby  `json:"standby,omitempty"`
-	Statuses         []Status          `json:"statuses,omitempty"`
-	//MessageEchoes    []IncomingMessageStandbyEcho `json:"message_echoes,omitempty"`
+	MessagingProduct string                   `json:"messaging_product"`
+	Metadata         IncomingMetadata         `json:"metadata"`
+	Contacts         []IncomingContact        `json:"contacts,omitempty"`
+	Messages         []IncomingMessage        `json:"messages,omitempty"`
+	Standby          *IncomingStandby         `json:"standby,omitempty"`
+	Statuses         []Status                 `json:"statuses,omitempty"`
 	SMBMessageEchoes []IncomingSMBMessageEcho `json:"message_echoes,omitempty"`
-	SyncStatus       string                   `json:"sync_status,omitempty"`
-	ChunkNumber      int                      `json:"chunk_number,omitempty"`
+	StateSyncs       []StateSync              `json:"state_sync"`
+	History          []History                `json:"history,omitempty"`
 	// messaing_handovers
 	*IncomingHandovers
+	*AppUpdate
 }
 
 type IncomingMetadata struct {
@@ -146,6 +146,73 @@ type IncomingHandoversConversationContextSummary struct {
 	Text string `json:"text"`
 }
 
+// state_sync
+type StateSync struct {
+	Type     string           `json:"type"`   // contact
+	Action   string           `json:"action"` // add, remove
+	Contact  StateSyncContact `json:"contact"`
+	Metadata struct {
+		Timestamp string `json:"timestamp"`
+		Version   int    `json:"version"`
+	} `json:"metadata"`
+}
+
+type StateSyncContact struct {
+	FullName    string `json:"full_name"`
+	PhoneNumber string `json:"phone_number"`
+	UserId      string `json:"user_id"`
+}
+
+// app_update
+type AppUpdate struct {
+	Event             string                      `json:"event"`
+	PhoneNumber       string                      `json:"phone_number;omitempty"` // only if it's about a single phone number
+	DisconnectionInfo *AppUpdateDisconnectionInfo `json:"disconnection_info,omitempty"`
+	WABAInfo          *AppUpdateWABAInfo          `json:"waba_info,omitempty"`
+}
+
+type AppUpdateDisconnectionInfo struct {
+	Reason      string `json:"reason"`
+	InitiatedBy string `json:"initiated_by"`
+}
+
+type AppUpdateWABAInfo struct {
+	WabaID          string `json:"waba_id"`
+	OwnerBusinessId string `json:"owner_business_id"`
+}
+
+// history
+type History struct {
+	Threads []HistoryThread `json:"threads"`
+}
+
+type HistoryThread struct {
+	Id       string                 `json:"id"` // customer waid
+	Context  HistoryThreadContext   `json:"context"`
+	Messages []HistoryThreadMessage `json:"messages"`
+}
+
+type HistoryThreadContext struct {
+	WAId   string `json:"wa_id"`
+	UserId string `json:"user_id"`
+}
+
+type HistoryThreadHistoryContext struct {
+	Status string `json:"status"`
+	FromMe bool   `json:"from_me"`
+}
+
+type HistoryThreadMessage struct {
+	From           string                      `json:"from"`         // customer's waid if not from_me, user's waid if from_me
+	FromUserId     string                      `json:"from_user_id"` // customer's user id
+	ID             string                      `json:"id"`
+	Timestamp      string                      `json:"timestamp"`
+	Payload        map[string]any              `json:"payload"`
+	Type           string                      `json:"type"`
+	HistoryContext HistoryThreadHistoryContext `json:"history_context"`
+}
+
+// template
 type IncomingTemplateStatusChange struct {
 	Event                   string `json:"event"` // APPROVED
 	MessageTemplateId       int64  `json:"message_template_id"`
@@ -153,18 +220,6 @@ type IncomingTemplateStatusChange struct {
 	MessageTemplateLanguage string `json:"message_template_language"`
 	Reason                  string `json:"name"`
 	MessageTemplateCategory string `json:"message_template_category"`
-}
-
-type IncomingItemsBatch struct {
-	CatalogId string `json:"catalog_id"`
-	Handle    string `json:"handle"`
-	Status    string `json:"status"`
-}
-
-type IncomingProductFeed struct {
-	CatalogId     string `json:"catalog_id"`
-	ProductFeedId string `json:"product_feed_id"`
-	Status        string `json:"status"`
 }
 
 func (message *IncomingMessage) UnmarshalJSON(data []byte) error {
@@ -271,6 +326,22 @@ type StatusPricing struct {
 	Type         string `json:"type,omitempty"`
 }
 
+func (message *HistoryThreadMessage) UnmarshalJSON(data []byte) error {
+	type historyThreadMessage HistoryThreadMessage
+	var decoded historyThreadMessage
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	*message = HistoryThreadMessage(decoded)
+	message.Payload = payload
+	return nil
+}
+
+// error
 type StatusError struct {
 	Code      int              `json:"code"`
 	Title     string           `json:"title"`

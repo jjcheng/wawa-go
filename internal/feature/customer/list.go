@@ -70,7 +70,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List customers",
-		"List all customers for the user.",
+		"List non-removed customers for the user. REMOVED customers are excluded regardless of the status filter.",
 		types.HttpRequestTypeQuery,
 		http.MethodGet,
 		"/v1/customers",

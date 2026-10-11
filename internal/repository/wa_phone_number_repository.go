@@ -12,6 +12,7 @@ type WAPhoneNumberRepository interface {
 	CountByBusinessAccountId(ctx context.Context, businessAccountId int32) (int, error)
 	// only used in embedded signup or incoming message, no user object
 	GetByMetaPhoneNumberId(ctx context.Context, metaPhoneNumberId string) (*dao_wa.PhoneNumber, error)
+	GetByWAId(ctx context.Context, waId string) (*dao_wa.PhoneNumber, error)
 	// used to list all phone numbers in user's meta business account
 	ListByBusinessAccountId(ctx context.Context, businessAccountId int32, status types.WAPhoneNumberStatus, page int, pageSize int) (phoneNumbers []dao_wa.PhoneNumber, totalCount int, totalPages int, err error)
 	// used when a master is updating a user

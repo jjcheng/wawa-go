@@ -1154,6 +1154,47 @@ func (whatsapp *Whatsapp) ListProductsBySetID(ctx context.Context, productSetID 
 
 // #endregion
 
+// #region sync app state
+
+type WhatsAppAppStateSyncResponse struct {
+	MessagingProduct string `json:"messaging_product"`
+	RequestID        string `json:"request_id"`
+}
+
+func (whatsapp *Whatsapp) StartSyncingAppContacts(ctx context.Context, phoneNumberID string, businessAccessToken string) (string, error) {
+	payload := map[string]any{
+		"messaging_product": WhatsAppMessagingProduct,
+		"sync_type":         "smb_app_state_sync",
+	}
+	endpoint := whatsapp.buildEndpoint(phoneNumberID, "smb_app_data")
+	var response WhatsAppAppStateSyncResponse
+	if err := whatsapp.doRequest(ctx, "start_syncing_app_state", http.MethodPost, endpoint, payload, &response, businessAccessToken); err != nil {
+		return "", fmt.Errorf("error start syncing app state: %w", err)
+	}
+	if strings.TrimSpace(response.RequestID) == "" {
+		return "", fmt.Errorf("request ID is missing from the WhatsApp app state contacts response")
+	}
+	return response.RequestID, nil
+}
+
+func (whatsapp *Whatsapp) StartSyncingAppHistory(ctx context.Context, phoneNumberID string, businessAccessToken string) (string, error) {
+	payload := map[string]any{
+		"messaging_product": WhatsAppMessagingProduct,
+		"sync_type":         "history",
+	}
+	endpoint := whatsapp.buildEndpoint(phoneNumberID, "smb_app_data")
+	var response WhatsAppAppStateSyncResponse
+	if err := whatsapp.doRequest(ctx, "start_syncing_app_state", http.MethodPost, endpoint, payload, &response, businessAccessToken); err != nil {
+		return "", fmt.Errorf("error start syncing app message history: %w", err)
+	}
+	if strings.TrimSpace(response.RequestID) == "" {
+		return "", fmt.Errorf("request ID is missing from the WhatsApp app history sync response")
+	}
+	return response.RequestID, nil
+}
+
+// #endregion
+
 // shared
 func (whatsapp *Whatsapp) buildEndpoint(phoneNumberID string, edge string) string {
 	url := fmt.Sprintf("%s/%s/%s/%s", whatsapp.baseURL, whatsapp.apiVersion, phoneNumberID, strings.TrimPrefix(edge, "/"))

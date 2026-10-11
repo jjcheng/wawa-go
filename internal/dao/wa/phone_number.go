@@ -7,15 +7,17 @@ import (
 
 type PhoneNumber struct {
 	dao.DAOBase
-	BusinessAccountId  int32                     `gorm:"column:business_account_id"` // in case it's not assigned to any user
-	MetaPhoneNumberId  string                    `gorm:"column:meta_phone_number_id"`
-	DisplayPhoneNumber string                    `gorm:"-"` // not a db column
-	WAId               string                    `gorm:"-"` // not a db column
-	Name               string                    `gorm:"column:name"`
-	Status             types.WAPhoneNumberStatus `gorm:"column:status"`
-	MetaAgentId        string                    `gorm:"column:meta_agent_id"`
-	AgenProfileId      *int32                    `gorm:"column:agent_profile_id"`
-	AgentEnabled       bool                      `gorm:"column:agent_enabled"` // business agent is setup and ready to handle customers
+	BusinessAccountId    int32                     `gorm:"column:business_account_id"` // in case it's not assigned to any user
+	MetaPhoneNumberId    string                    `gorm:"column:meta_phone_number_id"`
+	DisplayPhoneNumber   string                    `gorm:"-"` // not a db column
+	WAId                 string                    `gorm:"-"` // not a db column
+	Name                 string                    `gorm:"column:name"`
+	Status               types.WAPhoneNumberStatus `gorm:"column:status"`
+	ContactSyncRequestId string                    `gorm:"column:contact_sync_request_id"` // smb_app_state_sync
+	HistorySyncRequestId string                    `gorm:"column:history_sync_request_id"` // hitory
+	MetaAgentId          string                    `gorm:"column:meta_agent_id"`
+	AgenProfileId        *int32                    `gorm:"column:agent_profile_id"`
+	AgentEnabled         bool                      `gorm:"column:agent_enabled"` // business agent is setup and ready to handle customers
 	// two-step verification PIN set at registration, required to re-register the number later
 	RegistrationPin string `gorm:"-"` // not a db column
 	// encryption

@@ -25038,7 +25038,7 @@
     },
     "/v1/customers": {
       "delete": {
-        "description": "Delete a customer, only MASTER user can access this endpoint.",
+        "description": "Delete customers and their messages and broadcast recipients. Only MASTER users can access this endpoint.",
         "responses": {
           "200": {
             "content": {
@@ -25239,13 +25239,13 @@
             "apiKey": []
           }
         ],
-        "summary": "Delete a customers",
+        "summary": "Delete customers",
         "tags": [
           "Customer"
         ]
       },
       "get": {
-        "description": "List all customers for the user.",
+        "description": "List non-removed customers for the user. REMOVED customers are excluded regardless of the status filter.",
         "parameters": [
           {
             "example": "",
@@ -25347,7 +25347,7 @@
                               "display_name": {
                                 "type": "string"
                               },
-                              "from_incoming_message": {
+                              "from_webhook": {
                                 "type": "boolean"
                               },
                               "id": {
@@ -25802,7 +25802,7 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "from_incoming_message": {
+                        "from_webhook": {
                           "type": "boolean"
                         },
                         "id": {
@@ -27126,7 +27126,7 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "from_incoming_message": {
+                        "from_webhook": {
                           "type": "boolean"
                         },
                         "id": {
@@ -27553,7 +27553,7 @@
         ]
       },
       "patch": {
-        "description": "Update a customer for the user.",
+        "description": "Update a non-removed customer for the user. Status must be ACTIVE or INACTIVE; use the delete endpoint to remove customers.",
         "parameters": [
           {
             "description": "id of the customer in our db",
@@ -27656,7 +27656,7 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "from_incoming_message": {
+                        "from_webhook": {
                           "type": "boolean"
                         },
                         "id": {
@@ -28171,7 +28171,7 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "from_incoming_message": {
+                        "from_webhook": {
                           "type": "boolean"
                         },
                         "id": {
@@ -28598,7 +28598,7 @@
         ]
       },
       "patch": {
-        "description": "Update a customer for the user.",
+        "description": "Update a non-removed customer for the user. Status must be ACTIVE or INACTIVE; use the delete endpoint to remove customers.",
         "parameters": [
           {
             "description": "id of the customer in our db",
@@ -28701,7 +28701,7 @@
                         "display_name": {
                           "type": "string"
                         },
-                        "from_incoming_message": {
+                        "from_webhook": {
                           "type": "boolean"
                         },
                         "id": {

@@ -17,8 +17,8 @@ import (
 
 // used only in embedded signup
 type Store struct {
-	BusinessPortfolio *dto_wa.BusinessPortfolio            `json:"business_portfolio" val:"required" description:"business porfolio associated with this business account"`
-	WABADetails       *service.WhatsAppWABADetailsResponse `json:"waba_details" val:"required" description:"details of WABA"`
+	BusinessPortfolio *dto_wa.BusinessPortfolio            `json:"-" val:"required" description:"business porfolio associated with this business account"`
+	WABADetails       *service.WhatsAppWABADetailsResponse `json:"-" val:"required" description:"details of WABA"`
 }
 
 func (store *Store) Validate() []exception.InputException {

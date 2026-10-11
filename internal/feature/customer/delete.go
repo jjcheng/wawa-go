@@ -63,8 +63,12 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 	if len(customers) != len(delete.Ids) {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if err = transaction.CustomerRepository().DeleteByIds(ctx, delete.Ids); err != nil {
-		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	for i := range customers {
+		customers[i].Status = types.CustomerStatusRemoved
+		customers[i].AgentEnabled = false
+		if err := transaction.CustomerRepository().Update(ctx, &customers[i]); err != nil {
+			return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
 	}
 	if err := transaction.CommitTransaction(); err != nil {
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
@@ -75,8 +79,8 @@ func (delete Delete) Handle(ctx context.Context, user *dto_account.User, depende
 
 func (Delete) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
-		"Delete a customers",
-		"Delete a customer, only MASTER user can access this endpoint.",
+		"Delete customers",
+		"Delete customers and their messages and broadcast recipients. Only MASTER users can access this endpoint.",
 		types.HttpRequestTypeJSON,
 		http.MethodDelete,
 		"/v1/customers",

@@ -17,9 +17,9 @@ import (
 )
 
 type Store struct {
-	MetaBusinessPortfolioId string `json:"meta_business_portfolio_id" val:"required" description:"return in embedded signup"`
-	Name                    string `json:"name" val:"required" description:"portfolio name taken from the WABA owner_business_info"`
-	AccessToken             string `json:"access_token" val:"required" description:"access token exchanged from authorization code during embedded signup"`
+	MetaBusinessPortfolioId string `json:"-" val:"required" description:"return in embedded signup"`
+	Name                    string `json:"-" val:"required" description:"portfolio name taken from the WABA owner_business_info"`
+	AccessToken             string `json:"-" val:"required" description:"access token exchanged from authorization code during embedded signup"`
 }
 
 func (store *Store) Validate() []exception.InputException {

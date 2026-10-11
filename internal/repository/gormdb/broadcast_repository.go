@@ -2,6 +2,7 @@ package gormdb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -27,6 +28,37 @@ func NewBroadcastRepository(db *gorm.DB, logger *service.Logger) repository.Baro
 	}
 }
 
+func withVisibleRecipientCount(db *gorm.DB) *gorm.DB {
+	return db.Select(`broadcasts.*, (
+		SELECT COUNT(*) FROM customer.broadcast_recipients AS cr
+		JOIN customer.customers AS recipient_customer ON recipient_customer.id = cr.customer_id
+		WHERE cr.broadcast_id = broadcasts.id AND recipient_customer.status <> ?
+	) AS recipient_count`, types.CustomerStatusRemoved)
+}
+
+func (broadcastRepository *BroadcastRepository) GetById(ctx context.Context, id int32) (*dao_customer.Broadcast, error) {
+	var broadcast dao_customer.Broadcast
+	if err := broadcastRepository.db.WithContext(ctx).
+		Scopes(withVisibleRecipientCount).
+		Where("id = ?", id).First(&broadcast).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("BroadcastRepository.GetById id=%d error=%w", id, err)
+	}
+	return &broadcast, nil
+}
+
+func (broadcastRepository *BroadcastRepository) ListAll(ctx context.Context) ([]dao_customer.Broadcast, error) {
+	var broadcasts []dao_customer.Broadcast
+	if err := broadcastRepository.db.WithContext(ctx).
+		Scopes(withVisibleRecipientCount).
+		Order("id").Find(&broadcasts).Error; err != nil {
+		return nil, fmt.Errorf("BroadcastRepository.ListAll error=%w", err)
+	}
+	return broadcasts, nil
+}
+
 func (broadcastRepository *BroadcastRepository) ListByUserId(ctx context.Context, userId int32, name string, status types.BroadcastStatus, page int, pageSize int) (*dto.ListResponse[dao_customer.Broadcast], error) {
 	var broadcasts []dao_customer.Broadcast
 	query := broadcastRepository.db.WithContext(ctx).
@@ -43,7 +75,7 @@ func (broadcastRepository *BroadcastRepository) ListByUserId(ctx context.Context
 		return nil, fmt.Errorf("BroadcastRepository.ListByUserId index=0 userId=%d name=%s status=%s page=%d pageSize=%d error=%w", userId, name, status, page, pageSize, err)
 	}
 	offset := (page - 1) * pageSize
-	if err := query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&broadcasts).Error; err != nil {
+	if err := query.Scopes(withVisibleRecipientCount).Order("id DESC").Offset(offset).Limit(pageSize).Find(&broadcasts).Error; err != nil {
 		return nil, fmt.Errorf("BroadcastRepository.ListByUserId index=1 userId=%d name=%s status=%s page=%d pageSize=%d error=%w", userId, name, status, page, pageSize, err)
 	}
 	numberOfPages := int(math.Ceil(float64(numberOfItems) / float64(pageSize)))
@@ -71,6 +103,7 @@ func (broadcastRepository *BroadcastRepository) ListByIds(ctx context.Context, i
 	result := broadcastRepository.db.WithContext(ctx).
 		Model(&dao_customer.Broadcast{}).
 		Where("id IN ?", ids).
+		Scopes(withVisibleRecipientCount).
 		Order("id").
 		Find(&broadcasts)
 	if result.Error != nil {
@@ -87,7 +120,9 @@ func (broadcastRepository *BroadcastRepository) ListByMessageIds(ctx context.Con
 	result := broadcastRepository.db.WithContext(ctx).
 		Table("customer.broadcasts AS c").
 		Joins("JOIN customer.broadcast_recipients AS cr ON cr.broadcast_id = c.id").
+		Joins("JOIN customer.customers AS recipient_customer ON recipient_customer.id = cr.customer_id").
 		Where("cr.message_id IN ?", messageIds).
+		Where("recipient_customer.status <> ?", types.CustomerStatusRemoved).
 		Distinct("c.*").
 		Find(&broadcasts)
 	if result.Error != nil {
@@ -101,6 +136,7 @@ func (broadcastRepository *BroadcastRepository) ListPendingBroadcasts(ctx contex
 	result := broadcastRepository.db.WithContext(ctx).
 		Model(&dao_customer.Broadcast{}).
 		Where("status = ? AND send_date <= NOW()", types.BroadcastStatusPending).
+		Scopes(withVisibleRecipientCount).
 		Order("send_date, id").
 		Find(&broadcasts)
 	if result.Error != nil {

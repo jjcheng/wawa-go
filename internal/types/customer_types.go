@@ -13,6 +13,7 @@ type CustomerStatus string
 const (
 	CustomerStatusActive   CustomerStatus = "ACTIVE"
 	CustomerStatusInactive CustomerStatus = "INACTIVE"
+	CustomerStatusRemoved  CustomerStatus = "REMOVED"
 )
 
 type CustomerAdditionalDataType string

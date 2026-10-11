@@ -35,7 +35,7 @@ func (customerRepository *CustomerRepository) GetById(ctx context.Context, id in
 	var customer dao_customer.Customer
 	result := customerRepository.db.WithContext(ctx).
 		Model(&dao_customer.Customer{}).
-		Where("id = ?", id).
+		Where("id = ? AND status <> ?", id, types.CustomerStatusRemoved).
 		First(&customer)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -47,6 +47,21 @@ func (customerRepository *CustomerRepository) GetById(ctx context.Context, id in
 		return nil, fmt.Errorf("CustomerRepository.GetById index=1 id=%d error=%w", id, err)
 	}
 	return &customer, nil
+}
+
+func (customerRepository *CustomerRepository) ListAll(ctx context.Context) ([]dao_customer.Customer, error) {
+	var customers []dao_customer.Customer
+	if err := customerRepository.db.WithContext(ctx).
+		Where("status <> ?", types.CustomerStatusRemoved).
+		Order("id").Find(&customers).Error; err != nil {
+		return nil, fmt.Errorf("CustomerRepository.ListAll error=%w", err)
+	}
+	for i := range customers {
+		if err := customerRepository.decryptSensitiveFields(&customers[i]); err != nil {
+			return nil, fmt.Errorf("CustomerRepository.ListAll customerId=%d error=%w", customers[i].Id, err)
+		}
+	}
+	return customers, nil
 }
 
 func (customerRepository *CustomerRepository) Insert(ctx context.Context, customer *dao_customer.Customer) error {
@@ -116,7 +131,7 @@ func (customerRepository *CustomerRepository) CountByPhoneNumberIds(ctx context.
 	var count int64
 	if err := customerRepository.db.WithContext(ctx).
 		Model(&dao_customer.Customer{}).
-		Where("phone_number_id IN ?", phoneNumberIds).
+		Where("phone_number_id IN ? AND status <> ?", phoneNumberIds, types.CustomerStatusRemoved).
 		Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("CustomerRepository.CountByPhoneNumberIds phoneNumberIds=%v error=%w", phoneNumberIds, err)
 	}
@@ -141,7 +156,7 @@ func (customerRepository *CustomerRepository) GetByCountryCodePhoneNumber(ctx co
 	if err != nil {
 		return nil, fmt.Errorf("CustomerRepository.GetByCountryCodePhoneNumber index=0 phoneNumberId=%d countryCode=%s error=%w", phoneNumberId, countryCode, err)
 	}
-	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("phone_number_id = ? AND country_code = ? and phone_number_hash = ?", phoneNumberId, countryCode, phoneNumberHash).First(&customer)
+	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("phone_number_id = ? AND country_code = ? AND phone_number_hash = ? AND status <> ?", phoneNumberId, countryCode, phoneNumberHash, types.CustomerStatusRemoved).First(&customer)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("CustomerRepository.GetByCountryCodePhoneNumber index=1 phoneNumberId=%d countryCode=%s error=%w", phoneNumberId, countryCode, result.Error)
@@ -156,7 +171,7 @@ func (customerRepository *CustomerRepository) GetByCountryCodePhoneNumber(ctx co
 
 func (customerRepository *CustomerRepository) GetByMetaUserId(ctx context.Context, phoneNumberId int32, metaUserId string) (*dao_customer.Customer, error) {
 	var customer *dao_customer.Customer
-	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("phone_number_id = ? AND meta_user_id = ?", phoneNumberId, metaUserId).First(&customer)
+	result := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{}).Where("phone_number_id = ? AND meta_user_id = ? AND status <> ?", phoneNumberId, metaUserId, types.CustomerStatusRemoved).First(&customer)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("CustomerRepository.GetByMetaUserId index=0 phoneNumberId=%d metaUserId=%s error=%w", phoneNumberId, metaUserId, result.Error)
@@ -172,7 +187,7 @@ func (customerRepository *CustomerRepository) GetByMetaUserId(ctx context.Contex
 func (customerRepository *CustomerRepository) GetByWAIdOrMetaUserId(ctx context.Context, phoneNumberId int32, waId string, metaUserId string) (*dao_customer.Customer, error) {
 	var customer dao_customer.Customer
 	query := customerRepository.db.WithContext(ctx).Model(&dao_customer.Customer{})
-	query.Where("phone_number_id = ?", phoneNumberId)
+	query = query.Where("phone_number_id = ? AND status <> ?", phoneNumberId, types.CustomerStatusRemoved)
 	if waId != "" && metaUserId != "" {
 		waIdHash, err := hashSecret(waId)
 		if err != nil {
@@ -208,7 +223,7 @@ func (customerRepository *CustomerRepository) ListByPhoneNumberIdsAndIds(ctx con
 	var customers []dao_customer.Customer
 	result := customerRepository.db.WithContext(ctx).
 		Model(&dao_customer.Customer{}).
-		Where("phone_number_id IN ? AND id IN ?", phoneNumberIds, ids).
+		Where("phone_number_id IN ? AND id IN ? AND status <> ?", phoneNumberIds, ids, types.CustomerStatusRemoved).
 		Order("id").
 		Find(&customers)
 	if result.Error != nil {
@@ -230,7 +245,7 @@ func (customerRepository *CustomerRepository) GetByImportedPhoneNumber(ctx conte
 	}
 	result := customerRepository.db.WithContext(ctx).
 		Model(&dao_customer.Customer{}).
-		Where("phone_number_id = ? AND imported_phone_number_hash = ?", phoneNumberId, importedPhoneNumberHash).
+		Where("phone_number_id = ? AND imported_phone_number_hash = ? AND status <> ?", phoneNumberId, importedPhoneNumberHash, types.CustomerStatusRemoved).
 		First(&customer)
 	if result.Error != nil {
 		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -250,7 +265,7 @@ func (customerRepository *CustomerRepository) GetDistinctTagsByPhoneNumberIds(ct
 	}
 	var tags []string
 	result := customerRepository.db.WithContext(ctx).
-		Raw("SELECT DISTINCT unnest(tags) FROM customer.customers WHERE phone_number_id IN ? ORDER BY 1", phoneNumberIds).
+		Raw("SELECT DISTINCT unnest(tags) FROM customer.customers WHERE phone_number_id IN ? AND status <> ? ORDER BY 1", phoneNumberIds, types.CustomerStatusRemoved).
 		Scan(&tags)
 	if result.Error != nil {
 		return nil, fmt.Errorf("CustomerRepository.GetDistinctTags phoneNumberIds=%v error=%w", phoneNumberIds, result.Error)
@@ -261,7 +276,7 @@ func (customerRepository *CustomerRepository) GetDistinctTagsByPhoneNumberIds(ct
 func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasMessage bool, phoneNumberIds []int32, name string, order types.OrderCustomersType, status *types.CustomerStatus, tags []string, page int, pageSize int) (customers []dao_customer.Customer, totalItems int, totalPages int, err error) {
 	query := customerRepository.db.WithContext(ctx).
 		Table("customer.customers AS c").
-		Where("c.phone_number_id IN ?", phoneNumberIds)
+		Where("c.phone_number_id IN ? AND c.status <> ?", phoneNumberIds, types.CustomerStatusRemoved)
 	if name != "" {
 		query = query.Where("c.display_name ILIKE ?", "%"+name+"%")
 	}
@@ -443,7 +458,7 @@ func (customerRepository *CustomerRepository) UpdateStatusByIds(ctx context.Cont
 	}
 	if err := customerRepository.db.WithContext(ctx).
 		Model(&dao_customer.Customer{}).
-		Where("id IN ?", ids).
+		Where("id IN ? AND status <> ?", ids, types.CustomerStatusRemoved).
 		Updates(map[string]any{"status": status}).Error; err != nil {
 		return fmt.Errorf("CustomerRepository.UpdateStatusByIds ids=%v status=%s error=%w", ids, status, err)
 	}

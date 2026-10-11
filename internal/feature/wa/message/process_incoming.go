@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jjcheng/wawa-go/internal/cfg"
+	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
@@ -137,14 +138,6 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				if err != nil {
 					dependencies.Logger.ErrorFunction(err, key)
 				}
-			} else if change.Field == "product_feed" {
-				var productFeed dto_wa.IncomingProductFeed
-				if err := json.Unmarshal(change.Value, &productFeed); err != nil {
-					return fmt.Errorf("invalid message template status change.Value=%s: %w", change.Value, err)
-				}
-				if productFeed.Status == "finished" {
-					// TODO: sync catalog db
-				}
 			} else if change.Field == "smb_message_echoes" { // messages sent by user via business app
 				var incomingValue dto_wa.IncomingValue
 				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
@@ -167,7 +160,73 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 					}
 				}
 			} else if change.Field == "smb_app_state_sync" {
-
+				var incomingValue dto_wa.IncomingValue
+				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
+					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
+				}
+				for _, stateSync := range incomingValue.StateSyncs {
+					phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, incomingValue.Metadata.PhoneNumberID)
+					if err != nil {
+						if errors.Is(err, gorm.ErrRecordNotFound) {
+							return nil
+						}
+						return fmt.Errorf("error getting phone number in smb_app_state_sync webhook using phoneNumberId %s: %w", incomingValue.Metadata.PhoneNumberID, err)
+					}
+					existingCustomer, err := dependencies.UnitOfWork.CustomerRepository().GetByWAIdOrMetaUserId(ctx, phoneNumber.Id, stateSync.Contact.PhoneNumber, stateSync.Contact.UserId)
+					if stateSync.Action == "add" {
+						// if adding, it's ok if existing not found
+						if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+							return fmt.Errorf("error getting existing customer by phoneNumberId %d userId %s: %w", phoneNumber.Id, stateSync.Contact.UserId, err)
+						}
+						if existingCustomer != nil {
+							existingCustomer.WAId = stateSync.Contact.PhoneNumber
+							existingCustomer.MetaUserId = stateSync.Contact.UserId
+							existingCustomer.WADisplayName = stateSync.Contact.FullName
+							existingCustomer.Status = types.CustomerStatusActive
+							if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, existingCustomer); err != nil {
+								return fmt.Errorf("error updating existing customer in symb_app_state_sync webhook adding contact: %w", err)
+							}
+						} else {
+							var countryCode, phone string
+							cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(stateSync.Contact.PhoneNumber)
+							if err != nil {
+								dependencies.Logger.ErrorFunction(err)
+								cc = "."
+								pn = stateSync.Contact.PhoneNumber
+							}
+							countryCode = cc
+							phone = pn
+							newCustomer := dao_customer.Customer{
+								PhoneNumberId: phoneNumber.Id,
+								DisplayName:   stateSync.Contact.FullName,
+								WADisplayName: stateSync.Contact.FullName,
+								CountryCode:   countryCode,
+								PhoneNumber:   phone,
+								MetaUserId:    stateSync.Contact.UserId,
+								Status:        types.CustomerStatusActive,
+								Remarks:       "created in smb_app_state_sync webhook",
+								Token:         uuid.NewString(),
+								FromWebhook:   true,
+								AgentEnabled:  true,
+							}
+							if err := dependencies.UnitOfWork.CustomerRepository().Insert(ctx, &newCustomer); err != nil {
+								return fmt.Errorf("error inserting new customer in smb_app_state_sync webhook: %w", err)
+							}
+						}
+					} else {
+						if err != nil {
+							if errors.Is(err, gorm.ErrRecordNotFound) {
+								return nil
+							}
+							return fmt.Errorf("error getting existing customer by phoneNumberId %d userId %s: %w", phoneNumber.Id, stateSync.Contact.UserId, err)
+						}
+						existingCustomer.Status = types.CustomerStatusInactive
+						existingCustomer.AgentEnabled = false
+						if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, existingCustomer); err != nil {
+							return fmt.Errorf("error updating customer in smb_app_state_sync webhook: %w", err)
+						}
+					}
+				}
 			} else if change.Field == "messaging_handovers" {
 				var incomingValue dto_wa.IncomingValue
 				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
@@ -175,6 +234,61 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 				}
 				if incomingValue.IncomingHandovers != nil {
 					return handoverMessaging(ctx, dependencies, incomingValue)
+				}
+			} else if change.Field == "account_update" {
+				var incomingValue dto_wa.IncomingValue
+				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
+					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
+				}
+				if incomingValue.AppUpdate == nil {
+					return fmt.Errorf("change field is account_update but no appUpdate related fields")
+				}
+				if incomingValue.Event == "PARTNER_REMOVED" || incomingValue.Event == "ACCOUNT_OFFBOARDED" || incomingValue.Event == "ACCOUNT_RECONNECTED" {
+					// get phoneNumber by wabaid
+					if incomingValue.PhoneNumber != "" {
+						phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByWAId(ctx, incomingValue.PhoneNumber)
+						if err != nil {
+							if errors.Is(err, gorm.ErrRecordNotFound) {
+								return nil
+							}
+							return fmt.Errorf("error getting phone number by waid in account_update webhook PARTNER_REMOVED: %w", err)
+						}
+						if incomingValue.Event == "ACCOUNT_RECONNECTED" { // re-onboard
+							phoneNumber.Status = types.WAPhoneNumberStatusConnected
+						} else {
+							phoneNumber.Status = types.WAPhoneNumberStatusDisconnected
+							phoneNumber.AgentEnabled = false
+						}
+						if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, phoneNumber); err != nil {
+							return fmt.Errorf("error updating phone number in account_update webhook PARTNER_REMOVED: %w", err)
+						}
+					} else if incomingValue.WABAInfo != nil {
+						businessAccount, _, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetByWABAId(ctx, incomingValue.WABAInfo.WabaID)
+						if err != nil {
+							if errors.Is(err, gorm.ErrRecordNotFound) {
+								return nil
+							}
+							return fmt.Errorf("error getting business account by waba_id in account_update webhook PARTNER_REMOVED: %w", err)
+						}
+						phoneNumbers, _, _, err := dependencies.UnitOfWork.WAPhoneNumberRepository().ListByBusinessAccountId(ctx, businessAccount.Id, types.WAPhoneNumberStatusConnected, 1, 999999)
+						for i := range phoneNumbers {
+							phoneNumbers[i].Status = types.WAPhoneNumberStatusDisconnected
+							phoneNumbers[i].AgentEnabled = false
+							if err := dependencies.UnitOfWork.WAPhoneNumberRepository().Update(ctx, &phoneNumbers[i]); err != nil {
+								return fmt.Errorf("error updating phone number status to CONNECTED in account_update webhook PARTNER_REMOVED")
+							}
+						}
+					}
+				}
+			} else if change.Field == "history" {
+				var incomingValue dto_wa.IncomingValue
+				if err := json.Unmarshal(change.Value, &incomingValue); err != nil {
+					return fmt.Errorf("invalid messages change value %v: %w", change.Value, err)
+				}
+				for _, history := range incomingValue.History {
+					for _, thread := range history.Threads {
+						_ = insertHistory(ctx, dependencies, thread, incomingValue.Metadata)
+					}
 				}
 			}
 		}
@@ -256,7 +370,12 @@ func insertIncomingStatus(ctx context.Context, dependencies *service.Dependencie
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return fmt.Errorf("failed to get customer customerId=%d error=%w", message.CustomerId, err)
 		}
-		return fmt.Errorf("customer not found %d", message.CustomerId)
+		// Retain delivery history without updating or notifying a removed customer.
+		if err := transaction.CommitTransaction(); err != nil {
+			return fmt.Errorf("failed to commit status for removed customer customerId=%d error=%w", message.CustomerId, err)
+		}
+		committed = true
+		return nil
 	}
 	// update customer if needed
 	var customerHasChange bool
@@ -357,7 +476,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			WAId:          contact.WaID,
 			Remarks:       "created from incoming WhatsApp message",
 			PhoneNumberId: userPhoneNumber.Id,
-			FromIncoming:  true,
+			FromWebhook:   true,
 			AgentEnabled:  true,
 		}
 		createCustomerResponse := createCustomer.Handle(ctx, nil, &transactionDependencies)
@@ -380,7 +499,7 @@ func insertIncomingMessage(ctx context.Context, dependencies *service.Dependenci
 			existingCustomer.WADisplayName = contact.Profile.Name
 			hasChange = true
 		}
-		if contact.Profile.Name != "" && existingCustomer.DisplayName == "Unknown name" {
+		if contact.Profile.Name != "" && existingCustomer.DisplayName == "Unknown" {
 			existingCustomer.DisplayName = contact.Profile.Name
 			hasChange = true
 		}
@@ -514,15 +633,15 @@ func insertIncomingMessageEcho(ctx context.Context, dependencies *service.Depend
 			phoneNumber = pn
 		}
 		createCustomer := feature_customer.Create{
-			DisplayName:   "Unknown name",
-			WADisplayName: "Unknown name",
+			DisplayName:   "Unknown",
+			WADisplayName: "Unknown",
 			CountryCode:   countryCode,
 			PhoneNumber:   phoneNumber,
 			MetaUserId:    incomingMessageEcho.Message.Recipient,
 			WAId:          incomingMessageEcho.Message.To,
 			Remarks:       "created from incoming WhatsApp message echo",
 			PhoneNumberId: userPhoneNumber.Id,
-			FromIncoming:  true,
+			FromWebhook:   true,
 		}
 		createCustomerResponse := createCustomer.Handle(ctx, nil, &transactionDependencies)
 		if !createCustomerResponse.Success {
@@ -725,15 +844,15 @@ func insertIncomingSMBMessageEcho(ctx context.Context, dependencies *service.Dep
 			phoneNumber = pn
 		}
 		createCustomer := feature_customer.Create{
-			DisplayName:   "Unknown name",
-			WADisplayName: "Unknown name",
+			DisplayName:   "Unknown",
+			WADisplayName: "Unknown",
 			CountryCode:   countryCode,
 			PhoneNumber:   phoneNumber,
 			MetaUserId:    incomingMessageEcho.ToUserId,
 			WAId:          incomingMessageEcho.To,
 			Remarks:       "created from incoming WhatsApp SMB message echo",
 			PhoneNumberId: userPhoneNumber.Id,
-			FromIncoming:  true,
+			FromWebhook:   true,
 		}
 		createCustomerResponse := createCustomer.Handle(ctx, nil, &transactionDependencies)
 		if !createCustomerResponse.Success {
@@ -801,6 +920,103 @@ func publishNotification(phoneNumberId string, message dto_wa.Message, customer 
 	}
 }
 
+// history
+func insertHistory(ctx context.Context, dependencies *service.Dependencies, thread dto_wa.HistoryThread, metadata dto_wa.IncomingMetadata) error {
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, metadata.PhoneNumberID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("error getting phone number id in history webhook: %w", err)
+	}
+	customerWAId := thread.Context.WAId
+	customerMetaUserId := thread.Context.UserId
+	existingCustomer, err := dependencies.UnitOfWork.CustomerRepository().GetByWAIdOrMetaUserId(ctx, phoneNumber.Id, customerWAId, customerMetaUserId)
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("error getting existing customer by waId of metaUserId %s: %w", customerMetaUserId, err)
+		}
+	}
+	for _, historyMessage := range thread.Messages {
+		timestamp, err := strconv.ParseInt(historyMessage.Timestamp, 10, 64)
+		if err != nil {
+			dependencies.Logger.ErrorFunction(err, historyMessage.Timestamp)
+			continue
+		}
+		// if no existing customer, create new
+		var customerDTO dto_customer.Customer
+		if existingCustomer == nil {
+			var countryCode, phoneNumberStr string
+			if customerWAId != "" {
+				cc, pn, err := helper.GetCountryCodeAndPhoneNumberFromWAId(customerWAId)
+				if err != nil {
+					dependencies.Logger.ErrorFunction(err)
+					cc = "."
+					pn = customerWAId
+				}
+				countryCode = cc
+				phoneNumberStr = pn
+			}
+			createCustomer := feature_customer.Create{
+				DisplayName:   "Unknown", // set same as wa display name
+				WADisplayName: "Unknown",
+				CountryCode:   countryCode,
+				PhoneNumber:   phoneNumberStr,
+				MetaUserId:    customerMetaUserId,
+				WAId:          customerWAId,
+				Remarks:       "created from history WhatsApp message",
+				PhoneNumberId: phoneNumber.Id,
+				FromWebhook:   true,
+				AgentEnabled:  true,
+			}
+			createCustomerResponse := createCustomer.Handle(ctx, nil, dependencies)
+			if !createCustomerResponse.Success {
+				return createCustomerResponse.Error
+			}
+			customerDTO = *createCustomerResponse.Data
+			existingCustomer, err = dependencies.UnitOfWork.CustomerRepository().GetById(ctx, customerDTO.Id)
+			if err != nil {
+				return fmt.Errorf("failed to load customer created from history customerId=%d error=%w", customerDTO.Id, err)
+			}
+		} else { // update metaUserId if not exist
+			var hasChange bool
+			if customerMetaUserId != "" && existingCustomer.MetaUserId != customerMetaUserId {
+				existingCustomer.MetaUserId = customerMetaUserId
+				hasChange = true
+			}
+			if customerWAId != "" && existingCustomer.WAId != customerWAId {
+				existingCustomer.WAId = customerWAId
+				hasChange = true
+			}
+			if hasChange {
+				if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, existingCustomer); err != nil {
+					dependencies.Logger.ErrorFunction(err, existingCustomer.Id)
+					continue
+				}
+			}
+			customerDTO = dto_customer.NewCustomer(*existingCustomer)
+		}
+		message := dao_wa.Message{
+			Sending:       historyMessage.HistoryContext.FromMe,
+			CustomerId:    customerDTO.Id,
+			PhoneNumberId: phoneNumber.Id,
+			WAMessageId:   historyMessage.ID,
+			Timestamp:     timestamp,
+			Type:          historyMessage.Type,
+			Payload:       historyMessage.Payload,
+			Status:        types.WAMessageStatus(strings.ToUpper(historyMessage.HistoryContext.Status)),
+			Token:         uuid.NewString(),
+		}
+		if err := dependencies.UnitOfWork.WAMessageRepository().Insert(ctx, &message); err != nil {
+			if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			dependencies.Logger.ErrorFunction(err, message.WAMessageId)
+		}
+	}
+	return nil
+}
+
 // retry sending message in task function
 func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *service.Dependencies) error {
 	// if cannot get message, just return error
@@ -815,7 +1031,8 @@ func RetrySendingMessage(ctx context.Context, messageId int32, dependencies *ser
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return fmt.Errorf("message not found")
+			log.Printf("skipping retry for message %d: message or non-removed customer not found", messageId)
+			return nil
 		}
 		return fmt.Errorf("failed to get message messageId=%d error=%w", messageId, err)
 	}
