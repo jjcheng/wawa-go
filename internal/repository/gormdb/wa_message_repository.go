@@ -174,6 +174,16 @@ func (messageRepository *WAMessageRepository) UpdateNextAttemptAt(ctx context.Co
 	return result.RowsAffected == 1, nil
 }
 
+func (messageRepository *WAMessageRepository) SetReadByCustomerId(ctx context.Context, customerId int32, read bool) error {
+	if err := messageRepository.db.WithContext(ctx).
+		Model(&dao_wa.Message{}).
+		Where("customer_id = ?", customerId).
+		Updates(map[string]any{"read": read}).Error; err != nil {
+		return fmt.Errorf("MessageRepository.SetReadByCustomerId customerId=%d read=%t error=%w", customerId, read, err)
+	}
+	return nil
+}
+
 func (messageRepository *WAMessageRepository) DeleteByPhoneNumberId(ctx context.Context, phoneNumberId int32) error {
 	db := messageRepository.db.WithContext(ctx)
 	if err := db.Exec("DELETE FROM wa.message_status WHERE message_id IN (SELECT id FROM wa.messages WHERE phone_number_id = ?)", phoneNumberId).Error; err != nil {

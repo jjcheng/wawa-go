@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -18,12 +17,12 @@ import (
 )
 
 type MarkRead struct {
-	MessageId int32 `form:"message_id" val:"required" description:"id of the message"`
+	CustomerId int32 `form:"customer_id" val:"required" description:"all messages with this customer will be read"`
 }
 
 func (markRead *MarkRead) Validate() []exception.InputException {
-	if markRead.MessageId <= 0 {
-		return []exception.InputException{exception.NewInputException("message_id", "missing message id")}
+	if markRead.CustomerId <= 0 {
+		return []exception.InputException{exception.NewInputException("customer_id", "missing customer id")}
 	}
 	return nil
 }
@@ -38,24 +37,21 @@ func (markRead MarkRead) Handle(ctx context.Context, user *dto_account.User, dep
 	if inputErrors := markRead.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[any](inputErrors)
 	}
-	message, err := dependencies.UnitOfWork.WAMessageRepository().GetById(ctx, markRead.MessageId)
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetById(ctx, markRead.CustomerId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[any](http.StatusNotFound, "message not found", nil)
+			return dto.NewFailedResponse[any](http.StatusNotFound, "customer not found", nil)
 		}
 		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if strings.TrimSpace(message.WAMessageId) == "" {
-		return dto.NewFailedResponse[any](http.StatusBadRequest, "message has no WhatsApp message id", nil)
-	}
-	phoneNumber := helper.First(user.WA.PhoneNumbers, func(phoneNumber dto_wa.PhoneNumber) bool {
-		return phoneNumber.Id == message.PhoneNumberId
-	})
-	if phoneNumber == nil {
+	// check customer belong to this user
+	if !helper.Any(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+		return pn.Id == customer.PhoneNumberId
+	}) {
 		return dto.NewFailedResponse[any](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	if _, err := dependencies.Whatsapp.MarkAsRead(ctx, phoneNumber.MetaPhoneNumberId, message.WAMessageId, user.WA.BusinessPortfolioAccessToken); err != nil {
-		return dto.NewFailedResponse[any](http.StatusBadGateway, err.Error(), err)
+	if err := dependencies.UnitOfWork.WAMessageRepository().SetReadByCustomerId(ctx, markRead.CustomerId, true); err != nil {
+		return dto.NewFailedResponse[any](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	return dto.NewEmptyResponse(true, http.StatusOK)
 }

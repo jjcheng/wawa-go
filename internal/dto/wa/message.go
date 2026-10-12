@@ -29,6 +29,7 @@ type Message struct {
 	Token         string                `json:"token"`
 	ByAgent       bool                  `json:"by_agent"`
 	Echo          bool                  `json:"echo"`
+	Read          bool                  `json:"read"`
 	// lazy loaded
 	Statuses            []MessageStatus `json:"statuses,omitempty"`
 	PreviewHTML         string          `json:"preview_html,omitempty"`
@@ -62,6 +63,7 @@ func NewMessage(message dao_wa.Message) Message {
 		Token:         message.Token,
 		NextAttemptAt: message.NextAttemptAt,
 		ByAgent:       message.ByAgent,
+		Read:          message.Read,
 	}
 	// reset errorMessage and nextAttemptAt if sent successfully
 	if d.Status == types.WAMessageStatusAccepted || d.Status == types.WAMessageStatusDelivered || d.Status == types.WAMessageStatusRead || d.Status == types.WAMessageStatusSent {

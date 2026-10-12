@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
@@ -73,8 +72,8 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	skill.Title = update.Title
 	skill.Description = update.Description
 	skill.Enabled = update.Enabled
-	if updatedAt, ok := fields["last_updated_at"].(time.Time); ok {
-		skill.LastUpdatedAt = updatedAt
+	if err := dependencies.UnitOfWork.AIAgentSkillRepository().Update(ctx, skill); err != nil {
+		return dto.NewFailedResponse[*dto_ai_agent.Skill](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	result := dto_ai_agent.NewSkill(*skill)
 	return dto.NewSuccessResponse(&result)

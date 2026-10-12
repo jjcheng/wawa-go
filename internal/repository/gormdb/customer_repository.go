@@ -312,15 +312,16 @@ func (customerRepository *CustomerRepository) List(ctx context.Context, onlyHasM
 		Select(`
 			c.*,
 			latest_message.id AS latest_message_id,
-			latest_message.timestamp AS last_message_timestamp,
+			latest_message.timestamp AS latest_message_timestamp,
 			latest_message.sending AS latest_message_sending,
 			latest_message.type AS latest_message_type,
 			latest_message.token AS latest_message_token,
-			latest_message.payload_encrypted AS latest_message_payload_encrypted
+			latest_message.payload_encrypted AS latest_message_payload_encrypted,
+			latest_message.read AS latest_message_read
 		`).
 		Joins(`
 			LEFT JOIN LATERAL (
-				SELECT m.id, m.timestamp, m.sending, m.type, m.token, m.payload_encrypted
+				SELECT m.id, m.timestamp, m.sending, m.type, m.token, m.payload_encrypted, m.read
 				FROM wa.messages AS m
 				WHERE m.customer_id = c.id
 					AND m.phone_number_id = c.phone_number_id

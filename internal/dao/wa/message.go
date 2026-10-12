@@ -22,6 +22,7 @@ type Message struct {
 	Token         string                `gorm:"column:token"`
 	ByAgent       bool                  `gorm:"column:by_agent"`
 	Echo          bool                  `gorm:"column:echo"`
+	Read          bool                  `gorm:"column:read"`
 	// for billing
 	Billable    bool   `gorm:"column:billable"`
 	BillingType string `gorm:"column:billing_type"`

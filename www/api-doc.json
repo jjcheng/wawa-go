@@ -18083,6 +18083,9 @@
                                   "preview_html": {
                                     "type": "string"
                                   },
+                                  "read": {
+                                    "type": "boolean"
+                                  },
                                   "sending": {
                                     "type": "boolean"
                                   },
@@ -25358,10 +25361,6 @@
                               "imported_phone_number": {
                                 "type": "string"
                               },
-                              "last_message_timestamp": {
-                                "format": "int64",
-                                "type": "integer"
-                              },
                               "last_updated_at": {
                                 "example": "2025-10-01T08:08:00Z",
                                 "format": "date-time",
@@ -25374,8 +25373,15 @@
                                 "format": "int32",
                                 "type": "integer"
                               },
+                              "latest_message_read": {
+                                "type": "boolean"
+                              },
                               "latest_message_sending": {
                                 "type": "boolean"
+                              },
+                              "latest_message_timestamp": {
+                                "format": "int64",
+                                "type": "integer"
                               },
                               "meta_user_id": {
                                 "type": "string"
@@ -25813,10 +25819,6 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_message_timestamp": {
-                          "format": "int64",
-                          "type": "integer"
-                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
@@ -25829,8 +25831,15 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "latest_message_read": {
+                          "type": "boolean"
+                        },
                         "latest_message_sending": {
                           "type": "boolean"
+                        },
+                        "latest_message_timestamp": {
+                          "format": "int64",
+                          "type": "integer"
                         },
                         "meta_user_id": {
                           "type": "string"
@@ -27137,10 +27146,6 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_message_timestamp": {
-                          "format": "int64",
-                          "type": "integer"
-                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
@@ -27153,8 +27158,15 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "latest_message_read": {
+                          "type": "boolean"
+                        },
                         "latest_message_sending": {
                           "type": "boolean"
+                        },
+                        "latest_message_timestamp": {
+                          "format": "int64",
+                          "type": "integer"
                         },
                         "meta_user_id": {
                           "type": "string"
@@ -27667,10 +27679,6 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_message_timestamp": {
-                          "format": "int64",
-                          "type": "integer"
-                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
@@ -27683,8 +27691,15 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "latest_message_read": {
+                          "type": "boolean"
+                        },
                         "latest_message_sending": {
                           "type": "boolean"
+                        },
+                        "latest_message_timestamp": {
+                          "format": "int64",
+                          "type": "integer"
                         },
                         "meta_user_id": {
                           "type": "string"
@@ -28182,10 +28197,6 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_message_timestamp": {
-                          "format": "int64",
-                          "type": "integer"
-                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
@@ -28198,8 +28209,15 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "latest_message_read": {
+                          "type": "boolean"
+                        },
                         "latest_message_sending": {
                           "type": "boolean"
+                        },
+                        "latest_message_timestamp": {
+                          "format": "int64",
+                          "type": "integer"
                         },
                         "meta_user_id": {
                           "type": "string"
@@ -28712,10 +28730,6 @@
                         "imported_phone_number": {
                           "type": "string"
                         },
-                        "last_message_timestamp": {
-                          "format": "int64",
-                          "type": "integer"
-                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
@@ -28728,8 +28742,15 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "latest_message_read": {
+                          "type": "boolean"
+                        },
                         "latest_message_sending": {
                           "type": "boolean"
+                        },
+                        "latest_message_timestamp": {
+                          "format": "int64",
+                          "type": "integer"
                         },
                         "meta_user_id": {
                           "type": "string"
@@ -37021,6 +37042,9 @@
                               "preview_html": {
                                 "type": "string"
                               },
+                              "read": {
+                                "type": "boolean"
+                              },
                               "sending": {
                                 "type": "boolean"
                               },
@@ -37849,6 +37873,9 @@
                         "preview_html": {
                           "type": "string"
                         },
+                        "read": {
+                          "type": "boolean"
+                        },
                         "sending": {
                           "type": "boolean"
                         },
@@ -38634,10 +38661,10 @@
         "description": "Mark a WhatsApp message as read by user.",
         "parameters": [
           {
-            "description": "id of the message",
+            "description": "all messages with this customer will be read",
             "example": "",
             "in": "query",
-            "name": "message_id",
+            "name": "customer_id",
             "required": true,
             "schema": {
               "format": "int32",
@@ -39734,6 +39761,9 @@
                         },
                         "preview_html": {
                           "type": "string"
+                        },
+                        "read": {
+                          "type": "boolean"
                         },
                         "sending": {
                           "type": "boolean"

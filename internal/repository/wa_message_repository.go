@@ -15,4 +15,5 @@ type WAMessageRepository interface {
 	ListNeedResend(ctx context.Context) ([]dao_wa.Message, error)
 	UpdateNextAttemptAt(ctx context.Context, id int32, claimUntil time.Time) (bool, error)
 	DeleteByPhoneNumberId(ctx context.Context, phoneNumberId int32) error
+	SetReadByCustomerId(ctx context.Context, customerId int32, read bool) error
 }

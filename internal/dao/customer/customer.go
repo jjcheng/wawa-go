@@ -36,11 +36,12 @@ type Customer struct {
 	AdditionalDataEncrypted      string `gorm:"column:additional_data_encrypted"`
 	// latest message fields are read-only values selected by customer list queries
 	LatestMessageId               *int32 `gorm:"column:latest_message_id;->"`
-	LastMessageTimestamp          *int64 `gorm:"column:last_message_timestamp;->"`
+	LatestMessageTimestamp        *int64 `gorm:"column:latest_message_timestamp;->"`
 	LatestMessageSending          bool   `gorm:"column:latest_message_sending;->"`
 	LatestMessageType             string `gorm:"column:latest_message_type;->"`
 	LatestMessageToken            string `gorm:"column:latest_message_token;->"`
 	LatestMessagePayloadEncrypted string `gorm:"column:latest_message_payload_encrypted;->"`
+	LatestMessageRead             bool   `gorm:"column:latest_message_read;->"`
 	LatestMessageContent          string `gorm:"-"`
 }
 

@@ -204,7 +204,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 								PhoneNumber:   phone,
 								MetaUserId:    stateSync.Contact.UserId,
 								Status:        types.CustomerStatusActive,
-								Remarks:       "created in smb_app_state_sync webhook",
+								Remarks:       "synced after user added contact in WhatsApp business app",
 								Token:         uuid.NewString(),
 								FromWebhook:   true,
 								AgentEnabled:  true,
@@ -222,6 +222,8 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 						}
 						existingCustomer.Status = types.CustomerStatusInactive
 						existingCustomer.AgentEnabled = false
+						existingCustomer.Remarks += "\nsynced after user removed contact in WhatsApp business app"
+						existingCustomer.Remarks = strings.TrimSpace(existingCustomer.Remarks)
 						if err := dependencies.UnitOfWork.CustomerRepository().Update(ctx, existingCustomer); err != nil {
 							return fmt.Errorf("error updating customer in smb_app_state_sync webhook: %w", err)
 						}
