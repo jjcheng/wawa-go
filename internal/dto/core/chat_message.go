@@ -9,7 +9,6 @@ import (
 )
 
 type ChatMessage struct {
-	Identifier       string                 `json:"identifier" val:"required" description:"uuid to track (mostly for mobi)"`
 	Content          string                 `json:"content" val:"required" description:"content of the message" example:"hi"`
 	DateTime         time.Time              `json:"date_time" val:"required" description:"date time of the message creation" example:"2025-10-01T10:00:00Z"`
 	Attachment       *ChatMessageAttachment `json:"attachment" description:"image, document, video"`

@@ -8,15 +8,18 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	dao_customer "github.com/jjcheng/wawa-go/internal/dao/customer"
 	dao_wa "github.com/jjcheng/wawa-go/internal/dao/wa"
+	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
 	dto_customer "github.com/jjcheng/wawa-go/internal/dto/customer"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	feature_account_notification "github.com/jjcheng/wawa-go/internal/feature/account/notification"
+	feature_ai "github.com/jjcheng/wawa-go/internal/feature/ai"
 	feature_customer "github.com/jjcheng/wawa-go/internal/feature/customer"
 	feature_wa_business_agent "github.com/jjcheng/wawa-go/internal/feature/wa/business_agent"
 	"github.com/jjcheng/wawa-go/internal/helper"
@@ -44,6 +47,16 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 						}
 						return err
 					}
+				}
+				// provide AI answer if confiugred
+				if len(incomingValue.Messages) > 0 {
+					var waitGroup sync.WaitGroup
+					for _, contact := range incomingValue.Contacts {
+						waitGroup.Go(func() {
+							passToAI(ctx, incomingValue.Metadata, contact, dependencies)
+						})
+					}
+					waitGroup.Done()
 				}
 				// process incoming message statuses
 				for _, status := range incomingValue.Statuses {
@@ -1190,4 +1203,64 @@ func retry(ctx context.Context, attempts int, fn func() error) error {
 		}
 	}
 	return err
+}
+
+func passToAI(ctx context.Context, metadata dto_wa.IncomingMetadata, contact dto_wa.IncomingContact, dependencies *service.Dependencies) error {
+	// check which phone number is receiving these messages
+	phoneNumber, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetByMetaPhoneNumberId(ctx, metadata.PhoneNumberID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("error getting phone number of meta phone number %s id: %w", metadata.PhoneNumberID, err)
+	}
+	if phoneNumber.AgenProfileId == nil {
+		return nil
+	}
+	// get sender
+	customer, err := dependencies.UnitOfWork.CustomerRepository().GetByWAIdOrMetaUserId(ctx, phoneNumber.Id, contact.WaID, contact.UserID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return fmt.Errorf("error getting customer by waId or metaUserId %s: %w", contact.UserID, err)
+	}
+	if !customer.AgentEnabled {
+		return nil
+	}
+	messages, _, _, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, phoneNumber.Id, customer.Id, true, 1, 100)
+	if err != nil {
+		return fmt.Errorf("error listing messages by phoneNumberId %s and customerId %d: %w", phoneNumber.Id, customer.Id, err)
+	}
+	messageDTOs := helper.Map(messages, func(m dao_wa.Message) dto_wa.Message {
+		return dto_wa.NewMessage(m)
+	})
+	// get agent profile
+	agentProfile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, *phoneNumber.AgenProfileId)
+	if err != nil {
+		return fmt.Errorf("error getting agent profile by id: %d: %w", *phoneNumber.AgenProfileId, err)
+	}
+	// process by ai now
+	chat := feature_ai.Chat{
+		AgentProfile: helper.ConvertToPointer(dto_ai_agent.NewProfile(*agentProfile)),
+		Messages:     messageDTOs,
+	}
+	chatResponse := chat.Handle(ctx, nil, dependencies)
+	if !chatResponse.Success {
+		return fmt.Errorf("error chatting in webhook: %w", chatResponse.Error)
+	}
+	// now message has been generated, send to customer
+	createMessage := Create{
+		CustomerId: customer.Id,
+		Type:       MessageTypeText,
+		Text: &TextObject{
+			Body: chatResponse.Data.Text(),
+		},
+		FromWebhook: true,
+	}
+	createMessageResponse := createMessage.Handle(ctx, nil, dependencies)
+	if createMessageResponse.Success {
+		return fmt.Errorf("error creating message by AI: %w", createMessageResponse.Error)
+	}
+	return nil
 }
