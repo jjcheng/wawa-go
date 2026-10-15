@@ -16,7 +16,8 @@ import (
 )
 
 type List struct {
-	ProfileId int32 `uri:"id" val:"required" description:"id of the agent profile"`
+	ProfileId   int32 `uri:"id" val:"required" description:"id of the agent profile"`
+	FromWebhook bool  `json:"-" uri:"-"`
 }
 
 func (list *List) Validate() []exception.InputException {
@@ -27,11 +28,13 @@ func (list *List) Validate() []exception.InputException {
 }
 
 func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_ai_agent.Skill] {
-	if user == nil {
-		return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
-	}
-	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	if !list.FromWebhook {
+		if user == nil {
+			return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+		}
+		if user.Type != types.UserTypeMaster {
+			return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_ai_agent.Skill](inputErrors)
@@ -43,18 +46,31 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 		}
 		return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	if profile.BusinessAccountId != user.BusinessAccountId {
-		return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	if !list.FromWebhook {
+		if profile.BusinessAccountId != user.BusinessAccountId {
+			return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
 	}
 	skills, err := dependencies.UnitOfWork.AIAgentSkillRepository().ListByProfileId(ctx, list.ProfileId)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	items := make([]dto_ai_agent.Skill, 0, len(skills))
+	skillDTOs := list.builtInSkills()
 	for _, skill := range skills {
-		items = append(items, dto_ai_agent.NewSkill(skill))
+		skillDTOs = append(skillDTOs, dto_ai_agent.NewSkill(skill, types.AIAgentSkillTypeCustom))
 	}
-	return dto.NewSuccessResponse(items)
+	return dto.NewSuccessResponse(skillDTOs)
+}
+
+func (list *List) builtInSkills() []dto_ai_agent.Skill {
+	return []dto_ai_agent.Skill{
+		{
+			Type:        types.AIAgentSkillTypeAnswerQuestion,
+			Title:       "Answer a question",
+			Description: "Search and answer user's queries from crawled web pages, files and FAQs.",
+			Enabled:     true,
+		},
+	}
 }
 
 func (List) APISettings() feature.APISettings {

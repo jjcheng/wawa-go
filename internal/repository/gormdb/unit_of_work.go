@@ -221,6 +221,10 @@ func (unitOfWork *UnitOfWork) AIAgentWebsiteRepository() repository.AIAgentWebsi
 	return unitOfWork.aiAgentWebsiteRepository
 }
 
+// func (unitOfWork *UnitOfWork) AIAgentSkillInputRepository() repository.AIAgentSkillInputRepository {
+// 	return unitOfWork.aiAgentSkillInputRepository
+// }
+
 // transaction
 func (unitOfWork *UnitOfWork) BeginTransaction() repository.UnitOfWork {
 	db := unitOfWork.db.Begin()

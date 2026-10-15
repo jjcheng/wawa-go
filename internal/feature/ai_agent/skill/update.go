@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	dao_ai_agent "github.com/jjcheng/wawa-go/internal/dao/ai_agent"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
@@ -17,11 +18,12 @@ import (
 )
 
 type Update struct {
-	ProfileId   int32  `uri:"id" val:"required" description:"id of the agent profile"`
-	Id          int32  `uri:"skill_id" val:"required" description:"id of the skill"`
-	Title       string `json:"title" val:"required" description:"title of the skill"`
-	Description string `json:"description" val:"required" description:"description of the skill"`
-	Enabled     bool   `json:"enabled" val:"required" description:"if the skill is enabled"`
+	ProfileId   int32        `uri:"id" val:"required" description:"id of the agent profile"`
+	Id          int32        `uri:"skill_id" val:"required" description:"id of the skill"`
+	Title       string       `json:"title" val:"required" description:"title of the skill"`
+	Description string       `json:"description" val:"required" description:"description of the skill"`
+	Enabled     bool         `json:"enabled" val:"required" description:"if the skill is enabled"`
+	Inputs      []SkillInput `json:"inputs" description:"any inputs to collect from the user, replaces the existing inputs"`
 }
 
 func (update *Update) Validate() []exception.InputException {
@@ -32,6 +34,9 @@ func (update *Update) Validate() []exception.InputException {
 	update.Title = strings.TrimSpace(update.Title)
 	update.Description = strings.TrimSpace(update.Description)
 	inputErrors = append(inputErrors, validateSkillContent(update.Title, update.Description)...)
+	for i := range update.Inputs {
+		inputErrors = append(inputErrors, update.Inputs[i].Validate(i)...)
+	}
 	return inputErrors
 }
 
@@ -72,17 +77,21 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	skill.Title = update.Title
 	skill.Description = update.Description
 	skill.Enabled = update.Enabled
+	skill.Inputs = []dao_ai_agent.SkillInput{}
+	for _, input := range update.Inputs {
+		skill.Inputs = append(skill.Inputs, input.ConvertToDAO())
+	}
 	if err := dependencies.UnitOfWork.AIAgentSkillRepository().Update(ctx, skill); err != nil {
 		return dto.NewFailedResponse[*dto_ai_agent.Skill](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	result := dto_ai_agent.NewSkill(*skill)
+	result := dto_ai_agent.NewSkill(*skill, types.AIAgentSkillTypeCustom)
 	return dto.NewSuccessResponse(&result)
 }
 
 func (Update) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Update AI agent skill",
-		"Updates the title and description of an AI agent skill in the business account.",
+		"Updates the title, description, enabled flag and inputs of an AI agent skill in the business account.",
 		types.HttpRequestTypeUriJSON,
 		http.MethodPut,
 		"/v1/ai-agent/profiles/:id/skills/:skill_id",

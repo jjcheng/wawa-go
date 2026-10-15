@@ -77,7 +77,7 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 			Content: messageDTO.Text(),
 		}
 	}
-	response, err := dependencies.TypeSafe.DetectChoice(ctx, typesafeMessages, questions)
+	response, err := dependencies.TypeSafe.Decide(ctx, typesafeMessages, questions)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusBadGateway, types.ExceptionMessageBadGateway, err)
 	}
@@ -112,7 +112,7 @@ func (work Work) Handle(ctx context.Context, user *dto_account.User, dependencie
 			Criteria:     criteria,
 		},
 	}
-	response, err = dependencies.TypeSafe.DetectChoice(ctx, typesafeMessages, questions)
+	response, err = dependencies.TypeSafe.Decide(ctx, typesafeMessages, questions)
 	if err != nil {
 		return dto.NewFailedResponse[*dto_ai_worker.WorkResult](http.StatusBadRequest, types.ExceptionMessageBadGateway, err)
 	}

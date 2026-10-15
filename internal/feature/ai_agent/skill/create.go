@@ -3,6 +3,7 @@ package feature_ai_agent_skill
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -18,9 +19,39 @@ import (
 )
 
 type Create struct {
-	ProfileId   int32  `uri:"id" val:"required" description:"id of the agent profile"`
-	Title       string `json:"title" val:"required" description:"title of the skill"`
-	Description string `json:"description" val:"required" description:"description of the skill"`
+	ProfileId   int32        `uri:"id" val:"required" description:"id of the agent profile"`
+	Title       string       `json:"title" val:"required" description:"title of the skill"`
+	Description string       `json:"description" val:"required" description:"description of the skill"`
+	Inputs      []SkillInput `json:"inputs" description:"any inputs to collect from the user"`
+}
+
+type SkillInput struct {
+	Title       string `json:"title" val:"required" description:"title of the input"`
+	Description string `json:"description" description:"description of the input"`
+	Required    bool   `json:"required" description:"if this input is required"`
+}
+
+func (skillInput *SkillInput) ConvertToDAO() dao_ai_agent.SkillInput {
+	return dao_ai_agent.SkillInput{
+		Title:       skillInput.Title,
+		Description: skillInput.Description,
+		Required:    skillInput.Required,
+	}
+}
+
+func (skillInput *SkillInput) Validate(index int) []exception.InputException {
+	skillInput.Title = strings.TrimSpace(skillInput.Title)
+	skillInput.Description = strings.TrimSpace(skillInput.Description)
+	var errors []exception.InputException
+	if skillInput.Title == "" {
+		errors = append(errors, exception.NewInputException("title", fmt.Sprintf("missing inputs[%d].title", index)))
+	} else if len(skillInput.Title) > 100 {
+		errors = append(errors, exception.NewInputException("title", fmt.Sprintf("max length of inputs[%d].title is 100", index)))
+	}
+	if skillInput.Description != "" && len(skillInput.Description) > 255 {
+		errors = append(errors, exception.NewInputException("description", fmt.Sprintf("length of inputs[%d].description is 255", index)))
+	}
+	return errors
 }
 
 func (create *Create) Validate() []exception.InputException {
@@ -31,6 +62,9 @@ func (create *Create) Validate() []exception.InputException {
 	create.Title = strings.TrimSpace(create.Title)
 	create.Description = strings.TrimSpace(create.Description)
 	inputErrors = append(inputErrors, validateSkillContent(create.Title, create.Description)...)
+	for i := range create.Inputs {
+		inputErrors = append(inputErrors, create.Inputs[i].Validate(i)...)
+	}
 	return inputErrors
 }
 
@@ -75,17 +109,20 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Description: create.Description,
 		Enabled:     true,
 	}
+	for _, input := range create.Inputs {
+		skill.Inputs = append(skill.Inputs, input.ConvertToDAO())
+	}
 	if err := dependencies.UnitOfWork.AIAgentSkillRepository().Insert(ctx, &skill); err != nil {
 		return dto.NewFailedResponse[*dto_ai_agent.Skill](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	result := dto_ai_agent.NewSkill(skill)
+	result := dto_ai_agent.NewSkill(skill, types.AIAgentSkillTypeCustom)
 	return dto.NewSuccessResponse(&result)
 }
 
 func (Create) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"Create AI agent skill",
-		"Creates an enabled skill for an AI agent profile in the business account.",
+		"Creates an enabled skill, with optional inputs to collect from the user, for an AI agent profile in the business account.",
 		types.HttpRequestTypeUriJSON,
 		http.MethodPost,
 		"/v1/ai-agent/profiles/:id/skills",

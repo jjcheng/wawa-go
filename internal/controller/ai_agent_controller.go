@@ -30,6 +30,11 @@ func registerAIAgentController(routerGroup *gin.RouterGroup, dependencies *servi
 	registerRoute[*dto_ai_agent.Skill, feature_ai_agent_skill.Update](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_agent_skill.Delete](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_agent_skill.AddCommon](routerGroup, dependencies, apiGenerator)
+	// skill inputs
+	// registerRoute[[]dto_ai_agent.SkillInput, feature_ai_agent_skill_input.List](routerGroup, dependencies, apiGenerator)
+	// registerRoute[*dto_ai_agent.SkillInput, feature_ai_agent_skill_input.Create](routerGroup, dependencies, apiGenerator)
+	// registerRoute[*dto_ai_agent.SkillInput, feature_ai_agent_skill_input.Update](routerGroup, dependencies, apiGenerator)
+	// registerRoute[any, feature_ai_agent_skill_input.Delete](routerGroup, dependencies, apiGenerator)
 	// websites
 	registerRoute[[]dto_ai_agent.Website, feature_ai_agent_website.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_ai_agent.Website, feature_ai_agent_website.Create](routerGroup, dependencies, apiGenerator)

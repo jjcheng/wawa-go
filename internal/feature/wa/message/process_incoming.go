@@ -56,7 +56,7 @@ func ProcessIncoming(ctx context.Context, incoming dto_wa.Incoming, dependencies
 							passToAI(ctx, incomingValue.Metadata, contact, dependencies)
 						})
 					}
-					waitGroup.Done()
+					waitGroup.Wait()
 				}
 				// process incoming message statuses
 				for _, status := range incomingValue.Statuses {
@@ -1230,7 +1230,7 @@ func passToAI(ctx context.Context, metadata dto_wa.IncomingMetadata, contact dto
 	}
 	messages, _, _, err := dependencies.UnitOfWork.WAMessageRepository().List(ctx, phoneNumber.Id, customer.Id, true, 1, 100)
 	if err != nil {
-		return fmt.Errorf("error listing messages by phoneNumberId %s and customerId %d: %w", phoneNumber.Id, customer.Id, err)
+		return fmt.Errorf("error listing messages by phoneNumberId %d and customerId %d: %w", phoneNumber.Id, customer.Id, err)
 	}
 	messageDTOs := helper.Map(messages, func(m dao_wa.Message) dto_wa.Message {
 		return dto_wa.NewMessage(m)
@@ -1254,12 +1254,12 @@ func passToAI(ctx context.Context, metadata dto_wa.IncomingMetadata, contact dto
 		CustomerId: customer.Id,
 		Type:       MessageTypeText,
 		Text: &TextObject{
-			Body: chatResponse.Data.Text(),
+			Body: chatResponse.Data,
 		},
 		FromWebhook: true,
 	}
 	createMessageResponse := createMessage.Handle(ctx, nil, dependencies)
-	if createMessageResponse.Success {
+	if !createMessageResponse.Success {
 		return fmt.Errorf("error creating message by AI: %w", createMessageResponse.Error)
 	}
 	return nil

@@ -55,7 +55,7 @@ func NewTypeSafe(logger *Logger) *TypeSafe {
 }
 
 // DetectIntent asks Jev to select one intent for a multi-turn conversation.
-func (typeSafe *TypeSafe) DetectChoice(ctx context.Context, messages []TypeSafeMessage, questions map[string]TypeSafeChoiceQuestion) (*TypeSafeResponse, error) {
+func (typeSafe *TypeSafe) Decide(ctx context.Context, messages []TypeSafeMessage, questions map[string]TypeSafeChoiceQuestion) (*TypeSafeResponse, error) {
 	requestBody := typeSafeRequest{
 		State:     messages,
 		Model:     "jev-latest",

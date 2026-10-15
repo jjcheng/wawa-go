@@ -34,3 +34,22 @@ const (
 	AIAgentFAQTypeDocument AIAgentFAQType = "DOCUMENT"
 	AIAgentFAQTypeLocation AIAgentFAQType = "LOCATION"
 )
+
+type AIAgentSkillType string
+
+const (
+	AIAgentSkillTypeAnswerQuestion AIAgentSkillType = "ANSWER_QUESTION"
+	AIAgentSkillTypeCustom         AIAgentSkillType = "CUSTOM"
+)
+
+type AIAgentSkillInputType string
+
+const (
+	AIAgentSkillInputTypeText     AIAgentSkillInputType = "TEXT"
+	AIAgentSkillInputTypeInt      AIAgentSkillInputType = "INT"
+	AIAgentSkillInputTypeFloat    AIAgentSkillInputType = "FLOAT"
+	AIAgentSkillInputTypeBool     AIAgentSkillInputType = "BOOL"
+	AIAgentSkillInputTypeDate     AIAgentSkillInputType = "DATE"
+	AIAgentSkillInputTypeTime     AIAgentSkillInputType = "TIME"
+	AIAgentSkillInputTypeDateTime AIAgentSkillInputType = "DATETIME"
+)

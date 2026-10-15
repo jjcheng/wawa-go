@@ -10969,6 +10969,15 @@
               "format": "int32",
               "type": "integer"
             }
+          },
+          {
+            "example": "",
+            "in": "path",
+            "name": "-",
+            "required": true,
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -10997,12 +11006,32 @@
                             "format": "int32",
                             "type": "integer"
                           },
+                          "inputs": {
+                            "items": {
+                              "properties": {
+                                "description": {
+                                  "type": "string"
+                                },
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
                           "last_updated_at": {
                             "example": "2025-10-01T08:08:00Z",
                             "format": "date-time",
                             "type": "string"
                           },
                           "title": {
+                            "type": "string"
+                          },
+                          "type": {
                             "type": "string"
                           }
                         },
@@ -11301,7 +11330,7 @@
         ]
       },
       "post": {
-        "description": "Creates an enabled skill for an AI agent profile in the business account.",
+        "description": "Creates an enabled skill, with optional inputs to collect from the user, for an AI agent profile in the business account.",
         "parameters": [
           {
             "description": "id of the agent profile",
@@ -11323,6 +11352,31 @@
                   "description": {
                     "description": "description of the skill",
                     "type": "string"
+                  },
+                  "inputs": {
+                    "description": "any inputs to collect from the user",
+                    "items": {
+                      "properties": {
+                        "description": {
+                          "description": "description of the input",
+                          "type": "string"
+                        },
+                        "required": {
+                          "description": "if this input is required",
+                          "type": "boolean"
+                        },
+                        "title": {
+                          "description": "title of the input",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title"
+                      ],
+                      "type": "object"
+                    },
+                    "nullable": true,
+                    "type": "array"
                   },
                   "title": {
                     "description": "title of the skill",
@@ -11364,12 +11418,32 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "inputs": {
+                          "items": {
+                            "properties": {
+                              "description": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
                         },
                         "title": {
+                          "type": "string"
+                        },
+                        "type": {
                           "type": "string"
                         }
                       },
@@ -12035,12 +12109,32 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "inputs": {
+                          "items": {
+                            "properties": {
+                              "description": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
                         },
                         "title": {
+                          "type": "string"
+                        },
+                        "type": {
                           "type": "string"
                         }
                       },
@@ -12337,7 +12431,7 @@
         ]
       },
       "put": {
-        "description": "Updates the title and description of an AI agent skill in the business account.",
+        "description": "Updates the title, description, enabled flag and inputs of an AI agent skill in the business account.",
         "parameters": [
           {
             "description": "id of the agent profile",
@@ -12374,6 +12468,31 @@
                   "enabled": {
                     "description": "if the skill is enabled",
                     "type": "boolean"
+                  },
+                  "inputs": {
+                    "description": "any inputs to collect from the user, replaces the existing inputs",
+                    "items": {
+                      "properties": {
+                        "description": {
+                          "description": "description of the input",
+                          "type": "string"
+                        },
+                        "required": {
+                          "description": "if this input is required",
+                          "type": "boolean"
+                        },
+                        "title": {
+                          "description": "title of the input",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "title"
+                      ],
+                      "type": "object"
+                    },
+                    "nullable": true,
+                    "type": "array"
                   },
                   "title": {
                     "description": "title of the skill",
@@ -12416,12 +12535,32 @@
                           "format": "int32",
                           "type": "integer"
                         },
+                        "inputs": {
+                          "items": {
+                            "properties": {
+                              "description": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
                         "last_updated_at": {
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
                         },
                         "title": {
+                          "type": "string"
+                        },
+                        "type": {
                           "type": "string"
                         }
                       },

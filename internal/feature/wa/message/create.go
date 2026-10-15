@@ -216,11 +216,13 @@ func (create *Create) Validate() []exception.InputException {
 }
 
 func (create Create) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[*dto_wa.Message] {
-	if user == nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
-	}
-	if user.WA == nil || user.WA.BusinessPortfolioAccessToken == "" {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+	if !create.FromWebhook {
+		if user == nil {
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+		}
+		if user.WA == nil || user.WA.BusinessPortfolioAccessToken == "" {
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
 	}
 	if inputErrors := create.Validate(); len(inputErrors) > 0 {
 		return dto.NewInvalidInputResponse[*dto_wa.Message](inputErrors)
@@ -233,15 +235,28 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		}
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	// get phone number
-	phoneNumber := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
-		return pn.Id == customer.PhoneNumberId
-	})
-	if phoneNumber == nil {
-		return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
-	}
 	if customer.WAId == "" && customer.MetaUserId == "" {
 		return dto.NewFailedResponse[*dto_wa.Message](http.StatusBadRequest, "this customer has no WA ID or Meta user ID, please edit the details", nil)
+	}
+	// get phone number
+	var phoneNumber dto_wa.PhoneNumber
+	if !create.FromWebhook {
+		pn := helper.First(user.WA.PhoneNumbers, func(pn dto_wa.PhoneNumber) bool {
+			return pn.Id == customer.PhoneNumberId
+		})
+		if pn == nil {
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		}
+		phoneNumber = *pn
+	} else {
+		pn, err := dependencies.UnitOfWork.WAPhoneNumberRepository().GetById(ctx, customer.PhoneNumberId)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto_wa.Message](http.StatusNotFound, "phone number id not found", nil)
+			}
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
+		phoneNumber = dto_wa.NewPhoneNumber(*pn)
 	}
 	payload, err := messagePayload(create)
 	if err != nil {
@@ -258,7 +273,28 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	delete(payload, "customer_id")
 	token := uuid.NewString()
 	payload["biz_opaque_callback_data"] = token
-	response, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumber.MetaPhoneNumberId, payload, user.WA.BusinessPortfolioAccessToken)
+	// if no user, from webhook, get access token
+	var businessAccessToken string
+	if user != nil {
+		businessAccessToken = user.WA.BusinessPortfolioAccessToken
+	} else {
+		businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, phoneNumber.BusinessAccountId)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto_wa.Message](http.StatusNotFound, "business account not found", nil)
+			}
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
+		businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetById(ctx, businessAccount.BussinessPortfolioId)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return dto.NewFailedResponse[*dto_wa.Message](http.StatusNotFound, "business portfolio not found", nil)
+			}
+			return dto.NewFailedResponse[*dto_wa.Message](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		}
+		businessAccessToken = businessPortfolio.AccessToken
+	}
+	response, err := dependencies.Whatsapp.SendMessage(ctx, phoneNumber.MetaPhoneNumberId, payload, businessAccessToken)
 	// always insert message to db
 	var sendError string
 	messageStatus := types.WAMessageStatusAccepted
@@ -275,7 +311,6 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 	timestamp := time.Now().Unix()
 	message := dao_wa.Message{
 		Sending:       true,
-		SenderUserId:  &user.Id, // each phone number can be assigned to multiple user, indicate who is sending
 		PhoneNumberId: phoneNumber.Id,
 		CustomerId:    customer.Id,
 		Timestamp:     timestamp,
@@ -286,6 +321,10 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Attempts:      1,
 		ErrorMessage:  sendError,
 		Token:         token,
+	}
+	if user != nil {
+		// each phone number can be assigned to multiple user, indicate who is sending
+		message.SenderUserId = &user.Id
 	}
 	// retry 3 min later if it's a broadcast message and the error is a http request error (payload never go to Meta)
 	// for any Meta returned error, no need to retry

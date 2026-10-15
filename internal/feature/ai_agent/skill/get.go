@@ -61,7 +61,7 @@ func (get Get) Handle(ctx context.Context, user *dto_account.User, dependencies 
 	if profile.BusinessAccountId != user.BusinessAccountId {
 		return dto.NewFailedResponse[*dto_ai_agent.Skill](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	result := dto_ai_agent.NewSkill(*skill)
+	result := dto_ai_agent.NewSkill(*skill, types.AIAgentSkillTypeCustom)
 	return dto.NewSuccessResponse(&result)
 }
 
