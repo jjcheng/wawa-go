@@ -2,18 +2,22 @@ package feture_ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	ai_prompt "github.com/jjcheng/wawa-go/internal/feature/ai/prompt"
+	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
+	"gorm.io/gorm"
 )
 
 type Reply struct {
@@ -43,8 +47,29 @@ func (reply *Reply) Handle(ctx context.Context, _ *dto_account.User, dependencie
 		for _, skill := range reply.Skills {
 			skills = append(skills, fmt.Sprintf("- %s: %s", skill.Title, skill.Description))
 		}
-		systemPrompt += "\nSkills you can help with:\n" + strings.Join(skills, "\n")
+		systemPrompt += "\n## Skills you can use:\n\n" + strings.Join(skills, "\n")
 	}
+	// get business profile
+	profile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, reply.ProfileId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewFailedResponse[string](http.StatusNotFound, "profile not found", nil)
+		}
+		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	}
+	// gather business info
+	if len(profile.BusinessInfo) > 0 {
+		businessInfoList := []string{}
+		for _, info := range profile.BusinessInfo {
+			businessInfoList = append(businessInfoList, fmt.Sprintf("%s: %s", info["title"].(string), info["description"].(string)))
+		}
+		systemPrompt += "\n## Business info:\n\n" + strings.Join(businessInfoList, "\n\n")
+	}
+	// save to file
+	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
+		helper.WriteToFile(systemPrompt, "files/ai/reply.md")
+	}
+	// append messages
 	messages := make([]service.DashScopeMessage, 0, len(reply.Messages)+1)
 	messages = append(messages, service.DashScopeMessage{
 		Role:    service.DashScopeChatMessageRoleSystem,

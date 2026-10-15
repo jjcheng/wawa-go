@@ -1242,8 +1242,8 @@ func passToAI(ctx context.Context, metadata dto_wa.IncomingMetadata, contact dto
 	}
 	// process by ai now
 	chat := feature_ai.Chat{
-		AgentProfile: helper.ConvertToPointer(dto_ai_agent.NewProfile(*agentProfile)),
-		Messages:     messageDTOs,
+		Profile:  helper.ConvertToPointer(dto_ai_agent.NewProfile(*agentProfile)),
+		Messages: messageDTOs,
 	}
 	chatResponse := chat.Handle(ctx, nil, dependencies)
 	if !chatResponse.Success {

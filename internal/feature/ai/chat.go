@@ -18,14 +18,14 @@ import (
 )
 
 type Chat struct {
-	AgentProfile  *dto_ai_agent.Profile
+	Profile       *dto_ai_agent.Profile
 	Messages      []dto_wa.Message
 	MinSkillScore float32
 }
 
 func (chat *Chat) Validate() []exception.InputException {
 	var errors []exception.InputException
-	if chat.AgentProfile == nil {
+	if chat.Profile == nil {
 		errors = append(errors, exception.NewInputException("agent_profile", "missing agent profile"))
 	}
 	if len(chat.Messages) == 0 {
@@ -116,7 +116,7 @@ func (chat *Chat) checkIsInvalid(ctx context.Context, messages []service.DashSco
 
 func (chat *Chat) detectSkills(ctx context.Context, messages []service.DashScopeMessage, dependencies *service.Dependencies) ([]dto_ai_agent.Skill, error) {
 	listSkills := feature_ai_agent_skill.List{
-		ProfileId:   chat.AgentProfile.Id,
+		ProfileId:   chat.Profile.Id,
 		FromWebhook: true,
 	}
 	// this will return builtin skills
@@ -253,53 +253,60 @@ func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeM
 	if err != nil {
 		return "", fmt.Errorf("error executing task in chat: %w", err)
 	}
-	if len(skills) == 0 {
-		return chat.returnGenericResponse(ctx, messages, dependencies)
-	}
 	// check if the top skill is RAG or function
-	if skills[0].Type == types.AIAgentSkillTypeAnswerQuestion {
-		// do semantic search
-		// call RAG
-		return "Here is the answer to your question: blah blah", nil
-	} else if len(skills[0].Inputs) > 0 {
-		// if the skill requires user input
-		// get all required inputs
-		requiredInputs := helper.Filter(skills[0].Inputs, func(si dto_ai_agent.SkillInput) bool {
-			return si.Required
-		})
-		missingInputs, err := chat.getMissingInputs(ctx, requiredInputs, messages, dependencies)
-		if err != nil {
-			return "", fmt.Errorf("error getting missing inputs: %w", err)
-		}
-		if len(missingInputs) == 0 {
-			// all are provided, return friendly acknowledgement
-			return "Thank you for your inputs, someone will get back to you soonest possible!", nil
-		} else if len(missingInputs) == len(requiredInputs) {
-			// none is provided, use LLM to ask user to provide
-			// tell user what are the inputs required
-			var inputTitles []string
-			for i, input := range skills[0].Inputs {
-				if input.Required {
-					inputTitles = append(inputTitles, fmt.Sprintf("%d. %s (required)", i+1, input.Title))
-				} else {
-					inputTitles = append(inputTitles, fmt.Sprintf("%d. %s", i+1, input.Title))
+	if len(skills) > 0 {
+		if skills[0].Type == types.AIAgentSkillTypeAnswerQuestion {
+			// do semantic search
+			// call RAG
+			return "Here is the answer to your question: blah blah", nil
+		} else if len(skills[0].Inputs) > 0 {
+			// if the skill requires user input
+			// get all required inputs
+			requiredInputs := helper.Filter(skills[0].Inputs, func(si dto_ai_agent.SkillInput) bool {
+				return si.Required
+			})
+			missingInputs, err := chat.getMissingInputs(ctx, requiredInputs, messages, dependencies)
+			if err != nil {
+				return "", fmt.Errorf("error getting missing inputs: %w", err)
+			}
+			if len(missingInputs) == 0 {
+				// all are provided, return friendly acknowledgement
+				return "Thank you for your inputs, someone will get back to you soonest possible!", nil
+			} else if len(missingInputs) == len(requiredInputs) {
+				// none is provided, use LLM to ask user to provide
+				// tell user what are the inputs required
+				var inputTitles []string
+				for i, input := range skills[0].Inputs {
+					if input.Required {
+						inputTitles = append(inputTitles, fmt.Sprintf("%d. %s (required)", i+1, input.Title))
+					} else {
+						inputTitles = append(inputTitles, fmt.Sprintf("%d. %s", i+1, input.Title))
+					}
 				}
+				message := fmt.Sprintf("Thank you for your interest! In order to proceed, please provide the following details:\n\n%s", strings.Join(inputTitles, "\n"))
+				return message, nil
+			} else {
+				// some are provided, some are missing, tell user to complete
+				var missingInputTitles []string
+				for i, input := range missingInputs {
+					missingInputTitles = append(missingInputTitles, fmt.Sprintf("%d. %s (required)", i+1, input.Title))
+				}
+				message := fmt.Sprintf("Please also provide the following inputs in order to proceed, thank you!\n\n%s", strings.Join(missingInputTitles, "\n"))
+				return message, nil
 			}
-			message := fmt.Sprintf("Thank you for your interest! In order to proceed, please provide the following details:\n\n%s", strings.Join(inputTitles, "\n"))
-			return message, nil
-		} else {
-			// some are provided, some are missing, tell user to complete
-			var missingInputTitles []string
-			for i, input := range missingInputs {
-				missingInputTitles = append(missingInputTitles, fmt.Sprintf("%d. %s (required)", i+1, input.Title))
-			}
-			message := fmt.Sprintf("Please also provide the following inputs in order to proceed, thank you!\n\n%s", strings.Join(missingInputTitles, "\n"))
-			return message, nil
 		}
-	} else {
-		// append to system prompt and call llm
-		return "Hello, how can i help you?", nil
 	}
+	// reply
+	reply := Reply{
+		Messages:  chat.Messages,
+		ProfileId: chat.Profile.Id,
+		Skills:    skills,
+	}
+	replyResponse := reply.Handle(ctx, nil, dependencies)
+	if !replyResponse.Success {
+		return "", replyResponse.Error
+	}
+	return replyResponse.Data, nil
 }
 
 func (chat *Chat) getMissingInputs(ctx context.Context, skillInputs []dto_ai_agent.SkillInput, messages []service.DashScopeMessage, dependencies *service.Dependencies) ([]dto_ai_agent.SkillInput, error) {

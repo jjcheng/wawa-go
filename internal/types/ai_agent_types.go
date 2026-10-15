@@ -25,16 +25,6 @@ const (
 	AIAgentConnectorAuthLocationHeader AIAgentConnectorAuthLocation = "HEADER"
 )
 
-type AIAgentFAQType string
-
-const (
-	AIAgentFAQTypeText     AIAgentFAQType = "TEXT"
-	AIAgentFAQTypeImage    AIAgentFAQType = "IMAGE"
-	AIAgentFAQTypeVideo    AIAgentFAQType = "VIDEO"
-	AIAgentFAQTypeDocument AIAgentFAQType = "DOCUMENT"
-	AIAgentFAQTypeLocation AIAgentFAQType = "LOCATION"
-)
-
 type AIAgentSkillType string
 
 const (

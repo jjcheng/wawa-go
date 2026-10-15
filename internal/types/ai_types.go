@@ -1,0 +1,18 @@
+package types
+
+type AIKnowledgeType string
+
+const (
+	AIKnowledgeTypeText     AIKnowledgeType = "TEXT"
+	AIKnowledgeTypeImage    AIKnowledgeType = "IMAGE"
+	AIKnowledgeTypeDocument AIKnowledgeType = "DOCUMENT"
+	AIKnowledgeTypeVideo    AIKnowledgeType = "VIDEO"
+)
+
+type AIKnowledgeCategory string
+
+const (
+	AIKnowledgeCategoryFAQ     AIKnowledgeCategory = "FAQ"
+	AIKnowledgeCategoryFile    AIKnowledgeCategory = "FILE"
+	AIKnowledgeCategoryWebsite AIKnowledgeCategory = "WEBSITE"
+)

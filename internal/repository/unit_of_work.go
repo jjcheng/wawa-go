@@ -46,4 +46,6 @@ type UnitOfWork interface {
 	AIAgentFAQRepository() AIAgentFAQRepository
 	AIAgentSkillRepository() AIAgentSkillRepository
 	AIAgentWebsiteRepository() AIAgentWebsiteRepository
+	// ai knowledge (azure search)
+	AIKnowledgeRepository() AIKnowledgeRepository
 }

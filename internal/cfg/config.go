@@ -17,16 +17,17 @@ import (
 )
 
 type Config struct {
-	Site       SiteConfig
-	Database   DatabaseConfig
-	AliyunOSS  AliyunOSSConfig
-	AliyunSMQ  AliyunSMQConfig
-	Ably       AblyConfig
-	WhatsApp   WhatsAppConfig
-	Commerce   CommerceConfig
-	Cloudflare CloudflareConfig
-	Typesafe   TypesafeConfig
-	LLM        LLMConfig
+	Site        SiteConfig
+	Database    DatabaseConfig
+	AliyunOSS   AliyunOSSConfig
+	AliyunSMQ   AliyunSMQConfig
+	Ably        AblyConfig
+	WhatsApp    WhatsAppConfig
+	Commerce    CommerceConfig
+	Cloudflare  CloudflareConfig
+	Typesafe    TypesafeConfig
+	LLM         LLMConfig
+	AzureSearch AzureSearchConfig
 }
 
 type DatabaseConfig struct {
@@ -101,6 +102,15 @@ type TypesafeConfig struct {
 type LLMConfig struct {
 	APIKey  string
 	BaseURL string
+}
+
+type AzureSearchConfig struct {
+	BaseUrl                               string
+	APIKey                                string
+	KnowledgesIndexName                   string
+	EntityValuesIndexName                 string
+	KnowledgesSemanticConfigurationName   string
+	EntityValuesSemanticConfigurationName string
 }
 
 var configInstance *Config
@@ -184,6 +194,14 @@ func Default() *Config {
 			LLM: LLMConfig{
 				APIKey:  os.Getenv("ALIYUN_DASHSCOPE_API_KEY"),
 				BaseURL: os.Getenv("ALIYUN_DASHSCOPE_BASEURL"),
+			},
+			AzureSearch: AzureSearchConfig{
+				BaseUrl:                               os.Getenv("AZURE_SEARCH_BASEURL"),
+				APIKey:                                os.Getenv("AZURE_SEARCH_APIKEY"),
+				EntityValuesSemanticConfigurationName: os.Getenv("ENTITY_VALUES_SEMANTIC_CONFIGURATION_NAME"),
+				KnowledgesSemanticConfigurationName:   os.Getenv("KNOWLEDGES_SEMANTIC_CONFIGURATION_NAME"),
+				EntityValuesIndexName:                 os.Getenv("ENTITY_VALUES_INDEX_NAME"),
+				KnowledgesIndexName:                   os.Getenv("KNOWLEDGES_INDEX_NAME"),
 			},
 		}
 	})

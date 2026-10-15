@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jjcheng/wawa-go/internal/repository"
+	"github.com/jjcheng/wawa-go/internal/repository/azure_search"
 	"github.com/jjcheng/wawa-go/internal/service"
 
 	"gorm.io/gorm"
@@ -48,6 +49,8 @@ type UnitOfWork struct {
 	aiAgentFAQRepository     repository.AIAgentFAQRepository
 	aiAgentSkillRepository   repository.AIAgentSkillRepository
 	aiAgentWebsiteRepository repository.AIAgentWebsiteRepository
+	// ai knowledge
+	aiKnowledgeRepository repository.AIKnowledgeRepository
 }
 
 func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
@@ -91,6 +94,8 @@ func NewUnitOfWork(db *gorm.DB, logger *service.Logger) repository.UnitOfWork {
 	unitOfWork.aiAgentFAQRepository = NewAIAgentFAQRepository(db, logger)
 	unitOfWork.aiAgentSkillRepository = NewAIAgentSkillRepository(db, logger)
 	unitOfWork.aiAgentWebsiteRepository = NewAIAgentWebsiteRepository(db, logger)
+	// ai knowledge
+	unitOfWork.aiKnowledgeRepository = azure_search.NewAIKnowledgeRepository(logger)
 	return &unitOfWork
 }
 
@@ -215,6 +220,10 @@ func (unitOfWork *UnitOfWork) AIAgentFAQRepository() repository.AIAgentFAQReposi
 
 func (unitOfWork *UnitOfWork) AIAgentSkillRepository() repository.AIAgentSkillRepository {
 	return unitOfWork.aiAgentSkillRepository
+}
+
+func (unitOfWork *UnitOfWork) AIKnowledgeRepository() repository.AIKnowledgeRepository {
+	return unitOfWork.aiKnowledgeRepository
 }
 
 func (unitOfWork *UnitOfWork) AIAgentWebsiteRepository() repository.AIAgentWebsiteRepository {

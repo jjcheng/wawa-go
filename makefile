@@ -38,7 +38,9 @@ env:
 	sed -i '' "s|\$${COMMERCE_WEBSITE_DOMAIN}|$${COMMERCE_WEBSITE_DOMAIN//&/\\&}|g" .env; \
 	sed -i '' "s|\$${JEV_API_KEY}|$${JEV_API_KEY//&/\\&}|g" .env; \
 	sed -i '' "s|\$${ALIYUN_DASHSCOPE_BASEURL}|$${ALIYUN_DASHSCOPE_BASEURL//&/\\&}|g" .env; \
-	sed -i '' "s|\$${ALIYUN_DASHSCOPE_API_KEY}|$${ALIYUN_DASHSCOPE_API_KEY//&/\\&}|g" .env; 
+	sed -i '' "s|\$${ALIYUN_DASHSCOPE_API_KEY}|$${ALIYUN_DASHSCOPE_API_KEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${AZURE_SEARCH_APIKEY}|$${AZURE_SEARCH_APIKEY//&/\\&}|g" .env; \
+	sed -i '' "s|\$${AZURE_SEARCH_BASEURL}|$${AZURE_SEARCH_BASEURL//&/\\&}|g" .env; 
 	@echo ".env generated from $(ENV_SOURCE)"
 run-api:
 	@make env

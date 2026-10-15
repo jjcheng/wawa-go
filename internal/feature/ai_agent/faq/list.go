@@ -7,7 +7,7 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/dto"
 	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
-	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -26,33 +26,35 @@ func (list *List) Validate() []exception.InputException {
 	return nil
 }
 
-func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_ai_agent.FAQ] {
+func (list List) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_ai.Knowledge] {
 	if user == nil {
-		return dto.NewFailedResponse[[]dto_ai_agent.FAQ](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
+		return dto.NewFailedResponse[[]dto_ai.Knowledge](http.StatusForbidden, types.ExceptionMessageForbidden, nil)
 	}
 	if user.Type != types.UserTypeMaster {
-		return dto.NewFailedResponse[[]dto_ai_agent.FAQ](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		return dto.NewFailedResponse[[]dto_ai.Knowledge](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
 	if inputErrors := list.Validate(); len(inputErrors) > 0 {
-		return dto.NewInvalidInputResponse[[]dto_ai_agent.FAQ](inputErrors)
+		return dto.NewInvalidInputResponse[[]dto_ai.Knowledge](inputErrors)
 	}
 	profile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, list.ProfileId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[[]dto_ai_agent.FAQ](http.StatusNotFound, "profile not found", nil)
+			return dto.NewFailedResponse[[]dto_ai.Knowledge](http.StatusNotFound, "profile not found", nil)
 		}
-		return dto.NewFailedResponse[[]dto_ai_agent.FAQ](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		return dto.NewFailedResponse[[]dto_ai.Knowledge](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
 	if profile.BusinessAccountId != user.BusinessAccountId {
-		return dto.NewFailedResponse[[]dto_ai_agent.FAQ](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
+		return dto.NewFailedResponse[[]dto_ai.Knowledge](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 	}
-	faqs, err := dependencies.UnitOfWork.AIAgentFAQRepository().ListByProfileId(ctx, list.ProfileId)
+	knowledges, err := dependencies.UnitOfWork.AIKnowledgeRepository().ListByProfileId(ctx, list.ProfileId, types.AIKnowledgeCategoryFAQ)
 	if err != nil {
-		return dto.NewFailedResponse[[]dto_ai_agent.FAQ](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+		return dto.NewFailedResponse[[]dto_ai.Knowledge](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	items := make([]dto_ai_agent.FAQ, 0, len(faqs))
-	for _, faq := range faqs {
-		items = append(items, dto_ai_agent.NewFAQ(faq))
+	items := make([]dto_ai.Knowledge, 0, len(knowledges))
+	for _, knowledge := range knowledges {
+		if knowledge.Category == types.AIKnowledgeCategoryFAQ {
+			items = append(items, knowledge)
+		}
 	}
 	return dto.NewSuccessResponse(items)
 }
@@ -60,7 +62,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 func (List) APISettings() feature.APISettings {
 	return feature.NewAPISettings(
 		"List AI agent FAQs",
-		"Lists all FAQs for an AI agent profile in the business account.",
+		"Lists all FAQ knowledges, stored in Azure AI Search, for an AI agent profile in the business account.",
 		types.HttpRequestTypeUri,
 		http.MethodGet,
 		"/v1/ai-agent/profiles/:id/faqs",

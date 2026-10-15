@@ -2,6 +2,7 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
+	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
 	"github.com/jjcheng/wawa-go/internal/feature"
 	feature_ai_agent_faq "github.com/jjcheng/wawa-go/internal/feature/ai_agent/faq"
@@ -22,7 +23,10 @@ func registerAIAgentController(routerGroup *gin.RouterGroup, dependencies *servi
 	registerRoute[*dto_ai_agent.Profile, feature_ai_agent_profile.Create](routerGroup, dependencies, apiGenerator)
 	registerRoute[any, feature_ai_agent_profile.Delete](routerGroup, dependencies, apiGenerator)
 	// faq
-	registerRoute[[]dto_ai_agent.FAQ, feature_ai_agent_faq.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[[]dto_ai.Knowledge, feature_ai_agent_faq.List](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_ai.Knowledge, feature_ai_agent_faq.Create](routerGroup, dependencies, apiGenerator)
+	registerRoute[*dto_ai.Knowledge, feature_ai_agent_faq.Update](routerGroup, dependencies, apiGenerator)
+	registerRoute[any, feature_ai_agent_faq.Delete](routerGroup, dependencies, apiGenerator)
 	// skills
 	registerRoute[[]dto_ai_agent.Skill, feature_ai_agent_skill.List](routerGroup, dependencies, apiGenerator)
 	registerRoute[*dto_ai_agent.Skill, feature_ai_agent_skill.Get](routerGroup, dependencies, apiGenerator)

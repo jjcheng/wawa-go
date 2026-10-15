@@ -62,7 +62,7 @@ func (llm *LLM) Embed(ctx context.Context, textList []string) ([][]float32, int,
 			return 0
 		}
 	})
-	embeddings := make([][]float32, 0, len(result.Output.Embeddings))
+	embeddings := make([][]float32, len(result.Output.Embeddings))
 	for i := range result.Output.Embeddings {
 		embeddings[i] = result.Output.Embeddings[i].Embedding
 	}
