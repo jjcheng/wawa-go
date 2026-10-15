@@ -35,7 +35,7 @@ func (llm *LLM) Embed(ctx context.Context, textList []string) ([][]float32, int,
 		},
 	}
 	baseUrl := fmt.Sprintf("%s/api/v1/services/embeddings/text-embedding/text-embedding", llm.baseUrl)
-	status, response, _, err := helper.RequestHTTP(ctx, baseUrl, "POST", llm.requestHeader(), &requestBody)
+	status, response, _, err := helper.RequestHTTP(ctx, baseUrl, "POST", llm.requestHeader(llm.apiKey), &requestBody)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -100,7 +100,7 @@ func (llm *LLM) Chat(ctx context.Context, model DashScopeChatModel, messages []D
 	}
 	baseUrl := fmt.Sprintf("%s/api/v1/services/aigc/multimodal-generation/generation", llm.baseUrl)
 	// TODO: save response
-	status, response, _, err := helper.RequestHTTP(ctx, baseUrl, "POST", llm.requestHeader(), &requestBody)
+	status, response, _, err := helper.RequestHTTP(ctx, baseUrl, "POST", llm.requestHeader(llm.apiKey), &requestBody)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func (llm *LLM) Chat(ctx context.Context, model DashScopeChatModel, messages []D
 	return &result, nil
 }
 
-func (llm *LLM) Decide(ctx context.Context, messages []DashScopeMessage, questions DashScopeDecideQuestion) (*DashScopeDecideResponse, error) {
+func (llm *LLM) Decide(ctx context.Context, messages []DashScopeMessage, questions DashScopeDecideQuestion, withJev bool) (*DashScopeDecideResponse, error) {
 	var states []map[string]any = helper.Map(messages, func(m DashScopeMessage) map[string]any {
 		return m.Payload()
 	})
@@ -127,8 +127,18 @@ func (llm *LLM) Decide(ctx context.Context, messages []DashScopeMessage, questio
 		"state":     states,
 		"questions": questions,
 	}
+	if withJev {
+		requestBody["model"] = "jev-latest"
+	}
 	baseUrl := fmt.Sprintf("%s/compatible-mode/v1/systemone", llm.baseUrl)
-	status, response, _, err := helper.RequestHTTP(ctx, baseUrl, "POST", llm.requestHeader(), &requestBody)
+	if withJev {
+		baseUrl = fmt.Sprintf("%s/v1/systemone", "https://api.typesafe.ai")
+	}
+	apiKey := llm.apiKey
+	if withJev {
+		apiKey = cfg.Default().Typesafe.JevAPIKey
+	}
+	status, response, _, err := helper.RequestHTTP(ctx, baseUrl, "POST", llm.requestHeader(apiKey), &requestBody)
 	if err != nil {
 		return nil, err
 	}
@@ -146,8 +156,8 @@ func (llm *LLM) Decide(ctx context.Context, messages []DashScopeMessage, questio
 	return &result, nil
 }
 
-func (llm *LLM) requestHeader() *map[string]string {
+func (llm *LLM) requestHeader(apiKey string) *map[string]string {
 	return &map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", llm.apiKey),
+		"Authorization": fmt.Sprintf("Bearer %s", apiKey),
 	}
 }

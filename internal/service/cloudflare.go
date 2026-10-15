@@ -1,15 +1,17 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"net/url"
+	"strings"
 
-	cloudflare_sdk "github.com/cloudflare/cloudflare-go/v7"
-	"github.com/cloudflare/cloudflare-go/v7/ai_search"
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/helper"
 )
@@ -21,7 +23,6 @@ type Cloudflare struct {
 	accountId          string
 	apiToken           string
 	nameSpace          string
-	client             *cloudflare_sdk.Client
 }
 
 func NewCloudflare(logger *Logger) *Cloudflare {
@@ -33,9 +34,6 @@ func NewCloudflare(logger *Logger) *Cloudflare {
 		nameSpace:          "default",
 		baseUrl:            fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s", cfg.Default().Cloudflare.AccountId),
 	}
-	// cloudflare.client = cloudflare_sdk.NewClient(
-	// 	option.WithAPIToken(cfg.Default().Cloudflare.APIToken),
-	// )
 	return cloudflare
 }
 
@@ -68,28 +66,94 @@ func (cloudflare *Cloudflare) VerifyTurnstile(token, remoteIp string) (bool, err
 }
 
 // ai search
-func (cloudflare *Cloudflare) CreateAISearchInstance(ctx context.Context, id string) (*ai_search.NamespaceInstanceNewResponse, error) {
-	response, err := cloudflare.client.AISearch.Namespaces.Instances.New(ctx, cloudflare.nameSpace, ai_search.NamespaceInstanceNewParams{
-		AccountID:           cloudflare_sdk.F(cloudflare.accountId),
-		HybridSearchEnabled: cloudflare_sdk.F(true),
-		ID:                  cloudflare_sdk.String(id),
-		EmbeddingModel:      cloudflare_sdk.String("@cf/qwen/qwen3-vl-embedding-2b"),
-		Reranking:           cloudflare_sdk.Bool(true),
-		RerankingModel:      cloudflare_sdk.String("@cf/baai/bge-reranker-base"),
-		//	Metadata:            cloudflare,
-	})
-	return response, err
+type CloudflareAISearchResponse struct {
+	Success bool `json:"success"`
+	Errors  []struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"errors"`
+	Result json.RawMessage `json:"result"`
 }
 
-func (cloudflare *Cloudflare) UploadAISearchFile(ctx context.Context, instanceId string, file io.Reader, fileName string, contentType string) (*ai_search.NamespaceInstanceItemUploadResponse, error) {
-	response, err := cloudflare.client.AISearch.Namespaces.Instances.Items.Upload(ctx, cloudflare.nameSpace, instanceId, ai_search.NamespaceInstanceItemUploadParams{
-		AccountID: cloudflare_sdk.String(cloudflare.accountId),
-		File: ai_search.NamespaceInstanceItemUploadParamsFile{
-			File:              cloudflare_sdk.FileParam(file, fileName, contentType),
-			WaitForCompletion: cloudflare_sdk.Bool(false),
-		},
-	})
-	return response, err
+func (cloudflare *Cloudflare) CreateAISearchInstance(ctx context.Context, id string) (*CloudflareAISearchResponse, error) {
+	apiUrl := fmt.Sprintf("%s/ai-search/namespaces/%s/instances", cloudflare.baseUrl, cloudflare.nameSpace)
+	requestBody := map[string]any{
+		"id":                    id,
+		"hybrid_search_enabled": true,
+		"embedding_model":       "@cf/qwen/qwen3-vl-embedding-2b",
+		"reranking":             true,
+		"reranking_model":       "@cf/baai/bge-reranker-base",
+	}
+	status, response, _, err := helper.RequestHTTP(ctx, apiUrl, "POST", cloudflare.getHeader(), &requestBody)
+	if err != nil {
+		return nil, fmt.Errorf("cloudflare create ai search instance error: %w", err)
+	}
+	return parseCloudflareAISearchResponse(status, response)
+}
+
+func (cloudflare *Cloudflare) UploadAISearchFile(ctx context.Context, instanceId string, file io.Reader, fileName string, contentType string) (*CloudflareAISearchResponse, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Disposition", fmt.Sprintf(`form-data; name="file"; filename="%s"`, escapeMultipartQuotes(fileName)))
+	if contentType != "" {
+		header.Set("Content-Type", contentType)
+	}
+	part, err := writer.CreatePart(header)
+	if err != nil {
+		return nil, fmt.Errorf("cloudflare upload ai search file error: %w", err)
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return nil, fmt.Errorf("cloudflare upload ai search file error: %w", err)
+	}
+	if err := writer.WriteField("wait_for_completion", "false"); err != nil {
+		return nil, fmt.Errorf("cloudflare upload ai search file error: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("cloudflare upload ai search file error: %w", err)
+	}
+	apiUrl := fmt.Sprintf("%s/ai-search/namespaces/%s/instances/%s/items", cloudflare.baseUrl, cloudflare.nameSpace, url.PathEscape(instanceId))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, apiUrl, body)
+	if err != nil {
+		return nil, fmt.Errorf("cloudflare upload ai search file error: %w", err)
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", writer.FormDataContentType())
+	for key, value := range *cloudflare.getHeader() {
+		request.Header.Set(key, value)
+	}
+	httpResponse, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("cloudflare upload ai search file error: %w", err)
+	}
+	defer httpResponse.Body.Close()
+	responseBody, err := io.ReadAll(httpResponse.Body)
+	if err != nil {
+		return nil, fmt.Errorf("cloudflare upload ai search file error: %w", err)
+	}
+	text := string(responseBody)
+	return parseCloudflareAISearchResponse(httpResponse.StatusCode, &text)
+}
+
+func parseCloudflareAISearchResponse(status int, response *string) (*CloudflareAISearchResponse, error) {
+	if status < 200 || status > 299 {
+		return nil, fmt.Errorf("cloudflare ai search response not 2xx: %d", status)
+	}
+	var result CloudflareAISearchResponse
+	if response == nil {
+		return nil, fmt.Errorf("cloudflare ai search returned an empty response")
+	}
+	if err := json.Unmarshal([]byte(*response), &result); err != nil {
+		return nil, fmt.Errorf("error decoding cloudflare ai search response: %w", err)
+	}
+	if !result.Success {
+		return nil, fmt.Errorf("cloudflare ai search failed: %+v", result.Errors)
+	}
+	return &result, nil
+}
+
+func escapeMultipartQuotes(value string) string {
+	return strings.NewReplacer("\\", "\\\\", `"`, "\\\"").Replace(value)
 }
 
 // crawl

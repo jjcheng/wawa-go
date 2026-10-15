@@ -67,12 +67,7 @@ func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencie
 	if err != nil {
 		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
-	// step 3: check need to rewrite
-	// needToRewrite, err := chat.checkNeedRewrite(ctx, serviceMessages, dependencies)
-	// if err != nil {
-	// 	return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	// }
-	// step 4: if no need to decompose or rewrite, check skills and tool calling
+	// step 3: if no need to decompose or rewrite, check skills and tool calling
 	if !needToDecompose {
 		message, err := chat.executeTask(ctx, serviceMessages, dependencies)
 		if err != nil {
@@ -100,7 +95,7 @@ func (chat *Chat) checkIsInvalid(ctx context.Context, messages []service.DashSco
 				False: "User's latest message is not spam, scam, nonsense or inapproriate",
 			},
 		},
-	})
+	}, true)
 	if err != nil {
 		return false, err
 	}
@@ -137,83 +132,56 @@ func (chat *Chat) detectSkills(ctx context.Context, messages []service.DashScope
 		return listSkillsResponse.Data, nil
 	}
 	// build criteria
-	// criteria := helper.Map(listSkillsResponse.Data, func(s dto_ai_agent.Skill) string {
-	// 	return s.Title
-	// })
-	//criteria = append(criteria, "None of above")
-	var criteria map[string]string = make(map[string]string)
-	for i, skill := range listSkillsResponse.Data {
-		criteria[fmt.Sprint(i+1)] = skill.Title
-	}
-	criteria[fmt.Sprint(len(listSkillsResponse.Data)+1)] = "none of above"
-	typesafeMessages := []service.TypeSafeMessage{}
-	for _, message := range messages {
-		typesafeMessages = append(typesafeMessages, service.TypeSafeMessage{
-			Role:    types.AIWorkerMessageRole(string(message.Role)),
-			Content: message.Content.(string),
-		})
-	}
-	tsResponse, err := dependencies.TypeSafe.Decide(ctx, typesafeMessages, map[string]service.TypeSafeChoiceQuestion{
-		"detect_skills": {
-			Type:         "choice",
-			Instructions: "Which of the criteria should be applied to user's latest message?",
-			Criteria:     criteria,
-		},
+	criteria := helper.Map(listSkillsResponse.Data, func(s dto_ai_agent.Skill) string {
+		return s.Title
 	})
-	if err == nil {
-		fmt.Println(tsResponse)
-	}
+	criteria = append(criteria, "None of above")
 	skillScores, err := dependencies.LLM.Decide(ctx, messages, service.DashScopeDecideQuestion{
 		"detect_skills": service.DashScopeDecideQuestionContent{
-			Type:         service.DashScopeDecideQuestionTypeChoice,
+			Type:         service.DashScopeDecideQuestionTypeScore,
 			Instructions: "Which of the criteria should be applied to user's latest message?",
 			Criteria:     criteria,
 		},
-	})
+	}, true)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting skill scores: %w", err)
 	}
 	if detectSkills, ok := skillScores.Answers["detect_skills"]; ok {
-		choice, err := helper.ConvertJSON[service.DashScopeDecideResponseAnswerChoice](detectSkills)
+		scores, err := helper.ConvertJSON[service.DashScopeDecideResponseAnswerScore](detectSkills)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing detect_skills: %w", err)
 		}
-		fmt.Println(choice.Choice)
 		// rank scores.Probabilities by highest value on top
-		// type tuple struct {
-		// 	skillName string
-		// 	score     float32
-		// }
-		// var orderedSkills []tuple
-		// for k, v := range scores.Probabilities {
-		// 	if v < chat.MinSkillScore {
-		// 		continue
-		// 	}
-		// 	orderedSkills = append(orderedSkills, tuple{
-		// 		skillName: scores.Legend[k],
-		// 		score:     v,
-		// 	})
-		// }
-		// helper.Sort(orderedSkills, func(a, b tuple) int {
-		// 	if a.score > b.score {
-		// 		return -1
-		// 	} else if a.score < b.score {
-		// 		return 1
-		// 	} else {
-		// 		return 0
-		// 	}
-		// })
-		// skills := helper.Map(orderedSkills, func(t tuple) dto_ai_agent.Skill {
-		// 	match := helper.First(listSkillsResponse.Data, func(s dto_ai_agent.Skill) bool {
-		// 		return s.Title == t.skillName
-		// 	})
-		// 	return *match
-		// })
-		skillTitle := criteria[choice.Choice]
-		skill := helper.First(listSkillsResponse.Data, func(si dto_ai_agent.Skill) bool {
-			return si.Title == skillTitle
+		type tuple struct {
+			skillName string
+			score     float32
+		}
+		var orderedSkills []tuple
+		for k, v := range scores.Probabilities {
+			if v < chat.MinSkillScore {
+				continue
+			}
+			orderedSkills = append(orderedSkills, tuple{
+				skillName: scores.Legend[k],
+				score:     v,
+			})
+		}
+		helper.Sort(orderedSkills, func(a, b tuple) int {
+			if a.score > b.score {
+				return -1
+			} else if a.score < b.score {
+				return 1
+			} else {
+				return 0
+			}
 		})
-		return []dto_ai_agent.Skill{*skill}, nil
+		skills := helper.Map(orderedSkills, func(t tuple) dto_ai_agent.Skill {
+			match := helper.First(listSkillsResponse.Data, func(s dto_ai_agent.Skill) bool {
+				return s.Title == t.skillName
+			})
+			return *match
+		})
+		return skills, nil
 	} else {
 		return nil, fmt.Errorf("detect skills not found in detectSkill function")
 	}
@@ -229,7 +197,7 @@ func (chat *Chat) checkNeedToDecompose(ctx context.Context, messages []service.D
 				False: "User's latest message contain only 1 task.",
 			},
 		},
-	})
+	}, true)
 	if err != nil {
 		return false, err
 	}
@@ -263,7 +231,7 @@ func (chat *Chat) checkNeedRewrite(ctx context.Context, messages []service.DashS
 				False: "User's latest message is not not contextual complete.",
 			},
 		},
-	})
+	}, true)
 	if err != nil {
 		return false, err
 	}
@@ -292,7 +260,9 @@ func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeM
 	if skills[0].Type == types.AIAgentSkillTypeAnswerQuestion {
 		// do semantic search
 		// call RAG
+		return "Here is the answer to your question: blah blah", nil
 	} else if len(skills[0].Inputs) > 0 {
+		// if the skill requires user input
 		// get all required inputs
 		requiredInputs := helper.Filter(skills[0].Inputs, func(si dto_ai_agent.SkillInput) bool {
 			return si.Required
@@ -328,8 +298,8 @@ func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeM
 		}
 	} else {
 		// append to system prompt and call llm
+		return "Hello, how can i help you?", nil
 	}
-	return "Hello, how can i help you?", nil
 }
 
 func (chat *Chat) getMissingInputs(ctx context.Context, skillInputs []dto_ai_agent.SkillInput, messages []service.DashScopeMessage, dependencies *service.Dependencies) ([]dto_ai_agent.SkillInput, error) {
@@ -347,7 +317,7 @@ func (chat *Chat) getMissingInputs(ctx context.Context, skillInputs []dto_ai_age
 			questions[input.Title] = questionContent
 		}
 	}
-	response, err := dependencies.LLM.Decide(ctx, messages, questions)
+	response, err := dependencies.LLM.Decide(ctx, messages, questions, true)
 	if err != nil {
 		return nil, fmt.Errorf("error calling getMissingInputs to get skill inputs: %w", err)
 	}
