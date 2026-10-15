@@ -8,5 +8,5 @@ import (
 
 type AIAgentSkillRepository interface {
 	Repository[dao_ai_agent.Skill]
-	ListByProfileId(ctx context.Context, profileId int32) ([]dao_ai_agent.Skill, error)
+	ListByProfileId(ctx context.Context, profileId int32, onlyEnabled bool) ([]dao_ai_agent.Skill, error)
 }

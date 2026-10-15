@@ -66,6 +66,9 @@ func (create *Create) Validate() []exception.InputException {
 	for i := range create.Inputs {
 		inputErrors = append(inputErrors, create.Inputs[i].Validate(i)...)
 	}
+	if len(create.Inputs) > 0 && create.AlwaysApply {
+		inputErrors = append(inputErrors, exception.NewInputException("always_apply", "always apply cannot be turned on if input is required"))
+	}
 	return inputErrors
 }
 

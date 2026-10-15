@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
-	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	"github.com/jjcheng/wawa-go/internal/service"
@@ -41,7 +40,7 @@ func (search *Search) Validate() []exception.InputException {
 }
 
 // Handle searches the text knowledges of the profile in Azure AI Search.
-func (search *Search) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[[]dto_ai.Knowledge] {
+func (search *Search) Handle(ctx context.Context, dependencies *service.Dependencies) dto.Response[[]dto_ai.Knowledge] {
 	if errors := search.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[[]dto_ai.Knowledge](errors)
 	}

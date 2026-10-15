@@ -2,14 +2,12 @@ package feture_ai
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
-	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -17,12 +15,11 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type Reply struct {
 	Messages       []dto_wa.Message
-	ProfileId      int32
+	Profile        *dto_ai_agent.Profile
 	Skills         []dto_ai_agent.Skill
 	AdditionalData string
 }
@@ -32,14 +29,14 @@ func (reply *Reply) Validate() []exception.InputException {
 	if len(reply.Messages) == 0 {
 		errors = append(errors, exception.NewInputException("messages", "missing messages"))
 	}
-	if reply.ProfileId <= 0 {
-		errors = append(errors, exception.NewInputException("profile_id", "missing profile id"))
+	if reply.Profile == nil {
+		errors = append(errors, exception.NewInputException("profile", "missing profile"))
 	}
 	reply.AdditionalData = strings.TrimSpace(reply.AdditionalData)
 	return errors
 }
 
-func (reply *Reply) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[string] {
+func (reply *Reply) Handle(ctx context.Context, dependencies *service.Dependencies) dto.Response[string] {
 	if errors := reply.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[string](errors)
 	}
@@ -47,29 +44,21 @@ func (reply *Reply) Handle(ctx context.Context, _ *dto_account.User, dependencie
 	if len(reply.Skills) > 0 {
 		var skills []string
 		for _, skill := range reply.Skills {
-			skills = append(skills, fmt.Sprintf("- %s: %s", skill.Title, skill.Description))
+			skills = append(skills, fmt.Sprintf("%s", skill.Description))
 		}
 		systemPrompt += "\n\n## Skills you can use:\n\n" + strings.Join(skills, "\n---\n")
 	}
-	// get business profile
-	profile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, reply.ProfileId)
-	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[string](http.StatusNotFound, "profile not found", nil)
-		}
-		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
 	// gather business info
-	if len(profile.BusinessInfo) > 0 {
+	if len(reply.Profile.BusinessInfo) > 0 {
 		businessInfoList := []string{}
-		for _, info := range profile.BusinessInfo {
-			businessInfoList = append(businessInfoList, fmt.Sprintf("%s: %s", info["title"].(string), info["description"].(string)))
+		for _, info := range reply.Profile.BusinessInfo {
+			businessInfoList = append(businessInfoList, fmt.Sprintf("%s: %s", info.Title, info.Description))
 		}
-		systemPrompt += "\n## Business info:\n\n" + strings.Join(businessInfoList, "\n\n")
+		systemPrompt += "\n\n## Business info:\n\n" + strings.Join(businessInfoList, "\n\n")
 	}
 	// append additional data
 	if reply.AdditionalData != "" {
-		systemPrompt += "\n## Additional data:\n\n" + reply.AdditionalData
+		systemPrompt += "\n\n## Additional data:\n\n" + reply.AdditionalData
 	}
 	// save to file
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {

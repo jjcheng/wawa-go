@@ -38,6 +38,9 @@ func (update *Update) Validate() []exception.InputException {
 	for i := range update.Inputs {
 		inputErrors = append(inputErrors, update.Inputs[i].Validate(i)...)
 	}
+	if len(update.Inputs) > 0 && update.AlwaysApply {
+		inputErrors = append(inputErrors, exception.NewInputException("always_apply", "always apply cannot be turned on if input is required"))
+	}
 	return inputErrors
 }
 

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/dto"
-	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -37,7 +36,7 @@ func (chat *Chat) Validate() []exception.InputException {
 	return errors
 }
 
-func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencies *service.Dependencies) dto.Response[string] {
+func (chat Chat) Handle(ctx context.Context, dependencies *service.Dependencies) dto.Response[string] {
 	if errors := chat.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[string](errors)
 	}
@@ -63,43 +62,43 @@ func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencie
 		return dto.NewSuccessResponse("")
 	}
 	// step 2: check need to decompose tasks
-	needToDecompose, err := chat.checkNeedToDecompose(ctx, serviceMessages, dependencies)
-	if err != nil {
-		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
+	// needToDecompose, err := chat.checkNeedToDecompose(ctx, serviceMessages, dependencies)
+	// if err != nil {
+	// 	return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	// }
 	// step 3: if no need to decompose or rewrite, check skills and tool calling
-	if !needToDecompose {
-		message, err := chat.executeTask(ctx, serviceMessages, serviceMessages[len(serviceMessages)-1].Content.(string), dependencies)
+	// if !needToDecompose {
+	// 	message, err := chat.executeTask(ctx, serviceMessages, serviceMessages[len(serviceMessages)-1].Content.(string), dependencies)
+	// 	if err != nil {
+	// 		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+	// 	}
+	// 	return dto.NewSuccessResponse(message)
+	// } else {
+	// rewrite to decompose tasks
+	rewrite := Rewrite{
+		Messages: chat.Messages,
+	}
+	rewriteResponse := rewrite.Handle(ctx, dependencies)
+	if !rewriteResponse.Success {
+		return dto.NewSuccessResponse(types.AIErrorResponse)
+	}
+	// execute each task parallelly
+	newData := []string{}
+	for _, task := range rewriteResponse.Data {
+		message, err := chat.executeTask(ctx, serviceMessages, task, dependencies)
 		if err != nil {
 			return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
-		return dto.NewSuccessResponse(message)
-	} else {
-		// rewrite to decompose tasks
-		rewrite := Rewrite{
-			Messages: chat.Messages,
-		}
-		rewriteResponse := rewrite.Handle(ctx, nil, dependencies)
-		if !rewriteResponse.Success {
-			return dto.NewSuccessResponse(types.AIErrorResponse)
-		}
-		// execute each task parallelly
-		newData := []string{}
-		for _, task := range rewriteResponse.Data {
-			message, err := chat.executeTask(ctx, serviceMessages, task, dependencies)
-			if err != nil {
-				return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-			}
-			newData = append(newData, message)
-		}
-		reply := Reply{
-			Messages:       chat.Messages,
-			ProfileId:      chat.Profile.Id,
-			AdditionalData: strings.Join(newData, "\n---\n"),
-		}
-		replyResponse := reply.Handle(ctx, nil, dependencies)
-		return replyResponse
+		newData = append(newData, message)
 	}
+	reply := Reply{
+		Messages:       chat.Messages,
+		Profile:        chat.Profile,
+		AdditionalData: strings.Join(newData, "\n---\n"),
+	}
+	replyResponse := reply.Handle(ctx, dependencies)
+	return replyResponse
+	//}
 }
 
 func (chat *Chat) checkIsInvalid(ctx context.Context, messages []service.DashScopeMessage, dependencies *service.Dependencies) (bool, error) {
@@ -138,6 +137,7 @@ func (chat *Chat) detectSkills(ctx context.Context, messages []service.DashScope
 	listSkills := feature_ai_agent_skill.List{
 		ProfileId:   chat.Profile.Id,
 		FromWebhook: true,
+		OnlyEnabled: true,
 	}
 	// this will return builtin skills
 	listSkillsResponse := listSkills.Handle(ctx, nil, dependencies)
@@ -173,17 +173,22 @@ func (chat *Chat) detectSkills(ctx context.Context, messages []service.DashScope
 		}
 		// rank scores.Probabilities by highest value on top
 		type tuple struct {
-			skillName string
-			score     float32
+			skillTitle string
+			score      float32
 		}
 		var orderedSkills []tuple
 		for k, v := range scores.Probabilities {
 			if v < chat.MinSkillScore {
-				continue
+				match := helper.First(listSkillsResponse.Data, func(s dto_ai_agent.Skill) bool {
+					return s.Title == scores.Legend[k]
+				})
+				if match == nil || !match.AlwaysApply {
+					continue
+				}
 			}
 			orderedSkills = append(orderedSkills, tuple{
-				skillName: scores.Legend[k],
-				score:     v,
+				skillTitle: scores.Legend[k],
+				score:      v,
 			})
 		}
 		helper.Sort(orderedSkills, func(a, b tuple) int {
@@ -197,7 +202,7 @@ func (chat *Chat) detectSkills(ctx context.Context, messages []service.DashScope
 		})
 		skills := helper.Map(orderedSkills, func(t tuple) dto_ai_agent.Skill {
 			match := helper.First(listSkillsResponse.Data, func(s dto_ai_agent.Skill) bool {
-				return s.Title == t.skillName
+				return s.Title == t.skillTitle
 			})
 			return *match
 		})
@@ -280,27 +285,28 @@ func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeM
 			searchKnowledge := Search{
 				Query:     task,
 				ProfileId: chat.Profile.Id,
-				Semantic:  true,
+				Semantic:  false,
 			}
-			searchKnowledgesResponse := searchKnowledge.Handle(ctx, nil, dependencies)
+			searchKnowledgesResponse := searchKnowledge.Handle(ctx, dependencies)
 			if !searchKnowledgesResponse.Success {
 				return "", searchKnowledgesResponse.Error
 			}
-			if len(searchKnowledgesResponse.Data) == 0 {
-				reply, err := chat.reply(ctx, skills, dependencies)
-				return reply, err
-			}
 			// call RAG
-			rag := RAG{
-				Query:      task,
-				Knowledges: searchKnowledgesResponse.Data,
-				Skills:     skills,
+			if len(searchKnowledgesResponse.Data) > 0 {
+				rag := RAG{
+					Profile:    chat.Profile,
+					Query:      task,
+					Knowledges: searchKnowledgesResponse.Data,
+					Skills:     skills,
+				}
+				ragResponse := rag.Handle(ctx, dependencies)
+				if !ragResponse.Success {
+					return types.AIErrorResponse, nil
+				}
+				return ragResponse.Data, nil
+			} else {
+				return chat.reply(ctx, skills, dependencies)
 			}
-			ragResponse := rag.Handle(ctx, nil, dependencies)
-			if !ragResponse.Success {
-				return types.AIErrorResponse, nil
-			}
-			return ragResponse.Data, nil
 		} else if len(skills[0].Inputs) > 0 {
 			// if the skill requires user input
 			// get all required inputs
@@ -345,11 +351,11 @@ func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeM
 
 func (chat *Chat) reply(ctx context.Context, skills []dto_ai_agent.Skill, dependencies *service.Dependencies) (string, error) {
 	reply := Reply{
-		Messages:  chat.Messages,
-		ProfileId: chat.Profile.Id,
-		Skills:    skills,
+		Messages: chat.Messages,
+		Profile:  chat.Profile,
+		Skills:   skills,
 	}
-	replyResponse := reply.Handle(ctx, nil, dependencies)
+	replyResponse := reply.Handle(ctx, dependencies)
 	if !replyResponse.Success {
 		return "", replyResponse.Error
 	}

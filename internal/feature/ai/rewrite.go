@@ -9,7 +9,6 @@ import (
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
-	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_wa "github.com/jjcheng/wawa-go/internal/dto/wa"
 	"github.com/jjcheng/wawa-go/internal/exception"
 	ai_prompt "github.com/jjcheng/wawa-go/internal/feature/ai/prompt"
@@ -31,7 +30,7 @@ func (rewrite *Rewrite) Validate() []exception.InputException {
 }
 
 // Handle rewrites the latest message into standalone tasks. An empty result means there is nothing to handle.
-func (rewrite *Rewrite) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[[]string] {
+func (rewrite *Rewrite) Handle(ctx context.Context, dependencies *service.Dependencies) dto.Response[[]string] {
 	if errors := rewrite.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[[]string](errors)
 	}

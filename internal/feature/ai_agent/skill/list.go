@@ -18,6 +18,7 @@ import (
 type List struct {
 	ProfileId   int32 `uri:"id" val:"required" description:"id of the agent profile"`
 	FromWebhook bool  `json:"-" uri:"-"`
+	OnlyEnabled bool  `json:"only_enabled"`
 }
 
 func (list *List) Validate() []exception.InputException {
@@ -51,7 +52,7 @@ func (list List) Handle(ctx context.Context, user *dto_account.User, dependencie
 			return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusUnauthorized, types.ExceptionMessageUnauthorized, nil)
 		}
 	}
-	skills, err := dependencies.UnitOfWork.AIAgentSkillRepository().ListByProfileId(ctx, list.ProfileId)
+	skills, err := dependencies.UnitOfWork.AIAgentSkillRepository().ListByProfileId(ctx, list.ProfileId, list.OnlyEnabled)
 	if err != nil {
 		return dto.NewFailedResponse[[]dto_ai_agent.Skill](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

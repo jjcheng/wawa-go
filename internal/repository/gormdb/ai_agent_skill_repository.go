@@ -24,12 +24,13 @@ func NewAIAgentSkillRepository(db *gorm.DB, logger *service.Logger) repository.A
 	}
 }
 
-func (skillRepository *AIAgentSkillRepository) ListByProfileId(ctx context.Context, profileId int32) ([]dao_ai_agent.Skill, error) {
+func (skillRepository *AIAgentSkillRepository) ListByProfileId(ctx context.Context, profileId int32, onlyEnabled bool) ([]dao_ai_agent.Skill, error) {
 	var skills []dao_ai_agent.Skill
-	if err := skillRepository.db.WithContext(ctx).
-		Where("profile_id = ?", profileId).
-		Order("id").
-		Find(&skills).Error; err != nil {
+	query := skillRepository.db.WithContext(ctx).Where("profile_id = ?", profileId)
+	if onlyEnabled {
+		query = query.Where("enabled = ?", true)
+	}
+	if err := query.Order("id").Find(&skills).Error; err != nil {
 		return nil, fmt.Errorf("AIAgentSkillRepository.ListByProfileId profileId=%d error=%w", profileId, err)
 	}
 	return skills, nil

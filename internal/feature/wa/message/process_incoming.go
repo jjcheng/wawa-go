@@ -1245,7 +1245,7 @@ func passToAI(ctx context.Context, metadata dto_wa.IncomingMetadata, contact dto
 		Profile:  helper.ConvertToPointer(dto_ai_agent.NewProfile(*agentProfile)),
 		Messages: messageDTOs,
 	}
-	chatResponse := chat.Handle(ctx, nil, dependencies)
+	chatResponse := chat.Handle(ctx, dependencies)
 	if !chatResponse.Success {
 		return fmt.Errorf("error chatting in webhook: %w", chatResponse.Error)
 	}

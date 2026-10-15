@@ -2,14 +2,12 @@ package feture_ai
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/jjcheng/wawa-go/internal/cfg"
 	"github.com/jjcheng/wawa-go/internal/dto"
-	dto_account "github.com/jjcheng/wawa-go/internal/dto/account"
 	dto_ai "github.com/jjcheng/wawa-go/internal/dto/ai"
 	dto_ai_agent "github.com/jjcheng/wawa-go/internal/dto/ai_agent"
 	"github.com/jjcheng/wawa-go/internal/exception"
@@ -17,12 +15,11 @@ import (
 	"github.com/jjcheng/wawa-go/internal/helper"
 	"github.com/jjcheng/wawa-go/internal/service"
 	"github.com/jjcheng/wawa-go/internal/types"
-	"gorm.io/gorm"
 )
 
 type RAG struct {
 	Query      string
-	ProfileId  int32
+	Profile    *dto_ai_agent.Profile
 	Knowledges []dto_ai.Knowledge
 	Skills     []dto_ai_agent.Skill
 }
@@ -33,17 +30,14 @@ func (rag *RAG) Validate() []exception.InputException {
 	if rag.Query == "" {
 		errors = append(errors, exception.NewInputException("query", "missing query"))
 	}
-	if len(rag.Knowledges) == 0 {
-		errors = append(errors, exception.NewInputException("knowledges", "missing knowledges"))
-	}
-	if rag.ProfileId <= 0 {
-		errors = append(errors, exception.NewInputException("profile_id", "missing profile id"))
+	if rag.Profile == nil {
+		errors = append(errors, exception.NewInputException("profile", "missing profile"))
 	}
 	return errors
 }
 
 // Handle answers the query using only the given knowledges.
-func (rag *RAG) Handle(ctx context.Context, _ *dto_account.User, dependencies *service.Dependencies) dto.Response[string] {
+func (rag *RAG) Handle(ctx context.Context, dependencies *service.Dependencies) dto.Response[string] {
 	if errors := rag.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[string](errors)
 	}
@@ -51,23 +45,15 @@ func (rag *RAG) Handle(ctx context.Context, _ *dto_account.User, dependencies *s
 	if len(rag.Skills) > 0 {
 		var skills []string
 		for _, skill := range rag.Skills {
-			skills = append(skills, fmt.Sprintf("- %s: %s", skill.Title, skill.Description))
+			skills = append(skills, fmt.Sprintf("%s", skill.Description))
 		}
 		systemPrompt += "\n\n## Skills you can use:\n\n" + strings.Join(skills, "\n---\n")
 	}
-	// get business profile
-	profile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, rag.ProfileId)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewFailedResponse[string](http.StatusNotFound, "profile not found", nil)
-		}
-		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
-	}
 	// gather business info
-	if len(profile.BusinessInfo) > 0 {
+	if len(rag.Profile.BusinessInfo) > 0 {
 		businessInfoList := []string{}
-		for _, info := range profile.BusinessInfo {
-			businessInfoList = append(businessInfoList, fmt.Sprintf("%s: %s", info["title"].(string), info["description"].(string)))
+		for _, info := range rag.Profile.BusinessInfo {
+			businessInfoList = append(businessInfoList, fmt.Sprintf("%s: %s", info.Title, info.Description))
 		}
 		systemPrompt += "\n\n## Business info:\n\n" + strings.Join(businessInfoList, "\n\n")
 	}
