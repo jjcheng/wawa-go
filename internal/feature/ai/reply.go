@@ -21,9 +21,10 @@ import (
 )
 
 type Reply struct {
-	Messages  []dto_wa.Message
-	ProfileId int32
-	Skills    []dto_ai_agent.Skill
+	Messages       []dto_wa.Message
+	ProfileId      int32
+	Skills         []dto_ai_agent.Skill
+	AdditionalData string
 }
 
 func (reply *Reply) Validate() []exception.InputException {
@@ -34,6 +35,7 @@ func (reply *Reply) Validate() []exception.InputException {
 	if reply.ProfileId <= 0 {
 		errors = append(errors, exception.NewInputException("profile_id", "missing profile id"))
 	}
+	reply.AdditionalData = strings.TrimSpace(reply.AdditionalData)
 	return errors
 }
 
@@ -47,12 +49,12 @@ func (reply *Reply) Handle(ctx context.Context, _ *dto_account.User, dependencie
 		for _, skill := range reply.Skills {
 			skills = append(skills, fmt.Sprintf("- %s: %s", skill.Title, skill.Description))
 		}
-		systemPrompt += "\n## Skills you can use:\n\n" + strings.Join(skills, "\n")
+		systemPrompt += "\n\n## Skills you can use:\n\n" + strings.Join(skills, "\n---\n")
 	}
 	// get business profile
 	profile, err := dependencies.UnitOfWork.AIAgentProfileRepository().GetById(ctx, reply.ProfileId)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewFailedResponse[string](http.StatusNotFound, "profile not found", nil)
 		}
 		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
@@ -64,6 +66,10 @@ func (reply *Reply) Handle(ctx context.Context, _ *dto_account.User, dependencie
 			businessInfoList = append(businessInfoList, fmt.Sprintf("%s: %s", info["title"].(string), info["description"].(string)))
 		}
 		systemPrompt += "\n## Business info:\n\n" + strings.Join(businessInfoList, "\n\n")
+	}
+	// append additional data
+	if reply.AdditionalData != "" {
+		systemPrompt += "\n## Additional data:\n\n" + reply.AdditionalData
 	}
 	// save to file
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {

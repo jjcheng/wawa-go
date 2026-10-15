@@ -69,17 +69,37 @@ func (chat Chat) Handle(ctx context.Context, user *dto_account.User, dependencie
 	}
 	// step 3: if no need to decompose or rewrite, check skills and tool calling
 	if !needToDecompose {
-		message, err := chat.executeTask(ctx, serviceMessages, dependencies)
+		message, err := chat.executeTask(ctx, serviceMessages, serviceMessages[len(serviceMessages)-1].Content.(string), dependencies)
 		if err != nil {
 			return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 		}
 		return dto.NewSuccessResponse(message)
 	} else {
-		// TODO: rewrite to decompose tasks
+		// rewrite to decompose tasks
+		rewrite := Rewrite{
+			Messages: chat.Messages,
+		}
+		rewriteResponse := rewrite.Handle(ctx, nil, dependencies)
+		if !rewriteResponse.Success {
+			return dto.NewSuccessResponse(types.AIErrorResponse)
+		}
 		// execute each task parallelly
-
+		newData := []string{}
+		for _, task := range rewriteResponse.Data {
+			message, err := chat.executeTask(ctx, serviceMessages, task, dependencies)
+			if err != nil {
+				return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
+			}
+			newData = append(newData, message)
+		}
+		reply := Reply{
+			Messages:       chat.Messages,
+			ProfileId:      chat.Profile.Id,
+			AdditionalData: strings.Join(newData, "\n---\n"),
+		}
+		replyResponse := reply.Handle(ctx, nil, dependencies)
+		return replyResponse
 	}
-	return dto.NewSuccessResponse("Someone will assist you shortly.")
 }
 
 func (chat *Chat) checkIsInvalid(ctx context.Context, messages []service.DashScopeMessage, dependencies *service.Dependencies) (bool, error) {
@@ -215,40 +235,40 @@ func (chat *Chat) checkNeedToDecompose(ctx context.Context, messages []service.D
 	return false, nil
 }
 
-func (chat *Chat) checkNeedRewrite(ctx context.Context, messages []service.DashScopeMessage, dependencies *service.Dependencies) (bool, error) {
-	// if there is only 1 user message, return false
-	if helper.Count(messages, func(m service.DashScopeMessage) bool {
-		return m.Role == service.DashScopeChatMessageRoleUser
-	}) == 1 {
-		return false, nil
-	}
-	decideResponse, err := dependencies.LLM.Decide(ctx, messages, service.DashScopeDecideQuestion{
-		"need_rewrite": service.DashScopeDecideQuestionContent{
-			Type:         service.DashScopeDecideQuestionTypeNoul,
-			Instructions: "Is user's latest message contextual complete without rewriting needed?",
-			Criteria: service.DashScopeDecideQuestionCriteriaNoul{
-				True:  "User's latest message is contextual complete.",
-				False: "User's latest message is not not contextual complete.",
-			},
-		},
-	}, true)
-	if err != nil {
-		return false, err
-	}
-	// if need to rewrite
-	if needRewrite, ok := decideResponse.Answers["need_rewrite"]; ok {
-		noul, err := helper.ConvertJSON[service.DashScopeDecideResponseAnswerNoul](needRewrite)
-		if err != nil {
-			return false, fmt.Errorf("error parseing need_rewrite into service.DashScopeDecideResponseAnswerNoul: %w", err)
-		}
-		return noul.Noul > 0.5, nil
-	} else {
-		return false, fmt.Errorf("error getting answer from decide, need_rewrite is not found.")
-	}
-}
+// func (chat *Chat) checkNeedRewrite(ctx context.Context, messages []service.DashScopeMessage, dependencies *service.Dependencies) (bool, error) {
+// 	// if there is only 1 user message, return false
+// 	if helper.Count(messages, func(m service.DashScopeMessage) bool {
+// 		return m.Role == service.DashScopeChatMessageRoleUser
+// 	}) == 1 {
+// 		return false, nil
+// 	}
+// 	decideResponse, err := dependencies.LLM.Decide(ctx, messages, service.DashScopeDecideQuestion{
+// 		"need_rewrite": service.DashScopeDecideQuestionContent{
+// 			Type:         service.DashScopeDecideQuestionTypeNoul,
+// 			Instructions: "Is user's latest message contextual complete without rewriting needed?",
+// 			Criteria: service.DashScopeDecideQuestionCriteriaNoul{
+// 				True:  "User's latest message is contextual complete.",
+// 				False: "User's latest message is not not contextual complete.",
+// 			},
+// 		},
+// 	}, true)
+// 	if err != nil {
+// 		return false, err
+// 	}
+// 	// if need to rewrite
+// 	if needRewrite, ok := decideResponse.Answers["need_rewrite"]; ok {
+// 		noul, err := helper.ConvertJSON[service.DashScopeDecideResponseAnswerNoul](needRewrite)
+// 		if err != nil {
+// 			return false, fmt.Errorf("error parseing need_rewrite into service.DashScopeDecideResponseAnswerNoul: %w", err)
+// 		}
+// 		return noul.Noul > 0.5, nil
+// 	} else {
+// 		return false, fmt.Errorf("error getting answer from decide, need_rewrite is not found.")
+// 	}
+// }
 
 // task is a rewritten, single-task user query
-func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeMessage, dependencies *service.Dependencies) (string, error) {
+func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeMessage, task string, dependencies *service.Dependencies) (string, error) {
 	skills, err := chat.detectSkills(ctx, messages, dependencies)
 	if err != nil {
 		return "", fmt.Errorf("error executing task in chat: %w", err)
@@ -257,8 +277,30 @@ func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeM
 	if len(skills) > 0 {
 		if skills[0].Type == types.AIAgentSkillTypeAnswerQuestion {
 			// do semantic search
+			searchKnowledge := Search{
+				Query:     task,
+				ProfileId: chat.Profile.Id,
+				Semantic:  true,
+			}
+			searchKnowledgesResponse := searchKnowledge.Handle(ctx, nil, dependencies)
+			if !searchKnowledgesResponse.Success {
+				return "", searchKnowledgesResponse.Error
+			}
+			if len(searchKnowledgesResponse.Data) == 0 {
+				reply, err := chat.reply(ctx, skills, dependencies)
+				return reply, err
+			}
 			// call RAG
-			return "Here is the answer to your question: blah blah", nil
+			rag := RAG{
+				Query:      task,
+				Knowledges: searchKnowledgesResponse.Data,
+				Skills:     skills,
+			}
+			ragResponse := rag.Handle(ctx, nil, dependencies)
+			if !ragResponse.Success {
+				return types.AIErrorResponse, nil
+			}
+			return ragResponse.Data, nil
 		} else if len(skills[0].Inputs) > 0 {
 			// if the skill requires user input
 			// get all required inputs
@@ -297,6 +339,11 @@ func (chat *Chat) executeTask(ctx context.Context, messages []service.DashScopeM
 		}
 	}
 	// reply
+	reply, err := chat.reply(ctx, skills, dependencies)
+	return reply, err
+}
+
+func (chat *Chat) reply(ctx context.Context, skills []dto_ai_agent.Skill, dependencies *service.Dependencies) (string, error) {
 	reply := Reply{
 		Messages:  chat.Messages,
 		ProfileId: chat.Profile.Id,
@@ -350,8 +397,4 @@ func (chat *Chat) getMissingInputs(ctx context.Context, skillInputs []dto_ai_age
 		}
 	}
 	return missingInputs, nil
-}
-
-func (chat *Chat) returnGenericResponse(ctx context.Context, messages []service.DashScopeMessage, dependencies *service.Dependencies) (string, error) {
-	return "Sorry, I am unable to assist.", nil
 }

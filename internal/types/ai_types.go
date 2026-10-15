@@ -16,3 +16,5 @@ const (
 	AIKnowledgeCategoryFile    AIKnowledgeCategory = "FILE"
 	AIKnowledgeCategoryWebsite AIKnowledgeCategory = "WEBSITE"
 )
+
+const AIErrorResponse string = "I am sorry, but I could not answer your query."

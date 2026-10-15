@@ -50,10 +50,12 @@ func (addCommon AddCommon) Handle(ctx context.Context, user *dto_account.User, d
 		{
 			Title:       "How should customer address you.",
 			Description: fmt.Sprintf("You are %s, the 24/7 AI assistant to help the customers to find out more about our business, book appointment etc...", profile.Name),
+			AlwaysApply: true,
 		},
 		{
 			Title:       "Welcome customers and identify what they need.",
 			Description: "Greet the customer politely in their preferred language. Ask how you can help and clarify their request with one question at a time. Keep replies concise and avoid asking for unnecessary personal information.",
+			AlwaysApply: true,
 		},
 		{
 			Title:       "Answer questions about products, services, pricing, and availability.",
@@ -66,10 +68,12 @@ func (addCommon AddCommon) Handle(ctx context.Context, user *dto_account.User, d
 		{
 			Title:       "Handle complaints, return requests, and refund enquiries.",
 			Description: "Acknowledge the customer's concern with empathy and ask for a concise description of the issue. Explain only the business's documented return and refund policies. Do not promise compensation or approve refunds without authorization. Escalate unresolved issues to a human representative with a summary of the concern.",
+			AlwaysApply: true,
 		},
 		{
 			Title:       "Escalate requests that require human assistance.",
 			Description: "Offer human assistance when the customer requests it, when you lack reliable information, or when the issue requires authorization. Summarize the customer's request and relevant details without unnecessary sensitive data. Use an available handoff mechanism if provided; otherwise share verified support contact information. Never claim a transfer succeeded unless it is confirmed.",
+			AlwaysApply: true,
 		},
 	}
 	helper.Reverse(skills)

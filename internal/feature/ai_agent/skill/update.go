@@ -23,6 +23,7 @@ type Update struct {
 	Title       string       `json:"title" val:"required" description:"title of the skill"`
 	Description string       `json:"description" val:"required" description:"description of the skill"`
 	Enabled     bool         `json:"enabled" val:"required" description:"if the skill is enabled"`
+	AlwaysApply bool         `json:"always_apply" description:"always add to system prompt"`
 	Inputs      []SkillInput `json:"inputs" description:"any inputs to collect from the user, replaces the existing inputs"`
 }
 
@@ -77,6 +78,7 @@ func (update Update) Handle(ctx context.Context, user *dto_account.User, depende
 	skill.Title = update.Title
 	skill.Description = update.Description
 	skill.Enabled = update.Enabled
+	skill.AlwaysApply = update.AlwaysApply
 	skill.Inputs = []dao_ai_agent.SkillInput{}
 	for _, input := range update.Inputs {
 		skill.Inputs = append(skill.Inputs, input.ConvertToDAO())

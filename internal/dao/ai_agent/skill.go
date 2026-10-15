@@ -10,6 +10,7 @@ type Skill struct {
 	Title       string       `gorm:"column:title"`
 	Description string       `gorm:"column:description"`
 	Enabled     bool         `gorm:"column:enabled"`
+	AlwaysApply bool         `gorm:"column:always_apply"`
 	Inputs      []SkillInput `gorm:"column:inputs;type:jsonb;serializer:json"`
 }
 

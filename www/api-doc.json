@@ -12254,6 +12254,9 @@
                             "format": "date-time",
                             "type": "string"
                           },
+                          "always_apply": {
+                            "type": "boolean"
+                          },
                           "description": {
                             "type": "string"
                           },
@@ -12608,6 +12611,11 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "always_apply": {
+                    "description": "always add to system prompt",
+                    "nullable": true,
+                    "type": "boolean"
+                  },
                   "description": {
                     "description": "description of the skill",
                     "type": "string"
@@ -12665,6 +12673,9 @@
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
+                        },
+                        "always_apply": {
+                          "type": "boolean"
                         },
                         "description": {
                           "type": "string"
@@ -13357,6 +13368,9 @@
                           "format": "date-time",
                           "type": "string"
                         },
+                        "always_apply": {
+                          "type": "boolean"
+                        },
                         "description": {
                           "type": "string"
                         },
@@ -13720,6 +13734,11 @@
             "application/json": {
               "schema": {
                 "properties": {
+                  "always_apply": {
+                    "description": "always add to system prompt",
+                    "nullable": true,
+                    "type": "boolean"
+                  },
                   "description": {
                     "description": "description of the skill",
                     "type": "string"
@@ -13782,6 +13801,9 @@
                           "example": "2025-10-01T08:08:00Z",
                           "format": "date-time",
                           "type": "string"
+                        },
+                        "always_apply": {
+                          "type": "boolean"
                         },
                         "description": {
                           "type": "string"

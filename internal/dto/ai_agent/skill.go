@@ -13,6 +13,7 @@ type Skill struct {
 	Title       string                 `json:"title"`
 	Description string                 `json:"description"`
 	Enabled     bool                   `json:"enabled"`
+	AlwaysApply bool                   `json:"always_apply"`
 	Inputs      []SkillInput           `json:"inputs"`
 }
 
@@ -33,6 +34,7 @@ func NewSkill(skill dao_ai_agent.Skill, typ types.AIAgentSkillType) Skill {
 		Title:       skill.Title,
 		Description: skill.Description,
 		Enabled:     skill.Enabled,
+		AlwaysApply: skill.AlwaysApply,
 	}
 	s.Inputs = helper.Map(skill.Inputs, func(s dao_ai_agent.SkillInput) SkillInput {
 		return SkillInput{

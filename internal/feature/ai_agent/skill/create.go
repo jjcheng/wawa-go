@@ -23,6 +23,7 @@ type Create struct {
 	Title       string       `json:"title" val:"required" description:"title of the skill"`
 	Description string       `json:"description" val:"required" description:"description of the skill"`
 	Inputs      []SkillInput `json:"inputs" description:"any inputs to collect from the user"`
+	AlwaysApply bool         `json:"always_apply" description:"always add to system prompt"`
 }
 
 type SkillInput struct {
@@ -108,6 +109,7 @@ func (create Create) Handle(ctx context.Context, user *dto_account.User, depende
 		Title:       create.Title,
 		Description: create.Description,
 		Enabled:     true,
+		AlwaysApply: create.AlwaysApply,
 	}
 	for _, input := range create.Inputs {
 		skill.Inputs = append(skill.Inputs, input.ConvertToDAO())
