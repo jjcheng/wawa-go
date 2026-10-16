@@ -21,7 +21,10 @@ type Reply struct {
 	Messages       []dto_wa.Message
 	Profile        *dto_ai_agent.Profile
 	Skills         []dto_ai_agent.Skill
+	Temperature    *float32
+	ThikingEffort  *service.DashScopeQwenThiningEffort
 	AdditionalData string
+	Instruction    string // used to override any existing instruction in system prompt
 }
 
 func (reply *Reply) Validate() []exception.InputException {
@@ -33,6 +36,10 @@ func (reply *Reply) Validate() []exception.InputException {
 		errors = append(errors, exception.NewInputException("profile", "missing profile"))
 	}
 	reply.AdditionalData = strings.TrimSpace(reply.AdditionalData)
+	reply.Instruction = strings.TrimSpace(reply.Instruction)
+	if reply.Temperature == nil {
+		reply.Temperature = helper.ConvertToPointer(float32(0.5))
+	}
 	return errors
 }
 
@@ -60,12 +67,16 @@ func (reply *Reply) Handle(ctx context.Context, dependencies *service.Dependenci
 	if reply.AdditionalData != "" {
 		systemPrompt += "\n\n## Additional data:\n\n" + reply.AdditionalData
 	}
+	// append instruction
+	if reply.Instruction != "" {
+		systemPrompt += "\n\n## Instruction (should override any piror statement):\n\n" + reply.Instruction
+	}
 	// save to file
 	if cfg.Default().Site.Environment == types.EnvironmentDevelop {
 		helper.WriteToFile(systemPrompt, "files/ai/reply.md")
 	}
 	// append messages
-	messages := make([]service.DashScopeMessage, 0, len(reply.Messages)+1)
+	messages := []service.DashScopeMessage{}
 	messages = append(messages, service.DashScopeMessage{
 		Role:    service.DashScopeChatMessageRoleSystem,
 		Content: systemPrompt,
@@ -77,7 +88,11 @@ func (reply *Reply) Handle(ctx context.Context, dependencies *service.Dependenci
 		}
 		messages = append(messages, service.DashScopeMessage{Role: role, Content: message.Text()})
 	}
-	response, err := dependencies.LLM.Chat(ctx, service.DashScopeChatModelQwen38Flash, messages, 0.3, nil, 0, service.DashScopeResponseFormatText)
+	// take only the last 30 messages
+	if len(messages) > 30 {
+		messages = messages[len(messages)-30:]
+	}
+	response, err := dependencies.LLM.Chat(ctx, service.DashScopeChatModelQwen38Flash, messages, *reply.Temperature, reply.ThikingEffort, 0, service.DashScopeResponseFormatText)
 	if err != nil {
 		return dto.NewFailedResponse[string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}

@@ -18,7 +18,8 @@ import (
 )
 
 type Rewrite struct {
-	Messages []dto_wa.Message
+	Messages       []dto_wa.Message
+	ThinkingEffort *service.DashScopeQwenThiningEffort
 }
 
 func (rewrite *Rewrite) Validate() []exception.InputException {
@@ -29,12 +30,15 @@ func (rewrite *Rewrite) Validate() []exception.InputException {
 	return errors
 }
 
-// Handle rewrites the latest message into standalone tasks. An empty result means there is nothing to handle.
+// return a list of decomposed tasks
 func (rewrite *Rewrite) Handle(ctx context.Context, dependencies *service.Dependencies) dto.Response[[]string] {
 	if errors := rewrite.Validate(); len(errors) > 0 {
 		return dto.NewInvalidInputResponse[[]string](errors)
 	}
-	messages := make([]service.DashScopeMessage, 0, len(rewrite.Messages)+1)
+	if len(rewrite.Messages) == 1 {
+		return dto.NewSuccessResponse([]string{rewrite.Messages[0].Text()})
+	}
+	messages := []service.DashScopeMessage{}
 	messages = append(messages, service.DashScopeMessage{
 		Role:    service.DashScopeChatMessageRoleSystem,
 		Content: ai_prompt.Rewrite,
@@ -53,10 +57,11 @@ func (rewrite *Rewrite) Handle(ctx context.Context, dependencies *service.Depend
 		}
 		messages = append(messages, service.DashScopeMessage{Role: role, Content: text})
 	}
-	if len(messages) == 1 {
-		return dto.NewSuccessResponse([]string{})
+	// take only the last 30 messages
+	if len(messages) > 30 {
+		messages = messages[len(messages)-30:]
 	}
-	response, err := dependencies.LLM.Chat(ctx, service.DashScopeChatModelQwen38Flash, messages, 0, nil, 0, service.DashScopeResponseFormatJSONObject)
+	response, err := dependencies.LLM.Chat(ctx, service.DashScopeChatModelQwen38Flash, messages, 0, rewrite.ThinkingEffort, 0, service.DashScopeResponseFormatJSONObject)
 	if err != nil {
 		return dto.NewFailedResponse[[]string](http.StatusInternalServerError, types.ExceptionMessageInternalServerError, err)
 	}
@@ -76,5 +81,6 @@ func (rewrite *Rewrite) Handle(ctx context.Context, dependencies *service.Depend
 			tasks = append(tasks, task)
 		}
 	}
+	tasks = helper.Distinct(tasks)
 	return dto.NewSuccessResponse(tasks)
 }

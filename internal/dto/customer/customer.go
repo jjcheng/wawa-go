@@ -35,7 +35,7 @@ type Customer struct {
 }
 
 func NewCustomer(customer dao_customer.Customer) Customer {
-	return Customer{
+	c := Customer{
 		DTOBase: dto.DTOBase{
 			Id:            customer.Id,
 			AddedAt:       customer.AddedAt,
@@ -62,4 +62,8 @@ func NewCustomer(customer dao_customer.Customer) Customer {
 		LatestMessageTimestamp: customer.LatestMessageTimestamp,
 		LatestMessageRead:      customer.LatestMessageRead,
 	}
+	if c.LatestMessageId == nil {
+		c.LatestMessageRead = true
+	}
+	return c
 }

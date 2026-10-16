@@ -18,3 +18,9 @@ const (
 )
 
 const AIErrorResponse string = "I am sorry, but I could not answer your query."
+
+type AIChatNextStepType string
+
+const (
+	AIChatNextStepTypeNotifyUser AIChatNextStepType = "NOTIFY_USER"
+)

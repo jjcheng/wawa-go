@@ -1240,6 +1240,16 @@ func passToAI(ctx context.Context, metadata dto_wa.IncomingMetadata, contact dto
 	if err != nil {
 		return fmt.Errorf("error getting agent profile by id: %d: %w", *phoneNumber.AgenProfileId, err)
 	}
+	// start typing
+	businessAccount, err := dependencies.UnitOfWork.WABusinessAccountRepository().GetById(ctx, phoneNumber.BusinessAccountId)
+	if err != nil {
+		return fmt.Errorf("error getting business account by id: %d, error: %w", phoneNumber.BusinessAccountId, err)
+	}
+	businessPortfolio, err := dependencies.UnitOfWork.WABusinessPortfolioRepository().GetById(ctx, businessAccount.BussinessPortfolioId)
+	if err != nil {
+		return fmt.Errorf("error getting business portfolio by id: %d, error: %w", businessAccount.BussinessPortfolioId, err)
+	}
+	_, _ = dependencies.Whatsapp.StartTyping(ctx, phoneNumber.MetaPhoneNumberId, messages[len(messages)-1].WAMessageId, businessPortfolio.AccessToken)
 	// process by ai now
 	chat := feature_ai.Chat{
 		Profile:  helper.ConvertToPointer(dto_ai_agent.NewProfile(*agentProfile)),
@@ -1254,13 +1264,34 @@ func passToAI(ctx context.Context, metadata dto_wa.IncomingMetadata, contact dto
 		CustomerId: customer.Id,
 		Type:       MessageTypeText,
 		Text: &TextObject{
-			Body: chatResponse.Data,
+			Body: chatResponse.Data.Message,
 		},
 		FromWebhook: true,
 	}
 	createMessageResponse := createMessage.Handle(ctx, nil, dependencies)
 	if !createMessageResponse.Success {
 		return fmt.Errorf("error creating message by AI: %w", createMessageResponse.Error)
+	}
+	// if has next step, excute
+	if chatResponse.Data.NextStep != nil {
+		if chatResponse.Data.NextStep.Type == types.AIChatNextStepTypeNotifyUser {
+			userPhoneNumbers, err := dependencies.UnitOfWork.AccountUserPhoneNumberRepository().ListByPhoneNumberId(ctx, phoneNumber.Id)
+			if err != nil {
+				return fmt.Errorf("error getting users by phone number id when passing to AI: %w", err)
+			}
+			for _, userPhoneNumber := range userPhoneNumbers {
+				createNotification := feature_account_notification.Create{
+					Category: types.NotificationCategoryPending,
+					IconType: types.NotificationIconTypeChat,
+					Type:     types.NotificationTypeSuccess,
+					Title:    chatResponse.Data.NextStep.Title,
+					Body:     chatResponse.Data.NextStep.Body,
+					URL:      fmt.Sprintf("/chats/%d/chat", customer.Id),
+					ToUserId: userPhoneNumber.UserId,
+				}
+				_ = createNotification.Handle(ctx, dependencies)
+			}
+		}
 	}
 	return nil
 }
